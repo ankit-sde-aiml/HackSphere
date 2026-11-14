@@ -213,20 +213,56 @@ function mentorClassesV2(){
  return title("My Classes & Uploads","Only your scheduled lessons appear here. Other mentors can view published content, not change it.")+(rows||empty("No classes assigned","Admin has not scheduled a teaching class for you."));
 }
 function mentorTeamsV2(){
- const mine=(D.internship_teams||[]).filter(t=>t.mentor_id===user.id);
- const cards=mine.map(t=>{
- const members=(D.internship_team_members||[]).filter(m=>m.team_id===t.id),tasks=(D.internship_tasks||[]).filter(x=>x.team_id===t.id);
- return card("Team "+t.team_number+" · "+esc(p(t.program_id)?.title||"Program"),'<p><b>Members:</b> '+(members.map(m=>esc(who(m.student_id))).join(", ")||"Not allocated")+'</p><form class="form-grid" data-kind="v2-team-project" data-team="'+esc(t.id)+'">'+field("Major project title","project_title","text",t.project_title||"")+notes("Project brief","project_brief",t.project_brief||"")+field("Repository URL","repository_url","url",t.repository_url||"")+field("Final due date","due_date","date",t.due_date||"")+'<button class="btn btn-primary" type="submit">Save project</button></form><h3>Project tasks</h3>'+tasks.map(q=>row("▥",q.title,q.status)).join("")+'<form class="form-grid" data-kind="v2-team-task" data-team="'+esc(t.id)+'">'+field("New task title","title","text","",true)+notes("Task description","description")+choose("Assign to student (optional)","assigned_student_id",[["","Whole team"],...members.map(m=>[m.student_id,who(m.student_id)])],"")+'<button class="btn btn-primary" type="submit">Add task</button></form>');
+ const assigned=(D.internship_teams||[]).filter(t=>t.mentor_id===user.id);
+ const list=assigned.map(team=>{
+ const members=(D.internship_team_members||[]).filter(m=>m.team_id===team.id);
+ const tasks=(D.internship_tasks||[]).filter(q=>q.team_id===team.id);
+ const projectForm='<form class="form-grid" data-kind="v2-team-project" data-team="'+esc(team.id)+'">'+
+ field("Major project","project_title","text",team.project_title||"")+
+ notes("Project brief","project_brief",team.project_brief||"")+
+ field("GitHub repository","repository_url","url",team.repository_url||"")+
+ field("Deadline","due_date","date",team.due_date||"")+
+ '<button class="btn btn-primary" type="submit">Save team project</button></form>';
+ const taskRows=tasks.map(q=>row("▥",q.title,
+ q.status+' · '+(q.assigned_student_id?who(q.assigned_student_id):"Whole team"),
+ q.status!=="completed"?'<div class="form-actions">'+
+ click("Move to review","v2-mentor-task-review",q.id,"btn-outline")+
+ click("Approve complete","v2-mentor-task-complete",q.id,"btn-primary")+'</div>':tag("Completed"))).join("");
+ const taskForm='<form class="form-grid" data-kind="v2-team-task" data-team="'+esc(team.id)+'">'+
+ field("New task","title","text","",true)+notes("Instructions","description")+
+ choose("Assign task","assigned_student_id",[["","Entire team"],...members.map(m=>[m.student_id,who(m.student_id)])],"")+
+ '<button class="btn btn-primary" type="submit">Assign task</button></form>';
+ return card("Team "+team.team_number+' — '+esc(p(team.program_id)?.title||"Program"),
+ '<p>Five-person team: '+(members.map(m=>esc(who(m.student_id))).join(", ")||"No students allocated")+'</p>'+
+ '<h3>Major project</h3>'+projectForm+
+ '<h3>Task review</h3>'+(taskRows||empty("No tasks","Assign the first project task."))+taskForm);
  }).join("");
- return title("My Internship Teams","Only teams assigned to you can be managed from this workspace.")+(cards||empty("No teams allocated","Internship teams appear after the training phase and admin allocation."));
+ return title("My Internship Teams","Manage only the teams allocated to you. Other mentors have read-only program-level information.")+
+ (list||empty("No teams assigned","Your internship teams appear after group allocation."));
 }
 function studentInternshipV2(){
  const mine=(D.internship_team_members||[]).filter(m=>m.student_id===user.id);
- const content=mine.map(m=>{let team=(D.internship_teams||[]).find(t=>t.id===m.team_id);if(!team)return "";
- const members=(D.internship_team_members||[]).filter(x=>x.team_id===m.team_id);
- return card("Team "+team.team_number+' — '+esc(p(team.program_id)?.title||"Internship"),'<p><b>Mentor:</b> '+esc(who(team.mentor_id))+'</p><p><b>Team members:</b> '+members.map(x=>esc(who(x.student_id))).join(", ")+'</p><p><b>Major project:</b> '+esc(team.project_title||"To be assigned")+'</p><p>'+esc(team.project_brief||"")+'</p><p><b>Tasks:</b></p>'+(D.internship_tasks||[]).filter(t=>t.team_id===team.id).map(t=>row("▥",t.title,t.status)).join("")+(team.repository_url?'<a href="'+esc(team.repository_url)+'" target="_blank" rel="noopener noreferrer">View repository</a>':""));
+ const content=mine.map(m=>{
+ const team=(D.internship_teams||[]).find(t=>t.id===m.team_id);if(!team)return "";
+ const members=(D.internship_team_members||[]).filter(x=>x.team_id===team.id);
+ const tasks=(D.internship_tasks||[]).filter(t=>t.team_id===team.id);
+ const details='<p><b>Mentor:</b> '+esc(who(team.mentor_id))+'</p>'+
+ '<p><b>Team:</b> '+members.map(x=>esc(who(x.student_id))).join(", ")+'</p>'+
+ '<p><b>Major project:</b> '+esc(team.project_title||"Not assigned yet")+'</p>'+
+ '<p>'+esc(team.project_brief||"")+'</p>'+
+ (team.repository_url&&/^https:\/\//.test(team.repository_url)?'<p><a target="_blank" rel="noopener noreferrer" href="'+esc(team.repository_url)+'">Project GitHub repository</a></p>':"");
+ const tasksRows=tasks.map(t=>{
+ const allowed=t.assigned_student_id===null||t.assigned_student_id===user.id;
+ const controls=allowed&&t.status!=="completed"?
+ '<div class="form-actions">'+click("In progress","v2-student-task-progress",t.id,"btn-outline")+
+ click("Request review","v2-student-task-review",t.id,"btn-primary")+'</div>':tag(t.status);
+ return row("▥",t.title,"Status: "+t.status+(t.assigned_student_id?" · "+who(t.assigned_student_id):""),controls);
  }).join("");
- return title("My Internship","After training you will work on one major project with a five-student team.")+(content||empty("Team allocation pending","Your internship team and mentor will appear here after the training phase."));
+ return card("Team "+team.team_number+" — "+esc(p(team.program_id)?.title||"Program"),
+ details+'<h3>Project tasks</h3>'+(tasksRows||empty("No project tasks yet","Your mentor will assign tasks here.")));
+ }).join("");
+ return title("My Internship","Track a real 5-student project internship, assigned responsibilities, mentor reviews and team milestones.")+
+ (content||empty("Your team is pending","Training ends before team allocation. Your internship workspace will appear here."));
 }
 function adminMentorsV2(){
  const authorizedIds=[...new Set((D.staff_roles||[]).filter(r=>["mentor","trainer","guide","admin"].includes(r.role)).map(r=>r.user_id))];
@@ -1389,7 +1425,17 @@ else if(a==="student-tab"){
 else if(a==="student-resource"){await studentOpenResource(id)}
 else if(a==="student-legacy-file"){const ev=D.timeline_events.find(x=>x.id===id&&x.program_id===course);if(!ev?.resource_url?.startsWith("storage://hacksphere-course-files/"))return;const win=window.open("","_blank");const signed=await studentSignedUrl(ev.resource_url.replace("storage://hacksphere-course-files/",""));if(!signed){if(win)win.close();return}if(win){win.opener=null;win.location.replace(signed)}else notice("Allow popups to open the attachment.","error")}
 else if(a==="student-legacy-link"){const ev=D.timeline_events.find(x=>x.id===id);if(ev?.resource_url&&/^https:\/\//.test(ev.resource_url))window.open(ev.resource_url,"_blank","noopener,noreferrer")}
-else if(a==="public-browse"){location.href="/programs"}else if(a==="hs-public-page"){hsPage=Number(id)||0;drawCatalog();$("hs-programs-page")?.scrollIntoView({behavior:"smooth",block:"start"})}else if(a==="login")loginDialog();else if(a==="close-login")hideDialog();else if(a==="google-login")signIn();else if(a==="demo")demoOpen();else if(a==="toggle-public-menu"){const menu=$("mobile-links");menu.hidden=!menu.hidden;b.setAttribute("aria-expanded",String(!menu.hidden));b.setAttribute("aria-label",menu.hidden?"Open menu":"Close menu")}else if(a==="open-drawer")$("app-shell").classList.add("drawer-open");else if(a==="close-drawer")$("app-shell").classList.remove("drawer-open");else if(a==="signout")signOut();else if(a==="home")publicPage();else if(a==="navigate"){navigateTo(b.dataset.view)}else if(a==="open-course"){studentTab="overview";navigateTo("courses",id)}else if(a==="close-course"){navigateTo("courses")}else if(a==="lesson"){lesson=id;render()}else if(a==="enroll-public"){if(!user){sessionStorage.setItem("hs_requested_program",id);loginDialog()}else{studentEnrollmentChoice=id;await reload();role="student";navigateTo("enrollment");open()}}else if(a==="timeline-prev"){timelineOffset=Math.max(0,timelineOffset-1);render()}else if(a==="timeline-next"){timelineOffset=(timelineOffset+1)%Math.ceil(total(p(course||selectedPrograms()[0]?.id))/14);render()}else if(a==="secure-resource"){let event=D.timeline_events.find(x=>x.id===id);if(!event?.resource_url)return;let path=event.resource_url.replace("storage://hacksphere-course-files/","");if(demo){notice("Preview only — no private recording file is stored.");return}let r=await db.storage.from("hacksphere-course-files").createSignedUrl(path,600);if(r.error){notice(r.error.message,"error");return}if(/\.(mp4|webm)$/i.test(path)){let player=$("course-player");player.innerHTML='<video controls autoplay playsinline src="'+esc(r.data.signedUrl)+'"></video>';}else window.open(r.data.signedUrl,"_blank","noopener,noreferrer")}else if(a==="v2-join-event"){
+else if(a==="public-browse"){location.href="/programs"}else if(a==="hs-public-page"){hsPage=Number(id)||0;drawCatalog();$("hs-programs-page")?.scrollIntoView({behavior:"smooth",block:"start"})}else if(a==="login")loginDialog();else if(a==="close-login")hideDialog();else if(a==="google-login")signIn();else if(a==="demo")demoOpen();else if(a==="toggle-public-menu"){const menu=$("mobile-links");menu.hidden=!menu.hidden;b.setAttribute("aria-expanded",String(!menu.hidden));b.setAttribute("aria-label",menu.hidden?"Open menu":"Close menu")}else if(a==="open-drawer")$("app-shell").classList.add("drawer-open");else if(a==="close-drawer")$("app-shell").classList.remove("drawer-open");else if(a==="signout")signOut();else if(a==="home")publicPage();else if(a==="navigate"){navigateTo(b.dataset.view)}else if(a==="open-course"){studentTab="overview";navigateTo("courses",id)}else if(a==="close-course"){navigateTo("courses")}else if(a==="lesson"){lesson=id;render()}else if(a==="enroll-public"){if(!user){sessionStorage.setItem("hs_requested_program",id);loginDialog()}else{studentEnrollmentChoice=id;await reload();role="student";navigateTo("enrollment");open()}}else if(a==="timeline-prev"){timelineOffset=Math.max(0,timelineOffset-1);render()}else if(a==="timeline-next"){timelineOffset=(timelineOffset+1)%Math.ceil(total(p(course||selectedPrograms()[0]?.id))/14);render()}else if(a==="secure-resource"){let event=D.timeline_events.find(x=>x.id===id);if(!event?.resource_url)return;let path=event.resource_url.replace("storage://hacksphere-course-files/","");if(demo){notice("Preview only — no private recording file is stored.");return}let r=await db.storage.from("hacksphere-course-files").createSignedUrl(path,600);if(r.error){notice(r.error.message,"error");return}if(/\.(mp4|webm)$/i.test(path)){let player=$("course-player");player.innerHTML='<video controls autoplay playsinline src="'+esc(r.data.signedUrl)+'"></video>';}else window.open(r.data.signedUrl,"_blank","noopener,noreferrer")}else if(a==="v2-mentor-task-review"||a==="v2-mentor-task-complete"){
+ if(role!=="mentor"&&role!=="admin")return;
+ const status=a==="v2-mentor-task-complete"?"completed":"review";
+ await save("internship_tasks",{status},id);
+}else if(a==="v2-student-task-progress"||a==="v2-student-task-review"){
+ if(demo){notice("Preview only.");return}
+ const status=a==="v2-student-task-review"?"review":"in_progress";
+ const r=await db.rpc("update_my_internship_task",{_task_id:id,_status:status});
+ if(r.error){notice(r.error.message,"error");return}
+ await reload();render();notice("Task status updated.","success");
+}else if(a==="v2-join-event"){
  if(demo){notice("Demo event; no live meeting link.");return}
  const win=window.open("","_blank"),r=await db.rpc("get_global_event_join_url",{_event_id:id});
  if(r.error||!r.data){if(win)win.close();notice("Join unavailable: "+(r.error?.message||"No link yet"),"error");return}
