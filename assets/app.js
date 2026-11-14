@@ -139,7 +139,7 @@ function overview(){
  '</div></div>';
 }
 function xDate(s){return String(s.session_date||"")+"T"+String(s.start_time||"")}
-function courses(){let ps=selectedPrograms();return title("My learning programs","Select a program to open its classroom and daily curriculum.")+(ps.length?'<div class="grid">'+ps.map(x=>'<article class="course-card"><div class="course-art">▦</div><div class="course-body"><h3>'+esc(x.title)+'</h3><p>'+esc(x.description)+'</p><div class="course-meta">Day '+current(x)+" / "+total(x)+"</div><div class=\"course-footer\">"+tag(x.mode)+click("Open classroom","open-course",x.id,"btn-primary")+"</div></div></article>").join("")+"</div>":empty("No courses yet","Enroll in a published program or wait for your assignment."))}
+function courses(){let ps=selectedPrograms();return title("My learning programs","Select a program to open its classroom and daily curriculum.")+(ps.length?'<div class="grid">'+ps.map(x=>'<article class="course-card"><div class="course-art">▦</div><div class="course-body"><h3>'+esc(x.title)+'</h3><p>'+esc(x.description)+'</p><div class="course-meta">Day '+current(x)+" / "+total(x)+"</div><div class=\"course-footer\">"+(x.is_test?'<span class="pill orange">QA TEST</span>':tag(x.mode))+click("Open classroom","open-course",x.id,"btn-primary")+"</div></div></article>").join("")+"</div>":empty("No courses yet","Enroll in a published program or wait for your assignment."))}
 
 function quizPanel(ev){
  if(ev?.activity_type!=="quiz")return "";
@@ -223,7 +223,7 @@ function classroom(){
   '</button>'
  ].join("")).join(""):empty("No lessons released","Classes and assignments will appear according to the program schedule.");
  return [
-  title(program.title,"Day "+current(program)+" / "+total(program)+" · "+program.training_days+" training days + "+program.internship_days+" internship days"),
+  title(program.title+(program.is_test?" · QA TEST":""),"Day "+current(program)+" / "+total(program)+" · "+program.training_days+" training days + "+program.internship_days+" internship days"),
   '<div class="course-layout"><div>',
   card(selected?.title||"Course player",'<div class="player" id="course-player">'+media+'</div><p>'+esc(selected?.description||"Select a lesson to see instructions and resources.")+'</p>'+actions.join('<div style="height:14px"></div>')),
   '</div><div>',
@@ -314,6 +314,7 @@ function programDetail(){
  if(role!=="admin")return empty("Administrator access required","This program-management screen is reserved for Admin.");if(!x)return title("Program workspace","Manage one batch at a time.")+empty("Program not found","Go back to the program list.");
  let en=D.enrollments.filter(e=>e.program_id===x.id),ts=D.program_staff.filter(e=>e.program_id===x.id),ga=D.guide_allocations.filter(e=>e.program_id===x.id),ev=D.timeline_events.filter(e=>e.program_id===x.id);
  const openIn=day(x.start_date,x.training_days),ended=day(x.start_date,total(x)-1);
+ const isTestBanner=x.is_test?'<div class="alert warning"><b>QA test cohort</b> — this batch is hidden from the public catalog. Student access is an authorized test seat; no actual UPI payment has been approved.</div>':"";
  const actions='<div class="form-actions">'+click("Edit details","program-edit",x.id,"btn-outline")+click("Manage timeline","program-timeline",x.id,"btn-primary")+'</div>';
  const cover=[
  '<div class="program-cover"><div class="program-cover-icon">⌘</div>',
@@ -335,7 +336,7 @@ function programDetail(){
  const guides=ga.length?ga.map(a=>row("◇",who(a.student_id),who(a.guide_user_id)+" · Assigned Guide")).join(""):empty("No Guide yet","Admin allocates Guides only after "+date(openIn)+".");
  return title(x.title,"Manage timeline, enrollment, Trainers and Guides for this batch.",actions)+
  '<div class="editor-breadcrumb"><button data-action="navigate" data-view="programs">All programs</button><span>/</span><b>'+esc(x.title)+'</b></div>'+
- cover+statSet+'<div class="two-col"><div>'+card("Program structure",manage)+card("Enrolled students",students)+'</div><div>'+
+ cover+isTestBanner+statSet+'<div class="two-col"><div>'+card("Program structure",manage)+card("Enrolled students",students)+'</div><div>'+
  card("Training team",trainers+click("Assign a Trainer","navigate","","btn-light").replace('data-action="navigate"','data-action="navigate" data-view="staff"'))+
  card("Designated Internship Guide",designated)+card("Student Guide allocations",guides)+
  card("Operations",'<div class="quick-links">'+click("Timeline","program-timeline",x.id)+click("Payment approvals","navigate","","btn-outline").replace('data-action="navigate"','data-action="navigate" data-view="payments"')+'</div>')+
