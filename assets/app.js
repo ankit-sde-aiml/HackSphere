@@ -282,12 +282,12 @@ function studentClassroom(){
  '<header class="st-classroom-head"><div><h1>'+esc(program.title)+'</h1><p>'+program.training_days+' days training · '+program.internship_days+' days internship'+(program.is_test?' · Test access':'')+'</p></div>'+
  '<div class="st-day-count"><b>Day '+current(program)+' / '+total(program)+'</b><small>Calendar progress</small></div></header>'+
  '<div class="st-classroom-progress">'+stProgramProgress(program)+'<span>'+progress+'%</span></div>'+
- '<div class="st-classroom-grid"><main class="st-classroom-main"><div class="st-player" id="student-player">'+player+'</div>'+
+ '<div class="st-classroom-grid"><div class="st-classroom-main"><div class="st-player" id="student-player">'+player+'</div>'+
  '<div class="st-lesson-heading"><div><small>'+(active?'DAY '+dayNumber+' · '+(active.phase==='training'?'TRAINING':'INTERNSHIP'):'YOUR CLASSROOM')+'</small>'+
  '<h2>'+esc(active?.title||'Your lessons will appear here')+'</h2></div></div>'+
  '<section class="st-learning-details"><div class="st-tabs" role="tablist" aria-label="Lesson sections">'+
  [['overview','Overview'],['notes','Notes'],['tasks','Tasks'],['quiz','Quiz']].map(([id,name])=>'<button type="button" class="st-tab'+(studentTab===id?' active':'')+'" role="tab" aria-selected="'+(studentTab===id)+'" data-action="student-tab" data-tab="'+id+'">'+name+'</button>').join('')+'</div>'+
- '<div id="student-lesson-panel" class="st-tab-panel" role="tabpanel">'+studentTabHtml(program,active)+'</div></section></main>'+
+ '<div id="student-lesson-panel" class="st-tab-panel" role="tabpanel">'+studentTabHtml(program,active)+'</div></section></div>'+
  '<aside class="st-curriculum"><div class="st-curriculum-top"><h2>Course content</h2><span>'+events.length+' available</span></div>'+
  '<div class="st-curriculum-section"><div class="st-curriculum-label">'+stIcon('book',17)+' Training <span>Day 1–'+program.training_days+'</span></div>'+
  '<div class="st-lesson-list">'+events.filter(e=>e.phase==='training').map(e=>lessonListFor(e,active,program)).join('')+'</div></div>'+
@@ -335,6 +335,49 @@ function studentTabHtml(program,ev){
  if(ev.activity_type==='quiz')return quizPanel(ev);
  return qs.length?'<h3>Available quizzes</h3>'+qs.map(e=>'<button class="st-related-lesson" data-action="student-lesson" data-id="'+esc(e.id)+'">'+stIcon('quiz',20)+'<span>'+esc(e.title)+'</span>'+stIcon('arrow',17)+'</button>').join(''):
  '<div class="st-tab-empty">'+stIcon('quiz',25)+'<h3>No quizzes released</h3><p>Published quizzes will appear here on their scheduled dates.</p></div>';
+}
+
+
+async function studentSignedUrl(path){
+ if(demo||!db){notice("This preview has no uploaded media.","error");return null}
+ const r=await db.storage.from("hacksphere-course-files").createSignedUrl(path,300);
+ if(r.error){notice("Could not open the file: "+r.error.message,"error");return null}
+ return r.data?.signedUrl||null;
+}
+async function studentPlayRecording(id,source){
+ const selected=D.timeline_events.find(ev=>ev.id===lesson&&ev.program_id===course);
+ if(!selected||selected.scheduled_date>programToday(p(course))){notice("Lesson not released.","error");return}
+ let src=null,resource=null;
+ if(source==="resource"){
+   resource=stPublishedResources(selected.id).find(x=>x.id===id&&x.kind==="video");
+   if(!resource)return;
+   if(resource.storage_path)src=await studentSignedUrl(resource.storage_path);
+   else if(resource.external_url&&/^https:\/\//.test(resource.external_url))src=resource.external_url;
+ }else if(source==="legacy"&&id===selected.id&&selected.resource_url?.startsWith("storage://hacksphere-course-files/")){
+   src=await studentSignedUrl(selected.resource_url.replace("storage://hacksphere-course-files/",""));
+ }else if(source==="external"&&id===selected.id&&/^https:\/\//.test(selected.resource_url||"")){
+   src=selected.resource_url;
+ }
+ if(!src)return;
+ const holder=document.getElementById("student-player");if(!holder)return;
+ holder.replaceChildren();
+ const video=document.createElement("video");video.controls=true;video.playsInline=true;
+ video.preload="metadata";video.setAttribute("controlsList","nodownload");
+ video.setAttribute("aria-label",selected.title+" recording");video.src=src;
+ holder.append(video);try{await video.play()}catch(e){}
+}
+async function studentOpenResource(id){
+ const selected=D.timeline_events.find(ev=>ev.id===lesson&&ev.program_id===course);
+ if(!selected||selected.scheduled_date>programToday(p(course)))return;
+ const resource=stPublishedResources(selected.id).find(r=>r.id===id);
+ if(!resource)return;
+ let win=window.open("","_blank");
+ let destination=null;
+ if(resource.storage_path)destination=await studentSignedUrl(resource.storage_path);
+ else if(resource.external_url&&/^https:\/\//.test(resource.external_url))destination=resource.external_url;
+ if(!destination){if(win)win.close();return}
+ if(win){win.opener=null;win.location.replace(destination)}
+ else notice("Enable popups to open your course resource.","error");
 }
 
 function quizPanel(ev){
@@ -403,8 +446,17 @@ function classroom(){
  if(selected?.activity_type==="quiz")actions.push(quizPanel(selected));
  if(role!=="student"&&selected){
   actions.push([
+   '<form data-kind="lesson-resource" data-event="'+esc(selected.id)+'" data-program="'+esc(program.id)+'">',
+   '<h3 style="font-size:15px">Add a lesson resource</h3>',
+   '<label class="field"><span>Resource type</span><select class="input" name="kind"><option value="video">Recording</option><option value="notes">Notes / PDF</option><option value="file">Study material</option><option value="link">External link</option></select></label>',
+   field("Resource title","title","text","",true),
+   '<label class="field"><span>Upload MP4, WebM, PDF or image (max 50 MB)</span><input class="input" name="file" type="file" accept=".mp4,.webm,.pdf,.png,.jpg,.jpeg"></label>',
+   field("External HTTPS URL (instead of a file)","external_url","url"),
+   notes("Written notes (for text-only notes)","note_text"),
+   '<button class="btn btn-primary" type="submit">Publish resource</button></form>',
+   '<div class="form-section-label">Older single-resource upload</div>',
    '<form data-kind="media-upload" data-event="'+esc(selected.id)+'" data-program="'+esc(program.id)+'">',
-   '<h3 style="font-size:15px">Upload class recording or study material</h3>',
+   '<h3 style="font-size:15px">Replace legacy recording / material</h3>',
    '<label class="field"><span>PDF, MP4, WebM or image (private storage)</span>',
    '<input class="input" name="resource_file" type="file" accept=".pdf,.mp4,.webm,.png,.jpg,.jpeg" required></label>',
    '<button class="btn btn-primary">Upload and publish resource</button>',
@@ -1061,7 +1113,32 @@ else if(type==="program-edit"){f.training_days=+f.training_days;f.internship_day
 else if(type==="profile"){await save("profiles",{full_name:f.full_name},user.id)}
 else if(type==="activity"){f.created_by=user.id;await save("timeline_events",f)}
 else if(type==="session"){f.duration_minutes=+f.duration_minutes;f.trainer_user_id=user.id;await save("live_sessions",f)}
-else if(type==="submission"){f.student_id=user.id;f.event_id=form.dataset.event;await save("submissions",f)}
+else if(type==="submission"){f.student_id=user.id;f.event_id=form.dataset.event;let prior=D.submissions.find(x=>x.student_id===user.id&&x.event_id===f.event_id&&x.status==="changes_requested");if(prior)await save("submissions",{content:f.content||"",submission_url:f.submission_url,status:"submitted"},prior.id);else await save("submissions",f)}
+else if(type==="lesson-resource"){
+ const eventId=form.dataset.event,programId=form.dataset.program,file=form.querySelector('input[name="file"]')?.files?.[0];
+ const allowed={"video/mp4":"mp4","video/webm":"webm","application/pdf":"pdf","image/png":"png","image/jpeg":"jpg"};
+ const name=String(f.title||"").trim();
+ if(name.length<2){notice("Give the resource a title.","error");return}
+ const obj={event_id:eventId,kind:f.kind,title:name,published:true,created_by:user.id};
+ if(file){
+  if(!allowed[file.type]||file.size>52428800){notice("Upload MP4, WebM, PDF or image below 50 MB.","error");return}
+  if(f.kind==="video"&&!file.type.startsWith("video/")||f.kind==="link"){notice("Selected type does not match the uploaded file.","error");return}
+  const path=programId+"/"+eventId+"/"+crypto.randomUUID()+"."+allowed[file.type];
+  if(demo){obj.storage_path=path}
+  else{
+   const uploaded=await db.storage.from("hacksphere-course-files").upload(path,file,{contentType:file.type,cacheControl:"300",upsert:false});
+   if(uploaded.error){notice("Upload failed: "+uploaded.error.message,"error");return}
+   obj.storage_path=path;
+  }
+ }else if(f.external_url?.trim()){
+  if(!/^https:\/\/[^ ]+$/.test(f.external_url.trim())){notice("Enter a secure HTTPS link.","error");return}
+  obj.external_url=f.external_url.trim();
+ }else if(f.kind==="notes"&&f.note_text?.trim()){
+  obj.note_text=f.note_text.trim();
+ }else{notice("Provide a file, HTTPS link or written notes.","error");return}
+ await save("lesson_resources",obj);
+}
+
 else if(type==="media-upload"){
  let file=form.querySelector('input[name="resource_file"]')?.files?.[0];
  let allowed=["application/pdf","video/mp4","video/webm","image/png","image/jpeg"];
