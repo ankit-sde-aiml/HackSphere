@@ -370,3 +370,106 @@ a,button,.panel,.stat,.manage-program-card{transition:background-color .16s,bord
  html{scroll-behavior:auto}
  *,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
 }
+
+
+/* HackSphere 3.1 visual quality pass: typography, accessible focus, verified disclosures */
+:root{--ink:#102d39;--navy:#082838;--primary:#007d7a;--amber:#ffbb58;--line:#dfebeb}
+body{font-size:14.5px;line-height:1.55}
+.site-links{font-size:13px}
+.site-head .btn{font-size:12.5px}
+.hero-subtitle,.hero p{font-size:15.5px}
+.section-title p{font-size:14px}
+.page-title h1{font-size:clamp(25px,2.6vw,33px);line-height:1.2}
+.page-title p{font-size:13px;line-height:1.6}
+.panel-head h3{font-size:15px}
+.panel p{font-size:13px}
+.row-body strong{font-size:13px}
+.row-body small{font-size:11.5px}
+.input{font-size:13px;min-height:45px}
+.field{font-size:12px}
+.btn{font-size:13px;min-height:42px}
+.btn-small{font-size:12px}
+.side-nav .nav-group button{font-size:13px;line-height:1.3}
+.nav-group-label{font-size:10.5px}
+.app-top strong{font-size:15px}
+.app-top small{font-size:10.5px}
+.stat small{font-size:12px}
+.stat b{font-size:26px}
+.breadcrumbs,.editor-breadcrumb{font-size:12px}
+.course-body p,.course-meta{font-size:12.5px}
+.legal-page{min-height:70vh;background:linear-gradient(180deg,#f0f8f6 0,#f9fbfa 230px)}
+.legal-hero{padding:62px 0 32px;max-width:760px}
+.legal-hero h1{font-size:clamp(32px,4.8vw,49px);font-weight:800;color:#092d3b;margin:9px 0;line-height:1.19}
+.legal-hero p{color:#71848a;font-size:15px}
+.legal-pill-nav{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:28px}
+.legal-pill-nav a{font-size:12px;font-weight:750;display:inline-flex;align-items:center;border:1px solid #d8e6e2;padding:9px 13px;background:#fff;color:#375660;border-radius:999px}
+.legal-pill-nav a.active,.legal-pill-nav a:hover{background:#0b6e70;color:#fff;border-color:#0b6e70}
+.legal-article{padding:40px 48px 60px;background:#fff;border:1px solid #e1eae8;border-radius:19px;box-shadow:0 10px 36px #194f4810;max-width:960px;margin-bottom:78px}
+.legal-article h2{margin:28px 0 10px;font-size:20px;line-height:1.3;color:#163c46}
+.legal-article h2:first-child{margin-top:0}
+.legal-article h3{font-size:16px;color:#123945}
+.legal-article p{font-size:14px;line-height:1.84;color:#506873}
+.legal-article .alert{font-size:13px;line-height:1.7;margin:17px 0}
+.legal-contact{padding:18px 23px;background:#f0f9f5;border:1px solid #d8ebe2;border-radius:14px;margin-top:24px}
+.legal-contact p{margin:5px 0}
+.legal-contact a{color:#006b70;text-decoration:underline;text-underline-offset:3px}
+.legal-policy-text{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;color:#28464e;line-height:1.9}
+.price-row{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:17px 0;border-bottom:1px solid #e5ecea}
+.price-row b{display:block;font-size:14px}
+.price-row small{display:block;color:#738990;font-size:12px;margin-top:5px}
+.price-row strong{font-size:20px;color:#0a796d;white-space:nowrap}
+.footer{background:radial-gradient(ellipse at 18% 12%,#0a4049,transparent 50%),#071f2e;color:#b0c8ce;padding:51px 0 20px}
+.footer .container.footer-sections{display:grid;grid-template-columns:1.6fr 1fr 1fr;align-items:start;gap:32px;padding-bottom:41px}
+.footer .container.footer-legal{display:flex;justify-content:space-between;align-items:center;gap:18px;padding-top:21px;border-top:1px solid #ffffff26}
+.footer .brand{color:white}
+.footer-identity p{color:#d4e8e7;font-size:13px;line-height:1.5;margin:18px 0 7px;max-width:320px}
+.footer-identity small{display:block;max-width:330px;color:#85a8b0;line-height:1.75;font-size:12px}
+.footer-menu{display:flex;flex-direction:column;gap:12px}
+.footer-menu b{font-size:12px;color:#fff;letter-spacing:.03em;margin-bottom:4px}
+.footer-menu a{font-size:12.5px;color:#a9c2c9;text-decoration:none;transition:color .15s}
+.footer-menu a:hover,.footer-menu a:focus-visible{color:#7ce8d0}
+.footer-legal{font-size:12px;color:#81a0ac}
+.quiz-intro{font-size:12.5px;color:#668088;margin-bottom:15px}
+.quiz-question{border:1px solid #dcebe7;border-radius:13px;padding:18px 20px;margin:16px 0;background:#fbfefd}
+.quiz-question legend{font-size:14px;font-weight:800;color:#143e48;padding:0 9px;line-height:1.5}
+.quiz-number{display:inline-flex;align-items:center;justify-content:center;width:25px;height:25px;border-radius:7px;background:#daf4e9;color:#00746c;margin-right:10px}
+.quiz-option{display:flex;align-items:center;gap:11px;padding:11px 13px;border:1px solid #e2e9e8;border-radius:9px;background:white;font-size:13px;color:#355762;margin:8px 0;cursor:pointer}
+.quiz-option:hover{background:#edfaf5;border-color:#b6dcd3}
+.quiz-option:has(input:checked){background:#e3f7ef;border-color:#4fbfa7;color:#064b47}
+.quiz-option input{accent-color:#007e79;width:16px;height:16px}
+.quiz-summary{border:1px solid #e0ece8;border-radius:10px;margin:12px 0 20px}
+.quiz-summary-row{padding:12px 15px;border-bottom:1px solid #e3eeea}
+.quiz-summary-row:last-child{border:0}
+.quiz-summary-row b{display:block;font-size:12.5px}
+.quiz-summary-row small{display:block;font-size:11.5px;color:#7b9095;margin-top:5px}
+@media(max-width:860px){
+ .footer .container.footer-sections{grid-template-columns:1.6fr 1fr 1fr;gap:20px}
+ .legal-article{padding:30px}
+ .legal-hero{padding-top:45px}
+}
+@media(max-width:620px){
+ .site-head{height:68px}
+ .brand{font-size:20px}
+ .app-page{padding:20px 14px 40px}
+ .page-title h1{font-size:26px}
+ .page-title p{font-size:12.5px}
+ .row-body strong{font-size:12.5px}
+ .side-nav .nav-group button{font-size:13px;min-height:45px}
+ .panel-head h3{font-size:14px}
+ .app-top small{font-size:9.5px}
+ .role-select{font-size:11px}
+ .legal-hero{padding:37px 0 18px}
+ .legal-hero h1{font-size:32px}
+ .legal-pill-nav{flex-wrap:nowrap;overflow-x:auto;padding:2px 0 8px}
+ .legal-pill-nav a{white-space:nowrap;font-size:11.5px}
+ .legal-article{padding:23px 18px 31px;border-radius:15px;margin-bottom:40px}
+ .legal-article p{font-size:13px}
+ .legal-article h2{font-size:17px}
+ .footer .container.footer-sections{display:grid;grid-template-columns:1fr 1fr;gap:24px;padding-bottom:27px}
+ .footer-identity{grid-column:1/-1}
+ .footer .container.footer-legal{display:flex;flex-direction:column;align-items:flex-start;gap:7px;font-size:11px}
+ .footer-menu a{font-size:12px}
+ .quiz-question{padding:15px 10px}
+ .quiz-question legend{font-size:12.5px}
+ .quiz-option{font-size:12.5px}
+}
