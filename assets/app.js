@@ -586,8 +586,8 @@ function classroom(){
   (videoStorageReady?
    '<form data-kind="lesson-video-upload" data-event="'+esc(selected.id)+'">'+
    '<label class="field"><span>Recording title</span><input class="input" type="text" name="title" value="'+esc(selected.title)+'" maxlength="180" required></label>'+
-   '<label class="field"><span>MP4 video (up to 95 MiB)</span><input class="input" name="video_file" type="file" accept="video/mp4,.mp4" required></label>'+
-   '<button class="btn btn-primary" type="submit">Upload recording</button></form>':
+   '<label class="field"><span>MP4 recording (up to 512 MiB)</span><input class="input" name="video_file" type="file" accept="video/mp4,.mp4" required></label>'+
+   '<button class="btn btn-primary" type="submit">Upload recording</button><p class="teaching-video-muted" role="status" aria-live="polite" data-video-progress></p></form>':
    '<p class="teaching-video-muted">Video upload is unavailable until private R2 storage is enabled.</p>'),
   (D.videos||[]).filter(v=>v.lesson_event_id===selected.id&&v.status==="ready").map(v=>
      '<div class="teaching-video-row"><strong>'+esc(v.title)+'</strong>'+
@@ -1279,36 +1279,70 @@ else if(type==="activity"){f.created_by=user.id;await save("timeline_events",f)}
 else if(type==="session"){f.duration_minutes=+f.duration_minutes;f.trainer_user_id=user.id;await save("live_sessions",f)}
 else if(type==="submission"){f.student_id=user.id;f.event_id=form.dataset.event;let prior=D.submissions.find(x=>x.student_id===user.id&&x.event_id===f.event_id&&x.status==="changes_requested");if(prior)await save("submissions",{content:f.content||"",submission_url:f.submission_url,status:"submitted"},prior.id);else await save("submissions",f)}
 else if(type==="lesson-video-upload"){
- const selectedEvent=form.dataset.event;
- const file=form.querySelector('input[name="video_file"]')?.files?.[0];
- if(!file||file.type!=="video/mp4"||!file.name.toLowerCase().endsWith(".mp4")||
-    file.size<1||file.size>99614720){notice("Choose an MP4 file smaller than 95 MiB.","error");return}
- if(demo){notice("Preview mode has no real R2 video storage.","error");return}
- if(!videoStorageReady){notice("Private video storage is not active yet.","error");return}
+ const eventId=form.dataset.event,videoFile=form.querySelector('input[name="video_file"]')?.files?.[0];
+ const progress=form.querySelector("[data-video-progress]");
+ if(!videoFile||!videoFile.name.toLowerCase().endsWith(".mp4")||
+  (videoFile.type&&videoFile.type!=="video/mp4")||
+  videoFile.size<1||videoFile.size>536870912){
+    notice("Choose an MP4 recording under 512 MiB.","error");return;
+ }
+ if(demo){notice("Preview doesn't contain real video storage.","error");return}
+ if(!videoStorageReady){notice("Private R2 storage must be enabled before uploading.","error");return}
  const session=await db.auth.getSession(),jwt=session.data?.session?.access_token;
- if(!jwt){notice("Google login expired. Sign in again.","error");return}
- const authorization={"Authorization":"Bearer "+jwt};
+ if(!jwt){notice("Google Sign-In expired. Please sign in again.","error");return}
+ const authorization={Authorization:"Bearer "+jwt};
+ const report=text=>{if(progress)progress.textContent=text};
  let prepared;
  try{
-   const res=await fetch("/api/videos/prepare",{
-      method:"POST",headers:{...authorization,"content-type":"application/json"},
-      body:JSON.stringify({event_id:selectedEvent,title:String(f.title||file.name),size_bytes:file.size})
-   });
-   const data=await res.json();
-   if(!res.ok)throw new Error(data.error||"Video preparation failed");
-   prepared=data;
- }catch(error){notice(error.message,"error");return}
- const progress=form.querySelector("[data-video-progress]");
- if(progress)progress.textContent="Uploading video securely…";
- try{
-   const res=await fetch("/api/videos/"+encodeURIComponent(prepared.id)+"/upload",{
-    method:"PUT",headers:{...authorization,"content-type":"video/mp4","x-upload-size":String(file.size)},
-    body:file
-   });
-   const data=await res.json();
-   if(!res.ok)throw new Error(data.error||"R2 upload failed");
-   await reload();render();notice("Recording uploaded and published.","success");
- }catch(error){notice(error.message,"error")}
+   report("Preparing secure recording upload…");
+   const resp=await fetch("/api/videos/prepare",{method:"POST",
+     headers:{...authorization,"content-type":"application/json"},
+     body:JSON.stringify({event_id:eventId,title:String(f.title||videoFile.name),size_bytes:videoFile.size})});
+   const payload=await resp.json();
+   if(!resp.ok||!payload?.id)throw new Error(payload.error||"Upload preparation rejected");
+   prepared=payload;
+   const id=encodeURIComponent(prepared.id);
+   if(prepared.multipart){
+     const size=prepared.chunkBytes||8388608;
+     const count=Math.ceil(videoFile.size/size),parts=[];
+     for(let part=1;part<=count;part++){
+       const chunk=videoFile.slice((part-1)*size,Math.min(part*size,videoFile.size),"video/mp4");
+       let data=null;
+       for(let attempt=0;attempt<2;attempt++){
+         try{
+          const uploaded=await fetch("/api/videos/"+id+"/parts/"+part,{
+            method:"PUT",headers:{...authorization,"content-type":"video/mp4","x-upload-size":String(chunk.size)},
+            body:chunk});
+          data=await uploaded.json();
+          if(!uploaded.ok||!data?.etag)throw new Error(data.error||"Chunk upload failed");
+          break;
+         }catch(err){
+           if(attempt===1)throw err;
+         }
+       }
+       parts.push({partNumber:data.partNumber,etag:data.etag});
+       report("Uploading recording · "+Math.round(part/count*100)+"%");
+     }
+     report("Finalizing your MP4…");
+     const done=await fetch("/api/videos/"+id+"/complete",{method:"POST",
+       headers:{...authorization,"content-type":"application/json"},
+       body:JSON.stringify({parts})});
+     const finalized=await done.json();
+     if(!done.ok||!finalized.success)throw new Error(finalized.error||"Could not complete recording");
+   }else{
+     report("Uploading recording securely…");
+     const uploaded=await fetch("/api/videos/"+id+"/upload",{method:"PUT",
+       headers:{...authorization,"content-type":"video/mp4","x-upload-size":String(videoFile.size)},
+       body:videoFile});
+     const result=await uploaded.json();
+     if(!uploaded.ok||!result.success)throw new Error(result.error||"Could not upload recording");
+   }
+   report("Recording published.");
+   await reload();render();notice("Recording uploaded successfully.","success");
+ }catch(error){
+   report("Upload failed. "+error.message);
+   notice(error.message,"error");
+ }
 }
 else if(type==="lesson-resource"){
  const eventId=form.dataset.event,programId=form.dataset.program,file=form.querySelector('input[name="file"]')?.files?.[0];
