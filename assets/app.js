@@ -60,8 +60,78 @@ async function signIn(){if(!db){$("login-notice").textContent="Google Sign-In wi
 async function signOut(){if(db&&!demo)await db.auth.signOut();user=null;demo=false;reset();publicPage();catalog()}
 async function reload(){if(!db||!user||demo)return;try{const status=await fetch('/api/videos/status',{cache:'no-store'});videoStorageReady=!!(await status.json()).r2Connected}catch(e){videoStorageReady=false}await Promise.all(keys.map(async k=>{try{let r=await db.from(k).select("*").limit(900);D[k]=r.error?[]:r.data||[]}catch(e){D[k]=[]}}));try{await db.rpc("accept_my_staff_invitation");let r=await db.from("staff_roles").select("*");if(!r.error)D.staff_roles=r.data||[]}catch(e){}try{let r=await db.rpc("get_payment_instructions");if(!r.error)upi=r.data||{}}catch(e){}}
 async function save(t,obj,id){if(demo){if(id)D[t]=D[t].map(x=>x.id===id?{...x,...obj}:x);else D[t].unshift({id:"preview-"+Math.random().toString(36).slice(2),...obj});notice("Preview mode only — nothing saved to the live database.","success");render();return true}if(!db||!user){notice("Sign in first.","error");return false}try{let r=id?await db.from(t).update(obj).eq("id",id):t==="site_settings"?await db.from(t).upsert(obj,{onConflict:"key"}):await db.from(t).insert(obj);if(r.error)throw r.error;notice("Saved successfully.","success");await reload();render();return true}catch(e){notice("Save failed: "+e.message,"error");return false}}
-function catalog(){if(!db){drawCatalog();return}db.from("programs").select("*").in("status",["published","ongoing"]).limit(100).then(r=>{if(!r.error)D.programs=r.data||[];drawCatalog()}).catch(drawCatalog)}
-function drawCatalog(){let arr=D.programs.filter(x=>["published","ongoing"].includes(x.status)&&!x.is_test&&(filter==="All"||x.mode===filter)&&String(x.title+" "+x.description).toLowerCase().includes(search.toLowerCase()));$("catalog").innerHTML=arr.length?arr.map((x,i)=>'<article class="course-card"><div class="course-art '+["","blue","green"][i%3]+'">✦</div><div class="course-body"><h3>'+esc(x.title)+'</h3><p>'+esc(x.description||"Practical learning and project internship")+'</p><div class="course-meta"><span>◷ '+total(x)+' days</span><span>Starts '+date(x.start_date)+'</span><span>'+esc(x.mode)+'</span></div><div class="course-footer"><strong>'+money(x.fee_inr)+'</strong>'+click("View & enroll","enroll-public",x.id,"btn-primary")+"</div></div></article>").join(""):'<div class="catalog-empty"><div class="feature-icon">✧</div><h3>Programs launching soon</h3><p>New programs will appear here when published by HackSphere administration.</p><button class="btn btn-primary" data-action="demo">Preview the learning platform ↗</button></div>'}
+
+let hsPage=0,hsSort="newest";
+function hsPublicPrograms(){return D.programs.filter(x=>["published","ongoing"].includes(x.status)&&!x.is_test)}
+function hsProgramStyle(p){
+ const n=(p.title||"").toLowerCase();
+ if(/android|mobile|flutter/.test(n))return ["mobile","▣"];
+ if(/security|cyber/.test(n))return ["security","◇"];
+ if(/design|figma|ux/.test(n))return ["ui","✦"];
+ if(/cloud|devops/.test(n))return ["cloud","☁"];
+ if(/data|machine|python|ai/.test(n))return ["data","AI"];
+ return ["web","&lt;/&gt;"];
+}
+function hsPublicProgramCard(p){
+ const [kind,symbol]=hsProgramStyle(p);
+ return '<article class="hs-program-card"><div class="hs-program-art hs-art-'+kind+'"><div class="hs-art-icon" aria-hidden="true">'+symbol+'</div></div>'+
+ '<div class="hs-program-card-content"><h3>'+esc(p.title)+'</h3><p>'+esc(p.description||"Structured technical training and projects")+'</p>'+
+ '<div class="hs-program-meta"><span>◷ '+Number(p.training_days||0)+' training days</span><span>◇ '+Number(p.internship_days||0)+' internship days</span></div>'+
+ '<div class="hs-card-price"><span>'+money(p.fee_inr)+'</span><small>Starts '+date(p.start_date)+'</small></div>'+
+ '<a class="hs-card-button" href="/programs/'+encodeURIComponent(p.slug||p.id)+'">View Program →</a></div></article>';
+}
+function hsPublicSorted(list){
+ return [...list].sort((a,b)=>hsSort==="title"?String(a.title).localeCompare(String(b.title)):hsSort==="fee"?Number(a.fee_inr)-Number(b.fee_inr):hsSort==="start"?String(a.start_date).localeCompare(String(b.start_date)):String(b.created_at||b.start_date).localeCompare(String(a.created_at||a.start_date)));
+}
+function catalog(){
+ if(!db){drawCatalog();return}
+ db.from("programs").select("*").in("status",["published","ongoing"]).limit(250).then(r=>{
+ if(!r.error)D.programs=r.data||[];drawCatalog()}).catch(()=>drawCatalog());
+}
+function drawCatalog(){
+ const all=hsPublicSorted(hsPublicPrograms()),home=$("catalog");
+ if(home)home.innerHTML=all.length?all.slice(0,3).map(hsPublicProgramCard).join(""):'<div class="hs-empty-programs"><strong>New programs are being prepared.</strong><p>Published enrollment programs will appear here when admissions open.</p><a href="/programs" class="btn hs-view-all">Browse All Programs →</a></div>';
+ const listing=$("hs-all-catalog");
+ if(!listing||location.pathname!=="/programs")return;
+ const items=hsPublicSorted(all.filter(p=>(filter==="All"||p.mode===filter)&&String(p.title+" "+(p.description||"")).toLowerCase().includes(search.toLowerCase())));
+ const maxPage=Math.max(0,Math.ceil(items.length/9)-1);
+ hsPage=Math.min(hsPage,maxPage);
+ listing.innerHTML=items.length?items.slice(hsPage*9,(hsPage+1)*9).map(hsPublicProgramCard).join(""):'<div class="hs-empty-programs"><strong>'+(all.length?"No matching programs":"No programs open for enrollment yet")+'</strong><p>'+(all.length?"Try another search term or filter.":"Please check back once the next batch is published.")+'</p></div>';
+ if($("hs-program-count"))$("hs-program-count").textContent=items.length+" program"+(items.length===1?"":"s");
+ if($("hs-catalog-pagination"))$("hs-catalog-pagination").innerHTML=items.length>9?Array.from({length:Math.ceil(items.length/9)},(_,i)=>'<button data-action="hs-public-page" data-id="'+i+'" class="'+(i===hsPage?"active":"")+'" aria-label="Page '+(i+1)+'">'+(i+1)+'</button>').join(""):"";
+}
+function hsPublicDetail(){
+ const holder=$("hs-public-program-detail");if(!holder)return;
+ let key;try{key=decodeURIComponent(location.pathname.slice("/programs/".length))}catch(e){key=""}
+ const p=hsPublicPrograms().find(x=>x.slug===key||x.id===key);
+ if(!p){document.title="Program unavailable | HackSphere";holder.innerHTML='<div class="hs-public-detail"><a href="/programs" class="hs-detail-back">← All Programs</a><h1>Program unavailable</h1><p class="hs-detail-description">This program is not published or enrollment is closed.</p></div>';return}
+ document.title=p.title+" | HackSphere";
+ holder.innerHTML='<div class="hs-public-detail"><a href="/programs" class="hs-detail-back">← All Programs</a><div class="hs-detail-grid"><div><span class="hs-section-kicker">TECH TRAINING</span><h1>'+esc(p.title)+'</h1><p class="hs-detail-description">'+esc(p.description||"Structured training and practical project work.")+'</p>'+
+ '<div class="hs-detail-keyfacts"><div><b>Training</b><strong>'+Number(p.training_days)+' days</strong></div><div><b>Internship</b><strong>'+Number(p.internship_days)+' days</strong></div><div><b>Starts</b><strong>'+date(p.start_date)+'</strong></div><div><b>Delivery</b><strong>'+esc(p.mode||"Online")+'</strong></div></div>'+
+ '<p class="hs-page-note">Lessons and resources are published by assigned teaching staff on their scheduled dates.</p></div>'+
+ '<aside class="hs-detail-sidebar"><small>Program enrollment fee</small><strong>'+money(p.fee_inr)+'</strong><button class="btn btn-primary" data-action="enroll-public" data-id="'+esc(p.id)+'">Enroll in Program →</button><p>Access activates after verified payment. Enrollment does not guarantee a job or placement.</p></aside></div></div>';
+}
+async function hsPublicRoute(){
+ const path=location.pathname;
+ if(path!=="/programs"&&!path.startsWith("/programs/"))return false;
+ $("marketing").hidden=false;$("app-shell").hidden=true;
+ $("hs-home-page").hidden=true;
+ $("hs-programs-page").hidden=path!=="/programs";
+ $("hs-program-detail-page").hidden=path==="/programs";
+ $("skip-link").setAttribute("href","#main-content");
+ const a=document.querySelector('[data-public-nav="programs"]');if(a)a.setAttribute("aria-current","page");
+ if(db){
+  try{
+   const r=await Promise.all([db.from("programs").select("*").in("status",["published","ongoing"]).limit(250),db.auth.getUser()]);
+   if(!r[0].error)D.programs=r[0].data||[];
+   user=r[1].data.user||null;
+  }catch(e){console.warn("Could not load program catalog",e)}
+ }
+ if(path==="/programs"){document.title="All Programs | HackSphere";drawCatalog()}
+ else hsPublicDetail();
+ return true;
+}
+
 function render(){if(!user)return;$("app-shell").classList.toggle("hs-student",role==="student");let roles=demo?["student","trainer","guide","admin"]:["student",...new Set(D.staff_roles.filter(x=>x.user_id===user.id).map(x=>x.role))];if(!roles.includes(role))role=roles.includes("admin")?"admin":roles.includes("trainer")?"trainer":roles.includes("guide")?"guide":"student";let allowedExtra=role==="admin"?["program-new","program-detail","program-edit","staff-invite","payment-history","payment-settings","profile"]:role==="student"?["profile","submissions","course-info"]:["profile"];if(!menu[role].some(x=>x[0]===page)&&!allowedExtra.includes(page))page="overview";$("role-switch").hidden=(role==="student"&&roles.length===1);$("role-switch").innerHTML=roles.map(x=>'<option '+(role===x?"selected":"")+' value="'+x+'">'+({student:"Student",trainer:"Trainer",guide:"Internship Guide",admin:"Administrator"})[x]+"</option>").join("");const navGroups={
  admin:[["Workspace",["overview","programs","students"]],["Learning operations",["timeline","sessions","reviews","performance"]],["Finance & certification",["payments","complete"]],["Team & settings",["staff","guides","settings","profile"]]],
  student:[["My learning",["overview","courses","explore","timeline","sessions","submissions"]],["Account & outcomes",["enrollment","performance","documents","profile"]]],
@@ -1235,7 +1305,7 @@ else if(a==="student-tab"){
 else if(a==="student-resource"){await studentOpenResource(id)}
 else if(a==="student-legacy-file"){const ev=D.timeline_events.find(x=>x.id===id&&x.program_id===course);if(!ev?.resource_url?.startsWith("storage://hacksphere-course-files/"))return;const win=window.open("","_blank");const signed=await studentSignedUrl(ev.resource_url.replace("storage://hacksphere-course-files/",""));if(!signed){if(win)win.close();return}if(win){win.opener=null;win.location.replace(signed)}else notice("Allow popups to open the attachment.","error")}
 else if(a==="student-legacy-link"){const ev=D.timeline_events.find(x=>x.id===id);if(ev?.resource_url&&/^https:\/\//.test(ev.resource_url))window.open(ev.resource_url,"_blank","noopener,noreferrer")}
-else if(a==="login")loginDialog();else if(a==="close-login")hideDialog();else if(a==="google-login")signIn();else if(a==="demo")demoOpen();else if(a==="toggle-public-menu"){const menu=$("mobile-links");menu.hidden=!menu.hidden;b.setAttribute("aria-expanded",String(!menu.hidden));b.setAttribute("aria-label",menu.hidden?"Open menu":"Close menu")}else if(a==="open-drawer")$("app-shell").classList.add("drawer-open");else if(a==="close-drawer")$("app-shell").classList.remove("drawer-open");else if(a==="signout")signOut();else if(a==="home")publicPage();else if(a==="navigate"){navigateTo(b.dataset.view)}else if(a==="open-course"){studentTab="overview";navigateTo("courses",id)}else if(a==="close-course"){navigateTo("courses")}else if(a==="lesson"){lesson=id;render()}else if(a==="enroll-public"){if(!user)loginDialog();else{navigateTo("enrollment");open()}}else if(a==="timeline-prev"){timelineOffset=Math.max(0,timelineOffset-1);render()}else if(a==="timeline-next"){timelineOffset=(timelineOffset+1)%Math.ceil(total(p(course||selectedPrograms()[0]?.id))/14);render()}else if(a==="secure-resource"){let event=D.timeline_events.find(x=>x.id===id);if(!event?.resource_url)return;let path=event.resource_url.replace("storage://hacksphere-course-files/","");if(demo){notice("Preview only — no private recording file is stored.");return}let r=await db.storage.from("hacksphere-course-files").createSignedUrl(path,600);if(r.error){notice(r.error.message,"error");return}if(/\.(mp4|webm)$/i.test(path)){let player=$("course-player");player.innerHTML='<video controls autoplay playsinline src="'+esc(r.data.signedUrl)+'"></video>';}else window.open(r.data.signedUrl,"_blank","noopener,noreferrer")}else if(a==="program-new"){navigateTo("program-new")}
+else if(a==="public-browse"){location.href="/programs"}else if(a==="hs-public-page"){hsPage=Number(id)||0;drawCatalog();$("hs-programs-page")?.scrollIntoView({behavior:"smooth",block:"start"})}else if(a==="login")loginDialog();else if(a==="close-login")hideDialog();else if(a==="google-login")signIn();else if(a==="demo")demoOpen();else if(a==="toggle-public-menu"){const menu=$("mobile-links");menu.hidden=!menu.hidden;b.setAttribute("aria-expanded",String(!menu.hidden));b.setAttribute("aria-label",menu.hidden?"Open menu":"Close menu")}else if(a==="open-drawer")$("app-shell").classList.add("drawer-open");else if(a==="close-drawer")$("app-shell").classList.remove("drawer-open");else if(a==="signout")signOut();else if(a==="home")publicPage();else if(a==="navigate"){navigateTo(b.dataset.view)}else if(a==="open-course"){studentTab="overview";navigateTo("courses",id)}else if(a==="close-course"){navigateTo("courses")}else if(a==="lesson"){lesson=id;render()}else if(a==="enroll-public"){if(!user){sessionStorage.setItem("hs_requested_program",id);loginDialog()}else{studentEnrollmentChoice=id;await reload();role="student";navigateTo("enrollment");open()}}else if(a==="timeline-prev"){timelineOffset=Math.max(0,timelineOffset-1);render()}else if(a==="timeline-next"){timelineOffset=(timelineOffset+1)%Math.ceil(total(p(course||selectedPrograms()[0]?.id))/14);render()}else if(a==="secure-resource"){let event=D.timeline_events.find(x=>x.id===id);if(!event?.resource_url)return;let path=event.resource_url.replace("storage://hacksphere-course-files/","");if(demo){notice("Preview only — no private recording file is stored.");return}let r=await db.storage.from("hacksphere-course-files").createSignedUrl(path,600);if(r.error){notice(r.error.message,"error");return}if(/\.(mp4|webm)$/i.test(path)){let player=$("course-player");player.innerHTML='<video controls autoplay playsinline src="'+esc(r.data.signedUrl)+'"></video>';}else window.open(r.data.signedUrl,"_blank","noopener,noreferrer")}else if(a==="program-new"){navigateTo("program-new")}
 else if(a==="program-detail"){navigateTo("program-detail",id)}else if(a==="program-edit"){navigateTo("program-edit",id)}
 else if(a==="program-timeline"){navigateTo("timeline",id)}
 else if(a==="staff-invite"){navigateTo("staff-invite")}
@@ -1270,8 +1340,9 @@ document.addEventListener("change",e=>{
   }
  }
 });
-document.addEventListener("input",e=>{if(e.target.closest('form[data-kind="program"]'))refreshProgramPreview(e.target.closest('form[data-kind="program"]'));if(e.target.id==="catalog-search"){search=e.target.value;drawCatalog()}else if(e.target.id==="student-program-search"){studentQuery=e.target.value;const result=document.getElementById("student-program-list");if(result)result.innerHTML=stCatalog()}});
-document.addEventListener("click",e=>{let b=e.target.closest("[data-filter]");if(!b)return;filter=b.dataset.filter;document.querySelectorAll("[data-filter]").forEach(x=>x.classList.toggle("active",x.dataset.filter===filter));drawCatalog()});
+document.addEventListener("change",e=>{if(e.target.id==="hs-sort-programs"){hsSort=e.target.value;hsPage=0;drawCatalog()}});
+document.addEventListener("input",e=>{if(e.target.closest('form[data-kind="program"]'))refreshProgramPreview(e.target.closest('form[data-kind="program"]'));if(e.target.id==="catalog-search"){search=e.target.value;hsPage=0;drawCatalog()}else if(e.target.id==="student-program-search"){studentQuery=e.target.value;const result=document.getElementById("student-program-list");if(result)result.innerHTML=stCatalog()}});
+document.addEventListener("click",e=>{let b=e.target.closest("[data-filter]");if(!b)return;filter=b.dataset.filter;hsPage=0;document.querySelectorAll("[data-filter]").forEach(x=>x.classList.toggle("active",x.dataset.filter===filter));drawCatalog()});
 document.addEventListener("submit",async e=>{let form=e.target.closest("form[data-kind]");if(!form)return;e.preventDefault();
 if(form.dataset.busy==="true")return;
 form.dataset.busy="true";form.setAttribute("aria-busy","true");
@@ -1475,11 +1546,11 @@ async function showLegalPage(){
  return true;
 }
 
-async function init(){try{if(location.pathname.startsWith("/preview/")){demo=true;reset();seed();user={id:"demo-student",email:"student@example.com",user_metadata:{full_name:"Preview Learner"}};readRoute();open();return}let r=await fetch("/api/config",{cache:"no-store"}),config=await r.json();if(config.supabaseUrl&&config.supabasePublishableKey&&window.supabase){db=window.supabase.createClient(config.supabaseUrl,config.supabasePublishableKey);if(await showLegalPage())return;let x=await db.auth.getUser();if(x.data.user){user=x.data.user;await reload();if(location.pathname==="/"){const assigned=D.staff_roles.filter(r=>r.user_id===user.id).map(r=>r.role);role=assigned.includes("admin")?"admin":assigned.includes("trainer")?"trainer":assigned.includes("guide")?"guide":"student"}open();
+async function init(){try{if(location.pathname.startsWith("/preview/")){demo=true;reset();seed();user={id:"demo-student",email:"student@example.com",user_metadata:{full_name:"Preview Learner"}};readRoute();open();return}let r=await fetch("/api/config",{cache:"no-store"}),config=await r.json();if(config.supabaseUrl&&config.supabasePublishableKey&&window.supabase){db=window.supabase.createClient(config.supabaseUrl,config.supabasePublishableKey);if(await showLegalPage())return;if(await hsPublicRoute())return;let x=await db.auth.getUser();if(x.data.user){user=x.data.user;await reload();if(location.pathname==="/"){const assigned=D.staff_roles.filter(r=>r.user_id===user.id).map(r=>r.role);role=assigned.includes("admin")?"admin":assigned.includes("trainer")?"trainer":assigned.includes("guide")?"guide":"student"}open();
  if(sessionStorage.getItem("hacksphere_meet_sync")==="1"){
  sessionStorage.removeItem("hacksphere_meet_sync");
  setTimeout(()=>syncPendingMeet(),1000);
  }
- }else catalog();let verify=new URLSearchParams(location.search).get("verify");if(verify)showVerification(verify)}else {if(!await showLegalPage())drawCatalog()}}catch(e){console.warn(e);if(!await showLegalPage())drawCatalog()}}
+ }else catalog();if(user&&sessionStorage.getItem("hs_requested_program")){studentEnrollmentChoice=sessionStorage.getItem("hs_requested_program");sessionStorage.removeItem("hs_requested_program");role="student";navigateTo("enrollment");open()}let verify=new URLSearchParams(location.search).get("verify");if(verify)showVerification(verify)}else {if(!await showLegalPage()&&!await hsPublicRoute())drawCatalog()}}catch(e){console.warn(e);if(!await showLegalPage()&&!await hsPublicRoute())drawCatalog()}}
 init();
 })();
