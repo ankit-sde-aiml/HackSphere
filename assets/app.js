@@ -1045,51 +1045,20 @@ function paymentSettings(){
  '</aside></div>';
 }
 function staff(){
- const staff=D.staff_roles,invites=D.staff_invitations;
- const people=new Map();
- for(const x of staff){if(!people.has(x.user_id))people.set(x.user_id,[]);people.get(x.user_id).push(x.role)}
- let employees=[...people].map(([uid,rr])=>'<article class="manage-program-card"><div class="mp-icon">♙</div><div class="mp-body">'+
- '<div class="mp-title">'+esc(who(uid))+'</div>'+
- '<div class="mp-meta">'+(D.profiles.find(x=>x.id===uid)?.email||"Staff account")+'</div>'+
- '<div class="mp-meta">'+rr.map(r=>'<span class="pill">'+esc(r)+'</span>').join(" ")+'</div>'+
- '</div><div class="mp-actions">'+tag("Active")+'</div></article>').join("");
- let trainers=D.staff_roles.filter(x=>x.role==="trainer").map(x=>[x.user_id,who(x.user_id)]);
- return title("Staff & teaching team","Invite Google accounts, assign Trainer roles, and prepare Guides for internship allocation.",
- '<button class="btn btn-primary" data-action="staff-invite">+ Invite staff</button>')+
- '<div class="stat-grid">'+
- '<div class="stat"><span class="sicon">♙</span><b>'+people.size+'</b><small>Staff members</small></div>'+
- '<div class="stat"><span class="sicon">▷</span><b>'+staff.filter(x=>x.role==="trainer").length+'</b><small>Trainers</small></div>'+
- '<div class="stat"><span class="sicon">◇</span><b>'+staff.filter(x=>x.role==="guide").length+'</b><small>Internship Guides</small></div>'+
- '<div class="stat"><span class="sicon">◷</span><b>'+invites.filter(x=>x.status==="pending").length+'</b><small>Pending invitations</small></div>'+
- '</div>'+
- '<div class="two-col"><div>'+
- card("Staff directory",employees||empty("No staff onboarded","Invite the first Trainer or Guide by Google email."))+
- card("Pending invitations",invites.length?invites.map(x=>row('♙',x.email,x.role+' · '+x.status,tag(x.status))).join(""):empty("No invitations","Invite team members from the dedicated invitation screen."))+
- '</div><div>'+
- card("Assign Trainer to program",D.programs.length&&trainers.length?[
-  '<form data-kind="trainer">',
-  choose("Program","program_id",options(D.programs)),
-  choose("Trainer","user_id",trainers),
-  '<button class="btn btn-primary">Assign Trainer</button></form>'
- ].join(""):empty("No Trainers available","Invite a Trainer and have them sign in with their Google account."))+
- '</div></div>';
+ const roles=new Map();
+ for(const r of D.staff_roles){if(!roles.has(r.user_id))roles.set(r.user_id,[]);roles.get(r.user_id).push(r.role)}
+ return title("Staff & Mentors","One mentor role with course-wide common access and ownership-specific editing.",
+ '<button data-action="staff-invite" class="btn btn-primary">+ Invite Mentor</button>')+
+ card("Verified staff",Array.from(roles).map(([id,rr])=>row("♙",who(id),rr.join(" / "))).join("")||empty("No mentors","Invite an authenticated mentor."))+
+ card("Invitations",D.staff_invitations.map(x=>row("✉",x.email,x.role+" · "+x.status)).join("")||empty("No invitations","Invite mentors via Google email."))+
+ card("Program membership",'<button class="btn btn-primary" data-action="navigate" data-view="mentor-assignments">Assign mentors to programs</button>');
 }
 function staffInvite(){
- return title("Invite staff","Send Trainer and/or Internship Guide access to a verified Google account.")+
- '<div class="editor-breadcrumb"><button data-action="navigate" data-view="staff">Staff directory</button><span>/</span><b>Invite a team member</b></div>'+
- '<div class="editor-layout"><div>'+card("Staff invitation",[
- '<form data-kind="invite">',
- field("Google account email","email","email","",true),
- '<p style="color:var(--muted);font-size:12px;margin:4px 0 16px">The person must sign in with this exact verified Google account.</p>',
- '<label class="checkbox"><input type="checkbox" name="trainer"> Trainer — Training classes, assignments, scores</label>',
- '<label class="checkbox"><input type="checkbox" name="guide"> Internship Guide — Project milestones, reviews, scores</label>',
- '<div class="alert">One person may have both roles. The dashboard role switcher appears after the invitation is accepted.</div>',
- '<div class="form-actions" style="margin-top:20px"><button class="btn btn-primary">Create invitation</button>',
- '<button type="button" class="btn btn-outline" data-action="navigate" data-view="staff">Cancel</button></div>',
- '</form>'
- ].join(""))+'</div><aside>'+
- card("Invite workflow",'<div class="process-list"><p><b>01.</b> Admin creates invitation record</p><p><b>02.</b> Staff opens HackSphere website URL</p><p><b>03.</b> Staff signs in using the invited Google account</p><p><b>04.</b> Permissions become available after verified matching</p></div><div class="alert warning">Email sending is not configured. Share the website link with the invited person.</div>')+
- '</aside></div>';
+ return title("Invite Mentor","An invited mentor can teach or supervise internship teams after Admin assigns their responsibilities.")+
+ card("Invite verified Google account",'<form data-kind="invite">'+
+ field("Mentor Google email","email","email","",true)+
+ '<button type="submit" class="btn btn-primary">Create invitation</button></form>')+
+ card("Access model",'<p>Invited mentors can later receive Program Membership, Class Ownership and Internship Team Ownership. Invitation emails are not automated yet.</p>');
 }
 function guides(){
  let eligible=D.programs.filter(pr=>day(pr.start_date,pr.training_days)<=programToday(pr));
@@ -1602,7 +1571,7 @@ else if(type==="merchant"){await save("site_settings",{key:"legal_business",valu
 else if(type==="score"){f.score=+f.score;f.max_score=+f.max_score;f.evaluator_id=user.id;await save("evaluations",f)}
 else if(type==="payment"){const file=form.querySelector('input[name="proof_file"]')?.files?.[0];if(!file||!["image/png","image/jpeg","image/webp"].includes(file.type)||file.size>5242880){notice("Upload a valid screenshot under 5 MB.","error");return}delete f.proof_file;f.student_id=user.id;f.amount_inr=p(f.program_id).fee_inr;if(demo){f.proof_path="demo-student/preview.png";await save("payment_claims",f)}else{const ext=file.type==="image/png"?"png":file.type==="image/webp"?"webp":"jpg";const path=user.id+"/"+crypto.randomUUID()+"."+ext;let uploaded=await db.storage.from("hacksphere-payment-proofs").upload(path,file,{contentType:file.type,upsert:false});if(uploaded.error){notice(uploaded.error.message,"error");return}f.proof_path=path;await save("payment_claims",f)}}
 else if(type==="upi"){upi=f;await save("site_settings",{key:"payments_upi",value:f,updated_by:user.id})}
-else if(type==="invite"){let email=f.email.toLowerCase();if(f.trainer)await save("staff_invitations",{email,role:"trainer",created_by:user.id});if(f.guide)await save("staff_invitations",{email,role:"guide",created_by:user.id})}
+else if(type==="invite"){const email=String(f.email||"").trim().toLowerCase();if(!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email))throw Error("Valid verified Google email required");await save("staff_invitations",{email,role:"mentor",created_by:user.id})}
 else if(type==="trainer"){f.role="trainer";f.assigned_by=user.id;await save("program_staff",f)}
 else if(type==="guide"){f.allocated_by=user.id;await save("guide_allocations",f)}
 else if(type==="recommend"){f.guide_user_id=user.id;await save("completion_recommendations",f)}
