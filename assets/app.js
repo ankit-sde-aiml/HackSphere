@@ -5,6 +5,7 @@ const money=n=>"₹"+Number(n||0).toLocaleString("en-IN");
 const date=x=>x?new Date(String(x).slice(0,10)+"T00:00:00Z").toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"}):"—";
 const day=(x,n)=>{let d=new Date(x+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
 const today=()=>new Date(Date.now()+19800000).toISOString().slice(0,10);
+const programToday=program=>{try{const values=Object.fromEntries(new Intl.DateTimeFormat("en-GB",{timeZone:program?.timezone||"Asia/Kolkata",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date()).map(x=>[x.type,x.value]));return values.year+"-"+values.month+"-"+values.day}catch(e){return today()}};
 const notice=(s,k="")=>{let x=document.createElement("div");x.className="toast "+k;x.textContent=s;$("toasts").append(x);setTimeout(()=>x.remove(),4500)};
 const tag=s=>'<span class="pill">'+esc(s)+"</span>";
 const empty=(t,d)=>'<div class="empty"><div class="empty-icon">✧</div><h3>'+esc(t)+'</h3><p>'+esc(d)+"</p></div>";
@@ -21,7 +22,7 @@ let D={};const reset=()=>{D=Object.fromEntries(keys.map(k=>[k,[]]))};reset();
 const p=id=>D.programs.find(x=>x.id===id);
 const who=id=>{let x=D.profiles.find(x=>x.id===id);return x?.full_name||x?.email||String(id||"Student").slice(0,9)};
 const total=x=>Number(x.training_days)+Number(x.internship_days);
-const current=x=>Math.max(0,Math.min(total(x),Math.floor((new Date(today())-new Date(x.start_date))/86400000)+1));
+const current=x=>Math.max(0,Math.min(total(x),Math.floor((new Date(programToday(x))-new Date(x.start_date))/86400000)+1));
 const enrolled=x=>demo||D.enrollments.some(y=>y.program_id===x.id&&y.student_id===user?.id&&y.status==="active");
 const selectedPrograms=()=>demo||role==="admin"?D.programs:role==="trainer"?D.programs.filter(x=>D.program_staff.some(y=>y.program_id===x.id&&y.user_id===user.id)):role==="guide"?D.programs.filter(x=>D.guide_allocations.some(y=>y.program_id===x.id&&y.guide_user_id===user.id)):D.programs.filter(enrolled);
 const options=arr=>arr.map(x=>[x.id,x.title]);
@@ -136,7 +137,7 @@ function courses(){let ps=selectedPrograms();return title("My learning programs"
 function classroom(){
  let program=p(course);
  if(!program)return empty("Program not found","Return to your enrolled courses.");
- let events=D.timeline_events.filter(x=>x.program_id===program.id&&(role!=="student"||x.scheduled_date<=today())).sort((a,b)=>a.scheduled_date.localeCompare(b.scheduled_date));
+ let events=D.timeline_events.filter(x=>x.program_id===program.id&&(role!=="student"||x.scheduled_date<=programToday(program))).sort((a,b)=>a.scheduled_date.localeCompare(b.scheduled_date));
  let selected=events.find(x=>x.id===lesson)||events[0];
  lesson=selected?.id;
  let media='<div><span class="play-icon">▶</span><h3>'+esc(selected?.title||"Your learning space")+'</h3><p>'+esc(selected?.description||"Choose a lesson from the course curriculum.")+'</p></div>';
@@ -223,6 +224,7 @@ function programNew(){
  '<div class="form-grid">',
  field("Program start date","start_date","date","",true),
  choose("Class format","mode",[["Hybrid","Hybrid — Live + Recorded"],["Live","Live classes"],["Recorded","Recorded lessons"]]),
+ choose("Program timezone","timezone",[["Asia/Kolkata","India • IST (Asia/Kolkata)"],["Etc/UTC","UTC"],["Asia/Dubai","UAE (Dubai)"],["Europe/London","UK (London)"],["America/New_York","US (New York)"]]),
  field("Training days","training_days","number","60",true),
  field("Internship days","internship_days","number","30",true),
  '</div>',
@@ -294,6 +296,7 @@ function programEdit(){
  field("Training days","training_days","number",x.training_days,true)+
  field("Internship days","internship_days","number",x.internship_days,true)+
  choose("Delivery mode","mode",[["Hybrid","Hybrid"],["Live","Live"],["Recorded","Recorded"]],x.mode)+
+ choose("Program timezone","timezone",[["Asia/Kolkata","India • IST (Asia/Kolkata)"],["Etc/UTC","UTC"],["Asia/Dubai","UAE (Dubai)"],["Europe/London","UK (London)"],["America/New_York","US (New York)"]],x.timezone||"Asia/Kolkata")+
  choose("Visibility","status",[["draft","Draft"],["published","Published"],["ongoing","Ongoing"],["completed","Completed"],["archived","Archived"]],x.status)+
  '</div><div class="alert warning">Changing program dates after content is scheduled can change what students see. Review the timeline and notify affected students before saving.</div>'+
  '<button class="btn btn-primary">Save program changes</button></form>';
@@ -312,7 +315,7 @@ function timeline(){
     let d=day(program.start_date,n-1);
     let phase=n<=program.training_days?"Training":"Internship";
     let items=D.timeline_events.filter(t=>t.program_id===program.id&&t.scheduled_date===d);
-    let unlocked=d<=today();
+    let unlocked=d<=programToday(program);
     let name=items.length?items.map(t=>t.title).join(" · "):"No activity scheduled";
     if(role==="student"&&!unlocked)name="Scheduled content — unlocks on "+date(d);
     let label=unlocked?"Available":"Locked";
@@ -499,7 +502,7 @@ function staffInvite(){
  '</aside></div>';
 }
 function guides(){
- let eligible=D.programs.filter(pr=>day(pr.start_date,pr.training_days)<=today());
+ let eligible=D.programs.filter(pr=>day(pr.start_date,pr.training_days)<=programToday(pr));
  let selected=eligible[0]?.id;
  let students=selected?D.enrollments.filter(e=>e.program_id===selected&&e.status==="active"):[];
  let staff=D.staff_roles.filter(x=>x.role==="guide");
@@ -581,7 +584,7 @@ async function showVerification(code){
 function mySubmissions(){
  let mine=D.submissions.filter(x=>x.student_id===user.id);
  let unlocked=D.timeline_events.filter(x=>D.enrollments.some(e=>e.program_id===x.program_id&&e.student_id===user.id)&&
- ["assignment","project","milestone"].includes(x.activity_type)&&x.scheduled_date<=today());
+ ["assignment","project","milestone"].includes(x.activity_type)&&x.scheduled_date<=programToday(p(x.program_id)));
  let pending=unlocked.filter(x=>!mine.some(sub=>sub.event_id===x.id));
  let todo=pending.map(x=>'<article class="task-card"><span class="task-icon">▤</span><div><b>'+esc(x.title)+'</b><small>'+esc(p(x.program_id)?.title||"Program")+' • '+date(x.scheduled_date)+'</small></div>'+click("Open","open-course",x.program_id,"btn-primary")+'</article>').join("");
  let done=mine.map(x=>{let t=D.timeline_events.find(y=>y.id===x.event_id);return row("✓",t?.title||"Assignment",x.status+' • '+date(x.submitted_at?.slice(0,10)),tag(x.status))}).join("");
