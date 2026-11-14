@@ -63,10 +63,10 @@ function parseVideoRange(value,total){
  return {partial:true,start,end};
 }
 async function routePrivateVideos(request,env,path){
- const match=path.match(/^\/api\/videos\/([0-9a-f-]{36})\/(session|upload|stream)$/i);
+ const match=path.match(/^\/api\/videos\/([0-9a-f-]{36})\/(session|upload|stream|complete|parts\/\d+)$/i);
  if(path==="/api/videos/status"){
   if(request.method!=="GET")return videoReply("Method not allowed",405,{allow:"GET"});
-  return videoJson({r2Connected:!!env.COURSE_VIDEOS,maxUploadBytes:99614720,accept:"video/mp4"});
+  return videoJson({r2Connected:!!env.COURSE_VIDEOS,maxUploadBytes:536870912,chunkBytes:8388608,accept:"video/mp4"});
  }
  if(!env.COURSE_VIDEOS)return videoReply(
    "Private R2 video storage is not activated yet. Enable R2 and attach COURSE_VIDEOS binding.",
@@ -75,16 +75,81 @@ async function routePrivateVideos(request,env,path){
   const ctx=await videoSupabase(request,env);if(!ctx)return videoReply("Sign in as a Trainer or Guide",401);
   let input;try{input=await request.json()}catch(e){return videoReply("Invalid JSON",400)}
   if(!videoGuid.test(String(input?.event_id||""))||typeof input?.title!=="string"||
-    !Number.isSafeInteger(input?.size_bytes)||input.size_bytes<1||input.size_bytes>99614720)
-      return videoReply("Expected MP4 class, title and size <= 95 MiB",400);
+    !Number.isSafeInteger(input?.size_bytes)||input.size_bytes<1||input.size_bytes>536870912)
+      return videoReply("Expected MP4 class, title and size <= 512 MiB",400);
   const video=await videoRpc(ctx,"prepare_video_upload",{
    _event_id:input.event_id,_title:input.title,_size_bytes:input.size_bytes});
   if(!video?.id||!video?.object_key)return videoReply("Class upload not authorized",403);
-  return videoJson({id:video.id,maxUploadBytes:99614720});
+  if(input.size_bytes>99614720){
+   let multipart;
+   try{
+    multipart=await env.COURSE_VIDEOS.createMultipartUpload(video.object_key,{
+      httpMetadata:{contentType:"video/mp4",cacheControl:"private, no-store"}});
+   }catch(e){return videoReply("Unable to prepare R2 chunked upload",502)}
+   const linked=await videoRpc(ctx,"set_video_multipart",{
+     _video_id:video.id,_upload_id:multipart.uploadId});
+   if(linked!==true){await multipart.abort().catch(()=>{});return videoReply("Unable to register R2 multipart upload",502)}
+   return videoJson({id:video.id,multipart:true,chunkBytes:8388608,maxUploadBytes:536870912});
+  }
+  return videoJson({id:video.id,multipart:false,maxUploadBytes:536870912});
  }
  if(!match)return videoReply("Video route not found",404);
  const videoId=match[1],verb=match[2];
  if(!videoGuid.test(videoId))return videoReply("Invalid video identifier",400);
+
+ if(verb.startsWith("parts/")&&request.method==="PUT"){
+   const partNumber=Number(verb.slice(6));
+   if(!Number.isInteger(partNumber)||partNumber<1)return videoReply("Invalid part number",400);
+   const ctx=await videoSupabase(request,env);if(!ctx)return videoReply("Login required",401);
+   const authorized=await videoRpc(ctx,"authorize_video_upload",{_video_id:videoId});
+   if(!authorized?.multipart_upload_id||!authorized.object_key||authorized.size_bytes<=99614720)
+     return videoReply("Multipart recording not authorized",403);
+   const chunkBytes=8388608,expectedParts=Math.ceil(authorized.size_bytes/chunkBytes);
+   if(partNumber>expectedParts)return videoReply("Part outside recording",400);
+   const expectedBytes=partNumber===expectedParts?
+       authorized.size_bytes-chunkBytes*(partNumber-1):chunkBytes;
+   const sent=Number(request.headers.get("x-upload-size")||request.headers.get("content-length")||0);
+   if(sent!==expectedBytes||!request.body)return videoReply("Chunk size incorrect",400);
+   let part;
+   try{
+     const bytes=await request.arrayBuffer();
+     if(bytes.byteLength!==expectedBytes)return videoReply("Chunk bytes incorrect",400);
+     part=await env.COURSE_VIDEOS.resumeMultipartUpload(authorized.object_key,authorized.multipart_upload_id)
+       .uploadPart(partNumber,bytes);
+   }catch(e){return videoReply("Chunk upload failed. Retry this part.",502)}
+   return videoJson({partNumber:part.partNumber,etag:part.etag},201);
+ }
+ if(verb==="complete"&&request.method==="POST"){
+   const ctx=await videoSupabase(request,env);if(!ctx)return videoReply("Login required",401);
+   const authorized=await videoRpc(ctx,"authorize_video_upload",{_video_id:videoId});
+   if(!authorized?.multipart_upload_id||!authorized.object_key)return videoReply("Multipart access denied",403);
+   let input;try{input=await request.json()}catch(e){return videoReply("Invalid parts",400)}
+   const count=Math.ceil(authorized.size_bytes/8388608);
+   const parts=input?.parts;
+   if(!Array.isArray(parts)||parts.length!==count||count>64)
+      return videoReply("Incomplete or oversized part list",400);
+   for(let i=0;i<parts.length;i++){
+      const p=parts[i];
+      if(p.partNumber!==i+1||typeof p.etag!=="string"||!p.etag||p.etag.length>255)
+        return videoReply("Invalid chunk list",400);
+   }
+   let object;
+   try{
+     object=await env.COURSE_VIDEOS.resumeMultipartUpload(
+        authorized.object_key,authorized.multipart_upload_id).complete(parts);
+   }catch(e){return videoReply("Could not complete the uploaded MP4",502)}
+   if(object?.size!==authorized.size_bytes){
+     await env.COURSE_VIDEOS.delete(authorized.object_key).catch(()=>{});
+     return videoReply("Final MP4 size mismatch",400);
+   }
+   const finished=await videoRpc(ctx,"finish_video_upload",{
+     _video_id:videoId,_size_bytes:object.size});
+   if(finished!==true){
+     await env.COURSE_VIDEOS.delete(authorized.object_key).catch(()=>{});
+     return videoReply("Recording completed but database confirmation failed",502);
+   }
+   return videoJson({success:true,videoId},201);
+ }
  if(verb==="upload"&&request.method==="PUT"){
   const ctx=await videoSupabase(request,env);if(!ctx)return videoReply("Login expired",401);
   if(request.headers.get("content-type")?.split(";")[0]!=="video/mp4")
@@ -93,9 +158,9 @@ async function routePrivateVideos(request,env,path){
   const actualHeader=request.headers.get("content-length");
   if(actualHeader!==null&&Number(actualHeader)!==bytes)return videoReply("File size header mismatch",400);
   if(!Number.isSafeInteger(bytes)||bytes<1||bytes>99614720)
-    return videoReply("MP4 must be 1 byte to 95 MiB",413);
+    return videoReply("Single MP4 upload must be under 95 MiB. Use chunked upload for longer classes.",413);
   const authorized=await videoRpc(ctx,"authorize_video_upload",{_video_id:videoId});
-  if(!authorized?.object_key||authorized.size_bytes!==bytes)
+  if(!authorized?.object_key||authorized.multipart_upload_id||authorized.size_bytes!==bytes)
     return videoReply("Not the designated host, session expired, or file size changed",403);
   const key=authorized.object_key;
   if(!request.body)return videoReply("No upload body",400);
@@ -156,7 +221,7 @@ async function routePrivateVideos(request,env,path){
   if(!result||!("body" in result))return videoReply("Recording unavailable",404);
   return new Response(result.body,{status:parsed.partial?206:200,headers});
  }
- return videoReply("Method not allowed",405,{allow:verb==="upload"?"PUT":verb==="session"?"POST":"GET, HEAD"});
+ return videoReply("Method not allowed",405,{allow:verb==="upload"||verb.startsWith("parts/")?"PUT":verb==="session"||verb==="complete"?"POST":"GET, HEAD"});
 }
 
 export default {
