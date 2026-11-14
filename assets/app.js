@@ -16,7 +16,7 @@ const field=(name,id,type="text",val="",required=false)=>'<label class="field"><
 const choose=(name,id,values,selected=null)=>'<label class="field"><span>'+esc(name)+'</span><select name="'+id+'" class="input">'+values.map(v=>'<option value="'+esc(v[0])+'" '+(selected===v[0]?"selected":"")+' >'+esc(v[1])+"</option>").join("")+"</select></label>";
 const notes=(name,id,initial="")=>'<label class="field"><span>'+esc(name)+'</span><textarea class="input" name="'+id+'">'+esc(initial)+'</textarea></label>';
 const click=(name,action,id="",kind="btn-light")=>'<button class="btn btn-small '+kind+'" data-action="'+action+'" data-id="'+esc(id)+'">'+esc(name)+"</button>";
-const keys=["programs","enrollments","payment_claims","timeline_events","live_sessions","staff_roles","staff_invitations","program_staff","guide_allocations","submissions","evaluations","completion_recommendations","certificates","profiles","site_settings"];
+const keys=["programs","enrollments","payment_claims","timeline_events","live_sessions","staff_roles","staff_invitations","program_staff","guide_allocations","submissions","evaluations","completion_recommendations","certificates","profiles","site_settings","program_guides","quizzes","quiz_questions","quiz_attempts"];
 let db=null,user=null,demo=false,role="student",page="overview",course=null,lesson=null,filter="All",search="",upi={},timelineOffset=0,paymentSection="pending";
 let D={};const reset=()=>{D=Object.fromEntries(keys.map(k=>[k,[]]))};reset();
 const p=id=>D.programs.find(x=>x.id===id);
@@ -24,7 +24,7 @@ const who=id=>{let x=D.profiles.find(x=>x.id===id);return x?.full_name||x?.email
 const total=x=>Number(x.training_days)+Number(x.internship_days);
 const current=x=>Math.max(0,Math.min(total(x),Math.floor((new Date(programToday(x))-new Date(x.start_date))/86400000)+1));
 const enrolled=x=>demo||D.enrollments.some(y=>y.program_id===x.id&&y.student_id===user?.id&&y.status==="active");
-const selectedPrograms=()=>demo||role==="admin"?D.programs:role==="trainer"?D.programs.filter(x=>D.program_staff.some(y=>y.program_id===x.id&&y.user_id===user.id)):role==="guide"?D.programs.filter(x=>D.guide_allocations.some(y=>y.program_id===x.id&&y.guide_user_id===user.id)):D.programs.filter(enrolled);
+const selectedPrograms=()=>demo||role==="admin"?D.programs:role==="trainer"?D.programs.filter(x=>D.program_staff.some(y=>y.program_id===x.id&&y.user_id===user.id)):role==="guide"?D.programs.filter(x=>D.program_guides.some(y=>y.program_id===x.id&&y.user_id===user.id)||D.guide_allocations.some(y=>y.program_id===x.id&&y.guide_user_id===user.id)):D.programs.filter(enrolled);
 const options=arr=>arr.map(x=>[x.id,x.title]);
 const menu={student:[["overview","◈","Overview"],["courses","▦","My programs"],["timeline","▤","Daily timeline"],["sessions","▷","Live classes"],["submissions","▥","My submissions"],["enrollment","◫","Enrollment"],["performance","◎","My performance"],["documents","✧","Documents"],["profile","♧","My profile"]],trainer:[["overview","◈","Overview"],["courses","▦","My programs"],["timeline","▤","Training lessons"],["sessions","▷","Live classes"],["reviews","▥","Review submissions"],["performance","◎","Student scores"],["profile","♧","My profile"]],guide:[["overview","◈","Overview"],["courses","▦","My programs"],["timeline","▤","Internship timeline"],["reviews","▥","Project reviews"],["performance","◎","Internship scores"],["complete","✧","Completion reviews"],["profile","♧","My profile"]],admin:[["overview","◈","Overview"],["programs","▦","Programs"],["students","♧","Students"],["timeline","▤","Timeline manager"],["sessions","▷","Live classes"],["reviews","▥","Submissions"],["payments","◫","Payment approvals"],["staff","♙","Staff & roles"],["guides","◇","Guide allocation"],["performance","◎","Scores"],["complete","✧","Certificates"],["settings","⚙","Settings"],["profile","♧","My profile"]]};
 function seed(){let a=day(today(),-27),b=day(today(),-69);D.programs=[{id:"demo-stack",title:"Full Stack Development",description:"Learn to build practical applications.",start_date:a,training_days:60,internship_days:30,fee_inr:2999,mode:"Hybrid",status:"ongoing"},{id:"demo-design",title:"UI/UX Design",description:"Product thinking and portfolio projects.",start_date:b,training_days:45,internship_days:30,fee_inr:1999,mode:"Hybrid",status:"ongoing"}];D.profiles=[{id:"demo-student",full_name:"Preview Learner",email:"student@example.com"},{id:"demo-trainer",full_name:"Sample Trainer",email:"trainer@example.com"},{id:"demo-guide",full_name:"Sample Guide",email:"guide@example.com"}];D.enrollments=[{id:"demo-enroll",program_id:"demo-stack",student_id:"demo-student",status:"active",offer_letter_code:"HS-OL-PREVIEW"},{id:"demo-enroll2",program_id:"demo-design",student_id:"demo-student",status:"active"}];D.program_staff=[{program_id:"demo-stack",user_id:"demo-trainer"}];D.staff_roles=[{user_id:"demo-trainer",role:"trainer"},{user_id:"demo-guide",role:"guide"}];D.guide_allocations=[{id:"demo-guide-link",program_id:"demo-design",student_id:"demo-student",guide_user_id:"demo-guide"}];for(let i=0;i<90;i+=3)D.timeline_events.push({id:"d"+i,program_id:"demo-stack",phase:i<60?"training":"internship",activity_type:i<60?"lecture":"project",scheduled_date:day(a,i),title:i<60?["HTML & CSS foundations","JavaScript essentials","React components","Developer workflow"][i/3%4]:"Internship project milestone "+(i-59),description:"Practice and submit your scheduled activity."});D.live_sessions=[{id:"demo-live",program_id:"demo-stack",title:"JavaScript Functions & Scope",session_date:today(),start_time:"19:00",status:"scheduled"}];D.payment_claims=[{id:"demo-pay",program_id:"demo-stack",student_id:"demo-student",amount_inr:2999,status:"approved",utr:"PREVIEW00001"}];D.evaluations=[{id:"demo-score",program_id:"demo-stack",student_id:"demo-student",phase:"training",activity_title:"HTML assignment",score:8,max_score:10,feedback:"Great progress!"}];upi={upi_id:"preview@upi",payee:"Preview only — do not pay"}}
@@ -60,7 +60,7 @@ async function signOut(){if(db&&!demo)await db.auth.signOut();user=null;demo=fal
 async function reload(){if(!db||!user||demo)return;await Promise.all(keys.map(async k=>{try{let r=await db.from(k).select("*").limit(900);D[k]=r.error?[]:r.data||[]}catch(e){D[k]=[]}}));try{await db.rpc("accept_my_staff_invitation");let r=await db.from("staff_roles").select("*");if(!r.error)D.staff_roles=r.data||[]}catch(e){}try{let r=await db.rpc("get_payment_instructions");if(!r.error)upi=r.data||{}}catch(e){}}
 async function save(t,obj,id){if(demo){if(id)D[t]=D[t].map(x=>x.id===id?{...x,...obj}:x);else D[t].unshift({id:"preview-"+Math.random().toString(36).slice(2),...obj});notice("Preview mode only — nothing saved to the live database.","success");render();return true}if(!db||!user){notice("Sign in first.","error");return false}try{let r=id?await db.from(t).update(obj).eq("id",id):t==="site_settings"?await db.from(t).upsert(obj,{onConflict:"key"}):await db.from(t).insert(obj);if(r.error)throw r.error;notice("Saved successfully.","success");await reload();render();return true}catch(e){notice("Save failed: "+e.message,"error");return false}}
 function catalog(){if(!db){drawCatalog();return}db.from("programs").select("*").in("status",["published","ongoing"]).limit(100).then(r=>{if(!r.error)D.programs=r.data||[];drawCatalog()}).catch(drawCatalog)}
-function drawCatalog(){let arr=D.programs.filter(x=>["published","ongoing"].includes(x.status)&&(filter==="All"||x.mode===filter)&&String(x.title+" "+x.description).toLowerCase().includes(search.toLowerCase()));$("catalog").innerHTML=arr.length?arr.map((x,i)=>'<article class="course-card"><div class="course-art '+["","blue","green"][i%3]+'">✦</div><div class="course-body"><h3>'+esc(x.title)+'</h3><p>'+esc(x.description||"Practical learning and project internship")+'</p><div class="course-meta"><span>◷ '+total(x)+' days</span><span>Starts '+date(x.start_date)+'</span><span>'+esc(x.mode)+'</span></div><div class="course-footer"><strong>'+money(x.fee_inr)+'</strong>'+click("View & enroll","enroll-public",x.id,"btn-primary")+"</div></div></article>").join(""):'<div class="catalog-empty"><div class="feature-icon">✧</div><h3>Programs launching soon</h3><p>New programs will appear here when published by HackSphere administration.</p><button class="btn btn-primary" data-action="demo">Preview the learning platform ↗</button></div>'}
+function drawCatalog(){let arr=D.programs.filter(x=>["published","ongoing"].includes(x.status)&&!x.is_test&&(filter==="All"||x.mode===filter)&&String(x.title+" "+x.description).toLowerCase().includes(search.toLowerCase()));$("catalog").innerHTML=arr.length?arr.map((x,i)=>'<article class="course-card"><div class="course-art '+["","blue","green"][i%3]+'">✦</div><div class="course-body"><h3>'+esc(x.title)+'</h3><p>'+esc(x.description||"Practical learning and project internship")+'</p><div class="course-meta"><span>◷ '+total(x)+' days</span><span>Starts '+date(x.start_date)+'</span><span>'+esc(x.mode)+'</span></div><div class="course-footer"><strong>'+money(x.fee_inr)+'</strong>'+click("View & enroll","enroll-public",x.id,"btn-primary")+"</div></div></article>").join(""):'<div class="catalog-empty"><div class="feature-icon">✧</div><h3>Programs launching soon</h3><p>New programs will appear here when published by HackSphere administration.</p><button class="btn btn-primary" data-action="demo">Preview the learning platform ↗</button></div>'}
 function render(){if(!user)return;let roles=demo?["student","trainer","guide","admin"]:["student",...new Set(D.staff_roles.filter(x=>x.user_id===user.id).map(x=>x.role))];if(!roles.includes(role))role=roles.includes("admin")?"admin":roles.includes("trainer")?"trainer":roles.includes("guide")?"guide":"student";let allowedExtra=role==="admin"?["program-new","program-detail","program-edit","staff-invite","payment-history","payment-settings","profile"]:role==="student"?["profile","submissions"]:["profile"];if(!menu[role].some(x=>x[0]===page)&&!allowedExtra.includes(page))page="overview";$("role-switch").innerHTML=roles.map(x=>'<option '+(role===x?"selected":"")+' value="'+x+'">'+({student:"Student",trainer:"Trainer",guide:"Internship Guide",admin:"Administrator"})[x]+"</option>").join("");const navGroups={
  admin:[["Workspace",["overview","programs","students"]],["Learning operations",["timeline","sessions","reviews","performance"]],["Finance & certification",["payments","complete"]],["Team & settings",["staff","guides","settings","profile"]]],
  student:[["My learning",["overview","courses","timeline","sessions","submissions"]],["Account & outcomes",["enrollment","performance","documents","profile"]]],
@@ -239,7 +239,12 @@ function programNew(){
  field("Fee in INR","fee_inr","number","0",true),
  choose("Initial visibility","status",[["draft","Save as draft"],["published","Publish immediately"]]),
  '</div>',
- '<div class="alert">Guide allocation is intentionally separate: you will assign each student’s Internship Guide only when the internship phase starts.</div>',
+ '<div class="form-section-label"><span>04</span><div><b>Teaching team</b><small>Select both staff at program creation</small></div></div>',
+ '<div class="form-grid">',
+ choose("Program Trainer","trainer_id",D.staff_roles.filter(x=>x.role==="trainer").map(x=>[x.user_id,who(x.user_id)])),
+ choose("Designated Internship Guide","guide_id",D.staff_roles.filter(x=>x.role==="guide").map(x=>[x.user_id,who(x.user_id)])),
+ '</div>',
+ '<div class="alert">Trainer and Guide are designated now; student-specific Guide allocation happens only when the internship starts.</div>',
  '<div class="form-actions" style="margin-top:20px">',
  '<button class="btn btn-primary">Save program →</button>',
  '<button class="btn btn-outline" type="button" data-action="navigate" data-view="programs">Cancel</button>',
@@ -279,15 +284,23 @@ function programDetail(){
  '<div class="program-bar"><span style="width:'+Math.round(x.training_days/total(x)*100)+'%"></span></div>',
  '<div class="detail-facts"><div><span>Program fee</span><b>'+money(x.fee_inr)+'</b></div><div><span>End date</span><b>'+date(ended)+'</b></div><div><span>Program start</span><b>'+date(x.start_date)+'</b></div><div><span>Internship starts</span><b>'+date(openIn)+'</b></div></div>'
  ].join("");
- const students=en.length?en.map(e=>row('♙',who(e.student_id),e.status+' · Offer letter: '+(e.offer_letter_code||'Pending'))).join(""):empty("No enrolled students","Only verified UPI payments activate enrollment.");
+ const students=en.length?en.map(e=>row('♙',who(e.student_id),e.status+(e.is_test?" · QA TEST ACCESS (no payment)":" · Offer letter: "+(e.offer_letter_code||"Pending")))).join(""):empty("No enrolled students","Only verified UPI payments activate enrollment.");
  const trainers=ts.length?ts.map(t=>row("♙",who(t.user_id),"Assigned training instructor")).join(""):empty("Trainer not assigned","Assign a trainer from the Staff directory.");
+ const designated=D.program_guides.filter(g=>g.program_id===x.id).map(g=>row("◇",who(g.user_id),"Nominated at program creation")).join("")||empty("Guide designation missing","Assign a Guide in the program team.");
  const guides=ga.length?ga.map(a=>row("◇",who(a.student_id),who(a.guide_user_id)+" · Assigned Guide")).join(""):empty("No Guide yet","Admin allocates Guides only after "+date(openIn)+".");
  return title(x.title,"Manage timeline, enrollment, Trainers and Guides for this batch.",actions)+
  '<div class="editor-breadcrumb"><button data-action="navigate" data-view="programs">All programs</button><span>/</span><b>'+esc(x.title)+'</b></div>'+
  cover+statSet+'<div class="two-col"><div>'+card("Program structure",manage)+card("Enrolled students",students)+'</div><div>'+
  card("Training team",trainers+click("Assign a Trainer","navigate","","btn-light").replace('data-action="navigate"','data-action="navigate" data-view="staff"'))+
- card("Internship guides",guides)+
+ card("Designated Internship Guide",designated)+card("Student Guide allocations",guides)+
  card("Operations",'<div class="quick-links">'+click("Timeline","program-timeline",x.id)+click("Payment approvals","navigate","","btn-outline").replace('data-action="navigate"','data-action="navigate" data-view="payments"')+'</div>')+
+ card("Import CSV learning schedule",
+ '<form data-kind="csv-schedule" data-program="'+esc(x.id)+'">'+
+ '<label class="field"><span>CSV file (day, phase, activity_type, title, description, live, start_time, duration_minutes)</span>'+
+ '<input class="input" type="file" name="schedule_file" accept=".csv,text/csv" required></label>'+
+ '<p style="font-size:12px;color:var(--muted)">One row per day or additional activity. Duplicate dated titles will be skipped. Live sessions are scheduled; Meet links need trainer OAuth.</p>'+
+ '<div class="form-actions"><button class="btn btn-primary">Import schedule</button>'+
+ '<a class="btn btn-outline" target="_blank" rel="noopener noreferrer" href="https://github.com/ankit-sde-aiml/HackSphere/blob/main/examples/python_90_day_schedule.csv">View sample CSV ↗</a></div></form>')+
  '</div></div>';
 }
 function programEdit(){
@@ -650,7 +663,24 @@ document.addEventListener("change",e=>{
 document.addEventListener("input",e=>{if(e.target.closest('form[data-kind="program"]'))refreshProgramPreview(e.target.closest('form[data-kind="program"]'));if(e.target.id==="catalog-search"){search=e.target.value;drawCatalog()}});
 document.addEventListener("click",e=>{let b=e.target.closest("[data-filter]");if(!b)return;filter=b.dataset.filter;document.querySelectorAll("[data-filter]").forEach(x=>x.classList.toggle("active",x.dataset.filter===filter));drawCatalog()});
 document.addEventListener("submit",async e=>{let form=e.target.closest("form[data-kind]");if(!form)return;e.preventDefault();let f=Object.fromEntries(new FormData(form).entries()),type=form.dataset.kind;
-if(type==="program"){f.training_days=+f.training_days;f.internship_days=+f.internship_days;f.fee_inr=+f.fee_inr;f.created_by=user.id;if(await save("programs",f))navigateTo("programs")}
+if(type==="program"){
+ f.training_days=+f.training_days;f.internship_days=+f.internship_days;f.fee_inr=+f.fee_inr;
+ if(!f.trainer_id||!f.guide_id){notice("Choose an assigned Trainer and Internship Guide first.","error");return}
+ if(demo){
+  let id="preview-"+Math.random().toString(36).slice(2);
+  D.programs.unshift({...f,id,created_by:user.id,is_test:false});
+  D.program_staff.push({program_id:id,user_id:f.trainer_id,role:"trainer"});
+  D.program_guides.push({program_id:id,user_id:f.guide_id});
+  navigateTo("program-detail",id);return;
+ }
+ const args={_title:f.title,_description:f.description||"",_start_date:f.start_date,
+ _training_days:f.training_days,_internship_days:f.internship_days,_fee_inr:f.fee_inr,
+ _mode:f.mode,_status:f.status,_timezone:f.timezone||"Asia/Kolkata",
+ _trainer_id:f.trainer_id,_guide_id:f.guide_id,_is_test:false};
+ const r=await db.rpc("create_program_with_team",args);
+ if(r.error){notice("Program could not be created: "+r.error.message,"error");return}
+ await reload();navigateTo("program-detail",r.data);notice("Program, Trainer and Guide created together.","success");
+}
 else if(type==="program-edit"){f.training_days=+f.training_days;f.internship_days=+f.internship_days;f.fee_inr=+f.fee_inr;let id=form.dataset.program;if(id){if(await save("programs",f,id))navigateTo("program-detail",id)}}
 else if(type==="profile"){await save("profiles",{full_name:f.full_name},user.id)}
 else if(type==="activity"){f.created_by=user.id;await save("timeline_events",f)}
