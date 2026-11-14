@@ -1217,3 +1217,21 @@ body{font-size:14.5px;line-height:1.55}
  #login-modal .modal{max-width:calc(100vw - 28px);padding:25px 19px;border-radius:17px}
  #login-modal .modal h2{font-size:23px}
 }
+
+/* Light catalog route states are distinct from the dark homepage card section. */
+#marketing.hs-public-v5 .hs-all-programs-grid .hs-empty-programs{
+ background:#fff;color:#281c40;border:1px dashed #dcd1eb;
+ box-shadow:0 8px 30px #2c14400b;min-height:165px;display:flex;
+ align-items:center;flex-direction:column;justify-content:center;
+}
+#marketing.hs-public-v5 .hs-all-programs-grid .hs-empty-programs strong{font:800 17px 'Poppins',sans-serif;color:#281d3e}
+#marketing.hs-public-v5 .hs-all-programs-grid .hs-empty-programs p{font-size:13px;color:#736786;margin:8px 0 0}
+#marketing.hs-public-v5 .hs-programs-hero .hs-kicker{background:#341a5c;border-color:#633c95}
+#marketing.hs-public-v5 .hs-catalog-body .hs-catalog-filters button:hover{border-color:#ad82ee;color:#6927d1}
+#marketing.hs-public-v5 .hs-catalog-body .hs-catalog-filters button.active:hover{color:#fff}
+#marketing.hs-public-v5 .hs-public-detail .hs-section-kicker{color:#6c2dc8;border-color:#ded2f6;background:#f0e8ff}
+#marketing.hs-public-v5 .hs-catalog-body .hs-pagination button:focus-visible{outline:3px solid #a78bfa}
+@media(max-width:610px){
+ #marketing.hs-public-v5 .hs-catalog-title{gap:8px;align-items:flex-start}
+ #marketing.hs-public-v5 .hs-catalog-title>span{font-size:11px;white-space:nowrap}
+}
