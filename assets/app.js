@@ -57,11 +57,81 @@ function open(){hideDialog();$("marketing").hidden=true;$("app-shell").hidden=fa
 async function signIn(){if(!db){$("login-notice").textContent="Google Sign-In will be enabled when the website administrator configures the Google Cloud OAuth Client ID and Secret in Supabase. You can explore Dashboard Preview meanwhile.";return}let r=await db.auth.signInWithOAuth({provider:"google",options:{redirectTo:location.origin+"/",queryParams:{prompt:"select_account"}}});if(r.error)notice(r.error.message,"error")}
 async function signOut(){if(db&&!demo)await db.auth.signOut();user=null;demo=false;reset();publicPage();catalog()}
 async function reload(){if(!db||!user||demo)return;await Promise.all(keys.map(async k=>{try{let r=await db.from(k).select("*").limit(900);D[k]=r.error?[]:r.data||[]}catch(e){D[k]=[]}}));try{await db.rpc("accept_my_staff_invitation");let r=await db.from("staff_roles").select("*");if(!r.error)D.staff_roles=r.data||[]}catch(e){}try{let r=await db.rpc("get_payment_instructions");if(!r.error)upi=r.data||{}}catch(e){}}
-async function save(t,obj,id){if(demo){if(id)D[t]=D[t].map(x=>x.id===id?{...x,...obj}:x);else D[t].unshift({id:"preview-"+Math.random().toString(36).slice(2),...obj});notice("Updated in preview mode only.","success");render();return}if(!db||!user){notice("Sign in first.","error");return}try{let r=id?await db.from(t).update(obj).eq("id",id):t==="site_settings"?await db.from(t).upsert(obj,{onConflict:"key"}):await db.from(t).insert(obj);if(r.error)throw r.error;notice("Saved successfully.","success");await reload();render()}catch(e){notice(e.message,"error")}}
+async function save(t,obj,id){if(demo){if(id)D[t]=D[t].map(x=>x.id===id?{...x,...obj}:x);else D[t].unshift({id:"preview-"+Math.random().toString(36).slice(2),...obj});notice("Preview mode only — nothing saved to the live database.","success");render();return true}if(!db||!user){notice("Sign in first.","error");return false}try{let r=id?await db.from(t).update(obj).eq("id",id):t==="site_settings"?await db.from(t).upsert(obj,{onConflict:"key"}):await db.from(t).insert(obj);if(r.error)throw r.error;notice("Saved successfully.","success");await reload();render();return true}catch(e){notice("Save failed: "+e.message,"error");return false}}
 function catalog(){if(!db){drawCatalog();return}db.from("programs").select("*").in("status",["published","ongoing"]).limit(100).then(r=>{if(!r.error)D.programs=r.data||[];drawCatalog()}).catch(drawCatalog)}
 function drawCatalog(){let arr=D.programs.filter(x=>["published","ongoing"].includes(x.status)&&(filter==="All"||x.mode===filter)&&String(x.title+" "+x.description).toLowerCase().includes(search.toLowerCase()));$("catalog").innerHTML=arr.length?arr.map((x,i)=>'<article class="course-card"><div class="course-art '+["","blue","green"][i%3]+'">✦</div><div class="course-body"><h3>'+esc(x.title)+'</h3><p>'+esc(x.description||"Practical learning and project internship")+'</p><div class="course-meta"><span>◷ '+total(x)+' days</span><span>Starts '+date(x.start_date)+'</span><span>'+esc(x.mode)+'</span></div><div class="course-footer"><strong>'+money(x.fee_inr)+'</strong>'+click("View & enroll","enroll-public",x.id,"btn-primary")+"</div></div></article>").join(""):'<div class="catalog-empty"><div class="feature-icon">✧</div><h3>Programs launching soon</h3><p>New programs will appear here when published by HackSphere administration.</p><button class="btn btn-primary" data-action="demo">Preview the learning platform ↗</button></div>'}
 function render(){if(!user)return;let roles=demo?["student","trainer","guide","admin"]:["student",...new Set(D.staff_roles.filter(x=>x.user_id===user.id).map(x=>x.role))];if(!roles.includes(role))role=roles.includes("admin")?"admin":roles.includes("trainer")?"trainer":roles.includes("guide")?"guide":"student";if(!menu[role].some(x=>x[0]===page)&&!["program-new","program-detail","program-edit","staff-invite","payment-history","payment-settings","profile","submissions"].includes(page))page="overview";$("role-switch").innerHTML=roles.map(x=>'<option '+(role===x?"selected":"")+' value="'+x+'">'+({student:"Student",trainer:"Trainer",guide:"Internship Guide",admin:"Administrator"})[x]+"</option>").join("");$("side-nav").innerHTML=menu[role].map(([v,i,l])=>'<button class="'+(page===v?"active":"")+'" data-action="navigate" data-view="'+v+'"><span>'+i+"</span>"+l+"</button>").join("");$("side-role").textContent=({student:"Student portal",trainer:"Trainer workspace",guide:"Internship guide",admin:"Administration"})[role];let label=menu[role].find(x=>x[0]===page)?.[2]||({"program-new":"Create Program","program-detail":"Program Workspace","program-edit":"Edit Program","staff-invite":"Invite Staff","payment-history":"Payment History","payment-settings":"Payment Settings",profile:"My Profile",submissions:"Submissions"})[page]||"Workspace";$("section-label").textContent=label;$("crumb").textContent=label.toUpperCase();let name=user.user_metadata?.full_name||user.email?.split("@")[0]||"Learner";$("user-display").textContent=name;$("user-avatar").textContent=name.slice(0,2).toUpperCase();$("demo-pill").hidden=!demo;$("app-page").innerHTML=(course&&page==="courses")?classroom():({overview:overview,courses:courses,programs:programAdmin,"program-new":programNew,"program-detail":programDetail,"program-edit":programEdit,timeline:timeline,sessions:sessions,reviews:reviews,students:students,payments:payments,"payment-history":paymentHistory,"payment-settings":paymentSettings,staff:staff,"staff-invite":staffInvite,guides:guides,performance:performance,complete:complete,documents:documents,enrollment:enrollment,settings:settings,profile:profilePage,submissions:mySubmissions}[page]||overview)()}
-function overview(){let ps=selectedPrograms(),stats=role==="admin"?[["▦",D.programs.length,"Programs"],["◫",D.payment_claims.filter(x=>x.status==="pending").length,"Pending payments"],["♙",D.staff_roles.length,"Staff roles"],["✧",D.completion_recommendations.length,"Completion reviews"]]:[["▦",ps.length,"My programs"],["▤",D.timeline_events.length,"Timeline activities"],["◎",D.evaluations.length,"Evaluations"],["▷",D.live_sessions.length,"Live classes"]];return title(({student:"Welcome back, learner!",trainer:"Trainer workspace",guide:"Internship Guide workspace",admin:"HackSphere control center"})[role],"Your learning and work, all in one place.")+'<div class="stat-grid">'+stats.map(x=>'<div class="stat"><span class="sicon">'+x[0]+"</span><b>"+x[1]+"</b><small>"+x[2]+"</small></div>").join("")+'</div><div class="two-col"><div>'+card(role==="student"?"Continue learning":"Your programs",ps.length?ps.map(x=>row("▦",x.title,"Day "+current(x)+" of "+total(x),click("Open","open-course",x.id))).join(""):empty("No programs yet","Your enrolled or assigned programs will appear here."))+'</div><div>'+card("Your learning journey",'<div class="alert"><b>Date-wise unlocking</b><br>Every lesson opens on its scheduled date, regardless of previous training scores.</div>'+row("▷","Live classes","Trainer-managed Meet sessions")+row("◇","Internship","Guide allocated at internship start")+row("✧","Certificates","Admin approves completion"))+"</div></div>"}
+function overview(){
+ const ps=selectedPrograms();
+ const first=ps[0];
+ const upcoming=D.live_sessions.filter(x=>x.session_date>=today()).sort((a,b)=>xDate(a).localeCompare(xDate(b)))[0];
+ const pending=D.payment_claims.filter(x=>x.status==="pending");
+ const selfReviews=D.evaluations.filter(x=>x.student_id===user.id);
+ const assigned=D.guide_allocations.filter(x=>x.guide_user_id===user.id);
+ const relatedTasks=D.submissions.filter(x=>x.status==="submitted");
+ const guideStudentCount=new Set(assigned.map(x=>x.student_id)).size;
+ const activePrograms=D.programs.filter(x=>["published","ongoing"].includes(x.status));
+ let stats=[],heading="",subtitle="",bannerTitle="",bannerDesc="",bannerAction="";
+ if(role==="admin"){
+  heading="HackSphere control center";subtitle="Your entire learning platform, organized and under control.";
+  stats=[["▦",activePrograms.length,"Active programs"],["◫",pending.length,"Pending payments"],["♙",new Set(D.staff_roles.map(x=>x.user_id)).size,"Team members"],["✧",D.completion_recommendations.filter(x=>x.recommendation==="recommended").length,"Completion requests"]];
+  bannerTitle="Everything your academy needs.";bannerDesc="Create courses, manage payment approvals, invite teaching staff and oversee every internship in one place.";
+  bannerAction='<button class="btn btn-white" data-action="program-new">+ Create program</button>';
+ }else if(role==="trainer"){
+  heading="Your teaching workspace";subtitle="Manage upcoming lessons, classes and student performance.";
+  stats=[["▦",ps.length,"Assigned programs"],["▷",D.live_sessions.length,"Live sessions"],["▥",relatedTasks.length,"Submissions in queue"],["◎",D.evaluations.length,"Evaluations"]];
+  bannerTitle="Teach with clarity. Track with confidence.";bannerDesc="A dedicated workspace for curriculum, live sessions and training feedback.";
+  bannerAction='<button class="btn btn-white" data-action="navigate" data-view="timeline">Manage lessons ↗</button>';
+ }else if(role==="guide"){
+  heading="Internship guide workspace";subtitle="Keep your project teams moving forward.";
+  stats=[["◇",guideStudentCount,"Assigned interns"],["▦",ps.length,"Programs"],["▥",relatedTasks.length,"Submitted work"],["✧",D.completion_recommendations.length,"Recommendations"]];
+  bannerTitle="Make every project milestone count.";bannerDesc="Review real-world internship projects and give students actionable feedback.";
+  bannerAction='<button class="btn btn-white" data-action="navigate" data-view="reviews">Review work ↗</button>';
+ }else{
+  heading="Your learning hub";subtitle="A clear view of what's happening across your programs.";
+  stats=[["▦",ps.length,"Enrolled courses"],["▤",D.timeline_events.filter(x=>x.scheduled_date<=today()).length,"Released activities"],["◎",selfReviews.length,"Evaluations"],["▷",D.live_sessions.filter(x=>x.session_date>=today()).length,"Scheduled classes"]];
+  bannerTitle="Keep your momentum going.";bannerDesc="Your classes and project milestones unlock according to the program schedule. Pick up where you left off.";
+  bannerAction='<button class="btn btn-white" data-action="navigate" data-view="courses">Continue learning ↗</button>';
+ }
+ const banner='<div class="workspace-banner dashboard-banner"><div class="banner-icon">✦</div><div>'+
+ '<span class="eyebrow">WELCOME TO YOUR WORKSPACE</span><h2>'+esc(bannerTitle)+'</h2><p>'+esc(bannerDesc)+'</p></div>'+bannerAction+'</div>';
+ const tiles='<div class="stat-grid">'+stats.map(([ico,num,name])=>'<div class="stat"><span class="sicon">'+ico+'</span><b>'+num+'</b><small>'+esc(name)+'</small></div>').join("")+'</div>';
+ const programsList=ps.length?ps.map(pr=>{
+  const currentDay=current(pr),days=total(pr),progress=Math.round(currentDay/days*100);
+  return '<div class="learning-program-row">'+
+    '<div class="learning-icon">▦</div>'+
+    '<div class="learning-program-body"><b>'+esc(pr.title)+'</b><small>Day '+currentDay+' / '+days+' · '+(currentDay<=pr.training_days?"Training":"Internship")+' phase</small>'+
+    '<div class="progress" style="margin:8px 0 4px;max-width:350px"><i style="width:'+progress+'%"></i></div>'+
+    '<div class="progress-caption">'+progress+'% of scheduled days reached</div></div>'+
+    click(role==="admin"?"Manage":"Open","open-course",pr.id,"btn-primary")+'</div>';
+ }).join(""):empty("No programs yet","Programs will appear after they're created and assigned to you.");
+ let right="";
+ if(role==="admin"){
+  right=[
+  '<div class="shortcut-list">',
+  '<button data-action="navigate" data-view="payments"><span class="shortcut-icon">₹</span><b>Review payments</b><small>'+pending.length+' pending</small><i>↗</i></button>',
+  '<button data-action="staff-invite"><span class="shortcut-icon">♙</span><b>Invite Trainer or Guide</b><small>Access management</small><i>↗</i></button>',
+  '<button data-action="navigate" data-view="guides"><span class="shortcut-icon">◇</span><b>Allocate internship Guides</b><small>At internship start</small><i>↗</i></button>',
+  '<button data-action="navigate" data-view="complete"><span class="shortcut-icon">✧</span><b>Certificate approvals</b><small>Guide recommendation first</small><i>↗</i></button>',
+  '</div>'
+  ].join("");
+ }else{
+  right=[
+  '<div class="shortcut-list">',
+  '<button data-action="navigate" data-view="timeline"><span class="shortcut-icon">▤</span><b>Daily timeline</b><small>Date-wise content</small><i>↗</i></button>',
+  '<button data-action="navigate" data-view="'+(role==="student"?"sessions":role==="guide"?"reviews":"sessions")+'"><span class="shortcut-icon">▷</span><b>'+(role==="guide"?"Review projects":"Live classes")+'</b><small>Upcoming and scheduled</small><i>↗</i></button>',
+  '<button data-action="navigate" data-view="performance"><span class="shortcut-icon">◎</span><b>Evaluation history</b><small>Scores and feedback</small><i>↗</i></button>',
+  '</div>'
+  ].join("");
+ }
+ return title(heading,subtitle)+banner+tiles+
+ '<div class="two-col"><div>'+card(role==="student"?"Continue your learning":role==="admin"?"All managed programs":"Your active batches",programsList)+
+ (upcoming&&role!=="admin"?card("Upcoming session",row("▷",upcoming.title,date(upcoming.session_date)+" · "+String(upcoming.start_time||"").slice(0,5)+" IST",click("Sessions","navigate","","btn-outline").replace('data-action="navigate"','data-action="navigate" data-view="sessions"'))):"")+
+ '</div><div>'+card("Quick actions",right)+
+ card("How HackSphere works",'<div class="alert"><b>Calendar-based releases.</b><br>Training and internship activities unlock on their scheduled dates, not based on earlier scores. Administrator approves final certificates.</div>')+
+ '</div></div>';
+}
+function xDate(s){return String(s.session_date||"")+"T"+String(s.start_time||"")}
 function courses(){let ps=selectedPrograms();return title("My learning programs","Select a program to open its classroom and daily curriculum.")+(ps.length?'<div class="grid">'+ps.map(x=>'<article class="course-card"><div class="course-art">▦</div><div class="course-body"><h3>'+esc(x.title)+'</h3><p>'+esc(x.description)+'</p><div class="course-meta">Day '+current(x)+" / "+total(x)+"</div><div class=\"course-footer\">"+tag(x.mode)+click("Open classroom","open-course",x.id,"btn-primary")+"</div></div></article>").join("")+"</div>":empty("No courses yet","Enroll in a published program or wait for your assignment."))}
 function classroom(){
  let program=p(course);
@@ -561,8 +631,8 @@ document.addEventListener("change",e=>{if(e.target.id==="role-switch"){role=e.ta
 document.addEventListener("input",e=>{if(e.target.closest('form[data-kind="program"]'))refreshProgramPreview(e.target.closest('form[data-kind="program"]'));if(e.target.id==="catalog-search"){search=e.target.value;drawCatalog()}});
 document.addEventListener("click",e=>{let b=e.target.closest("[data-filter]");if(!b)return;filter=b.dataset.filter;document.querySelectorAll("[data-filter]").forEach(x=>x.classList.toggle("active",x.dataset.filter===filter));drawCatalog()});
 document.addEventListener("submit",async e=>{let form=e.target.closest("form[data-kind]");if(!form)return;e.preventDefault();let f=Object.fromEntries(new FormData(form).entries()),type=form.dataset.kind;
-if(type==="program"){f.training_days=+f.training_days;f.internship_days=+f.internship_days;f.fee_inr=+f.fee_inr;f.created_by=user.id;await save("programs",f);navigateTo("programs")}
-else if(type==="program-edit"){f.training_days=+f.training_days;f.internship_days=+f.internship_days;f.fee_inr=+f.fee_inr;let id=form.dataset.program;if(id){await save("programs",f,id);navigateTo("program-detail",id)}}
+if(type==="program"){f.training_days=+f.training_days;f.internship_days=+f.internship_days;f.fee_inr=+f.fee_inr;f.created_by=user.id;if(await save("programs",f))navigateTo("programs")}
+else if(type==="program-edit"){f.training_days=+f.training_days;f.internship_days=+f.internship_days;f.fee_inr=+f.fee_inr;let id=form.dataset.program;if(id){if(await save("programs",f,id))navigateTo("program-detail",id)}}
 else if(type==="profile"){await save("profiles",{full_name:f.full_name},user.id)}
 else if(type==="activity"){f.created_by=user.id;await save("timeline_events",f)}
 else if(type==="session"){f.duration_minutes=+f.duration_minutes;f.trainer_user_id=user.id;await save("live_sessions",f)}
