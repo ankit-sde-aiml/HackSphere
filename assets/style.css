@@ -862,3 +862,22 @@ body{font-size:14.5px;line-height:1.55}
  #app-shell.hs-student .st-profile-avatar{width:54px;height:54px;font-size:17px}
  #app-shell.hs-student .st-profile-card h2{font-size:19px}
 }
+
+
+/* Teaching studio — compact, responsive recording upload for assigned hosts only */
+.teaching-video-box{border:1px solid #dfe8e9;background:#fafdfc;border-radius:14px;padding:18px 20px;min-width:0}
+.teaching-video-box h3{font-size:16px;font-weight:800;color:#173847;letter-spacing:-.02em;margin:0 0 15px}
+.teaching-video-box form{display:flex;flex-direction:column;gap:12px}
+.teaching-video-box .field{margin:0;font-size:12.5px}
+.teaching-video-box .field>.input{margin-top:7px}
+.teaching-video-box input[type=file]{max-width:100%;min-width:0}
+.teaching-video-box button[type=submit]{align-self:flex-start;min-height:45px}
+.teaching-video-muted{color:#788c9a;font-size:12px;line-height:1.65;margin:8px 0 3px}
+.teaching-video-row{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid #e1e9ef;padding:12px 0}
+.teaching-video-row strong{overflow-wrap:anywhere;font-size:12.5px;font-weight:750;color:#304658}
+.teaching-video-row button{flex-shrink:0}
+@media(max-width:640px){
+ .teaching-video-box{padding:16px 13px;border-radius:12px}
+ .teaching-video-row{flex-wrap:wrap;align-items:flex-start}
+ .teaching-video-box button[type=submit]{width:100%}
+}
