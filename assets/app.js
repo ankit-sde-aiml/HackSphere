@@ -16,8 +16,8 @@ const field=(name,id,type="text",val="",required=false)=>'<label class="field"><
 const choose=(name,id,values,selected=null)=>'<label class="field"><span>'+esc(name)+'</span><select name="'+id+'" class="input">'+values.map(v=>'<option value="'+esc(v[0])+'" '+(selected===v[0]?"selected":"")+' >'+esc(v[1])+"</option>").join("")+"</select></label>";
 const notes=(name,id,initial="")=>'<label class="field"><span>'+esc(name)+'</span><textarea class="input" name="'+id+'">'+esc(initial)+'</textarea></label>';
 const click=(name,action,id="",kind="btn-light")=>'<button class="btn btn-small '+kind+'" data-action="'+action+'" data-id="'+esc(id)+'">'+esc(name)+"</button>";
-const keys=["lesson_resources","programs","enrollments","payment_claims","timeline_events","live_sessions","staff_roles","staff_invitations","program_staff","guide_allocations","submissions","evaluations","completion_recommendations","certificates","profiles","site_settings","program_guides","quizzes","quiz_questions","quiz_attempts"];
-let db=null,user=null,demo=false,role="student",page="overview",course=null,lesson=null,filter="All",search="",upi={},timelineOffset=0,paymentSection="pending",studentTab="overview",studentQuery="",studentEnrollmentChoice=null,studentCalendarChoice=null;
+const keys=["courses","purchases","videos","lesson_resources","programs","enrollments","payment_claims","timeline_events","live_sessions","staff_roles","staff_invitations","program_staff","guide_allocations","submissions","evaluations","completion_recommendations","certificates","profiles","site_settings","program_guides","quizzes","quiz_questions","quiz_attempts"];
+let videoStorageReady=false;let db=null,user=null,demo=false,role="student",page="overview",course=null,lesson=null,filter="All",search="",upi={},timelineOffset=0,paymentSection="pending",studentTab="overview",studentQuery="",studentEnrollmentChoice=null,studentCalendarChoice=null;
 let D={};const reset=()=>{D=Object.fromEntries(keys.map(k=>[k,[]]))};reset();
 const p=id=>D.programs.find(x=>x.id===id);
 const who=id=>{let x=D.profiles.find(x=>x.id===id);return x?.full_name||x?.email||String(id||"Student").slice(0,9)};
@@ -374,6 +374,8 @@ function studentProgramInfo(){
  '<section class="st-white-panel"><h2>Learning format</h2><p>Instructor-scheduled lessons, course materials, assignments and project milestones are released on their calendar dates. Exact class sessions and lesson resources are managed by the teaching team.</p></section></div></div>';
 }
 const stMediaFor=ev=>{
+ const r2=(D.videos||[]).find(v=>v.lesson_event_id===ev?.id&&v.status==='ready'&&v.published);
+ if(r2)return {kind:'r2',value:r2.id,title:r2.title};
  const resources=stPublishedResources(ev?.id);
  let video=resources.find(r=>r.kind==='video');
  if(video)return {kind:'resource',value:video.id,title:video.title};
@@ -466,7 +468,18 @@ async function studentPlayRecording(id,source){
  const selected=D.timeline_events.find(ev=>ev.id===lesson&&ev.program_id===course);
  if(!selected||selected.scheduled_date>programToday(p(course))){notice("Lesson not released.","error");return}
  let src=null,resource=null;
- if(source==="resource"){
+ if(source==="r2"){
+  const video=(D.videos||[]).find(v=>v.id===id&&v.lesson_event_id===selected.id&&v.status==="ready"&&v.published);
+  if(!video||demo){notice("This preview does not contain a real MP4 recording.","error");return}
+  const currentSession=await db.auth.getSession(),jwt=currentSession.data?.session?.access_token;
+  if(!jwt){notice("Your Google session expired. Sign in again.","error");return}
+  let response,data;
+  try{response=await fetch("/api/videos/"+encodeURIComponent(video.id)+"/session",{method:"POST",
+   headers:{"authorization":"Bearer "+jwt},credentials:"same-origin"});
+   data=await response.json()}catch(e){notice("Cannot connect to private video streaming.","error");return}
+  if(!response.ok||!data?.streamUrl){notice(data?.error||"Video unavailable.","error");return}
+  src=data.streamUrl;
+ }else if(source==="resource"){
    resource=stPublishedResources(selected.id).find(x=>x.id===id&&x.kind==="video");
    if(!resource)return;
    if(resource.storage_path)src=await studentSignedUrl(resource.storage_path);
@@ -563,12 +576,33 @@ function classroom(){
  }
  if(selected?.activity_type==="quiz")actions.push(quizPanel(selected));
  if(role!=="student"&&selected){
+ const sessionHosts=D.live_sessions.filter(ls=>ls.timeline_event_id===selected.id&&ls.status!=="cancelled");
+ const teamRole=(selected.phase==="training"&&role==="trainer"&&D.program_staff.some(ps=>ps.program_id===program.id&&ps.user_id===user.id&&ps.role==="trainer"))||
+  (selected.phase==="internship"&&role==="guide"&&D.program_guides.some(pg=>pg.program_id===program.id&&pg.user_id===user.id));
+ const hosted=sessionHosts.length===0||sessionHosts.some(ls=>ls.trainer_user_id===user.id&&ls.session_date<=programToday(program));
+ if(teamRole&&hosted){
+  actions.push([
+  '<section class="teaching-video-box"><h3>Class recording</h3>',
+  (videoStorageReady?
+   '<form data-kind="lesson-video-upload" data-event="'+esc(selected.id)+'">'+
+   '<label class="field"><span>Recording title</span><input class="input" type="text" name="title" value="'+esc(selected.title)+'" maxlength="180" required></label>'+
+   '<label class="field"><span>MP4 video (up to 95 MiB)</span><input class="input" name="video_file" type="file" accept="video/mp4,.mp4" required></label>'+
+   '<button class="btn btn-primary" type="submit">Upload recording</button></form>':
+   '<p class="teaching-video-muted">Video upload is unavailable until private R2 storage is enabled.</p>'),
+  (D.videos||[]).filter(v=>v.lesson_event_id===selected.id&&v.status==="ready").map(v=>
+     '<div class="teaching-video-row"><strong>'+esc(v.title)+'</strong>'+
+     (v.uploaded_by===user.id?'<button class="btn btn-small btn-outline" data-action="video-publish-toggle" data-id="'+esc(v.id)+'">'+(v.published?'Hide':'Publish')+'</button>':tag(v.published?'Published':'Hidden'))+
+     '</div>').join(''),
+  '</section>'
+  ].join(""));
+ }
+
   actions.push([
    '<form data-kind="lesson-resource" data-event="'+esc(selected.id)+'" data-program="'+esc(program.id)+'">',
    '<h3 style="font-size:15px">Add a lesson resource</h3>',
-   '<label class="field"><span>Resource type</span><select class="input" name="kind"><option value="video">Recording</option><option value="notes">Notes / PDF</option><option value="file">Study material</option><option value="link">External link</option></select></label>',
+   '<label class="field"><span>Resource type</span><select class="input" name="kind"><option value="notes">Notes / PDF</option><option value="file">Study material</option><option value="link">External link</option></select></label>',
    field("Resource title","title","text","",true),
-   '<label class="field"><span>Upload MP4, WebM, PDF or image (max 50 MB)</span><input class="input" name="file" type="file" accept=".mp4,.webm,.pdf,.png,.jpg,.jpeg"></label>',
+   '<label class="field"><span>Upload PDF or image (max 50 MB)</span><input class="input" name="file" type="file" accept=".pdf,.png,.jpg,.jpeg"></label>',
    field("External HTTPS URL (instead of a file)","external_url","url"),
    notes("Written notes (for text-only notes)","note_text"),
    '<button class="btn btn-primary" type="submit">Publish resource</button></form>',
@@ -1186,7 +1220,12 @@ else if(a==="staff-invite"){navigateTo("staff-invite")}
 else if(a==="payment-history"){navigateTo("payment-history")}
 else if(a==="payment-settings"){navigateTo("payment-settings")}
 else if(a==="profile"){navigateTo("profile")}
-else if(a==="resource-toggle"){let item=(D.lesson_resources||[]).find(x=>x.id===id);if(item)await save("lesson_resources",{published:!item.published},id)}else if(a==="quiz-publish"){await save("quizzes",{published:true},id)}else if(a==="publish"){let x=p(id);await save("programs",{status:x.status==="draft"?"published":"draft"},id)}else if(a==="proof"){let claim=D.payment_claims.find(x=>x.id===id);if(!claim?.proof_path){notice("No screenshot attached.","error");return}if(demo){notice("Screenshot is not available in preview mode.");return}let r=await db.storage.from("hacksphere-payment-proofs").createSignedUrl(claim.proof_path,300);if(r.error)notice(r.error.message,"error");else window.open(r.data.signedUrl,"_blank","noopener,noreferrer")}else if(a==="approve-pay"||a==="reject-pay"){if(a==="approve-pay"&&!confirm("Have you personally verified the actual bank credit for this transaction?"))return;await save("payment_claims",{status:a==="approve-pay"?"approved":"rejected",reviewed_by:user.id,reviewed_at:new Date().toISOString()},id)}else if(a==="letter"){printCredential("offer_letter",id)}else if(a==="certificate-print"){printCredential("certificate",id)}else if(a==="check-code"){let code=prompt("Enter your HackSphere document ID");if(code)showVerification(code)}else if(a==="close-verify"){document.getElementById("verify-overlay")?.remove()}else if(a==="review-approve"||a==="review-changes"){await save("submissions",{status:a==="review-approve"?"approved":"changes_requested"},id)}else if(a==="certificate"){let x=D.completion_recommendations.find(x=>x.id===id);if(x&&x.recommendation==="recommended"&&confirm("Approve final certificate?"))await save("certificates",{student_id:x.student_id,program_id:x.program_id,approved_by:user.id})}else if(a==="meet-consent"){await connectMeetConsent()}else if(a==="join"){
+else if(a==="video-publish-toggle"){const v=(D.videos||[]).find(x=>x.id===id);
+ if(!v||demo||v.uploaded_by!==user.id)return;
+ const result=await db.rpc("set_video_published",{_video_id:v.id,_published:!v.published});
+ if(result.error){notice(result.error.message,"error");return}
+ await reload();render();notice(v.published?"Recording hidden.":"Recording published.","success");
+ }else if(a==="resource-toggle"){let item=(D.lesson_resources||[]).find(x=>x.id===id);if(item)await save("lesson_resources",{published:!item.published},id)}else if(a==="quiz-publish"){await save("quizzes",{published:true},id)}else if(a==="publish"){let x=p(id);await save("programs",{status:x.status==="draft"?"published":"draft"},id)}else if(a==="proof"){let claim=D.payment_claims.find(x=>x.id===id);if(!claim?.proof_path){notice("No screenshot attached.","error");return}if(demo){notice("Screenshot is not available in preview mode.");return}let r=await db.storage.from("hacksphere-payment-proofs").createSignedUrl(claim.proof_path,300);if(r.error)notice(r.error.message,"error");else window.open(r.data.signedUrl,"_blank","noopener,noreferrer")}else if(a==="approve-pay"||a==="reject-pay"){if(a==="approve-pay"&&!confirm("Have you personally verified the actual bank credit for this transaction?"))return;await save("payment_claims",{status:a==="approve-pay"?"approved":"rejected",reviewed_by:user.id,reviewed_at:new Date().toISOString()},id)}else if(a==="letter"){printCredential("offer_letter",id)}else if(a==="certificate-print"){printCredential("certificate",id)}else if(a==="check-code"){let code=prompt("Enter your HackSphere document ID");if(code)showVerification(code)}else if(a==="close-verify"){document.getElementById("verify-overlay")?.remove()}else if(a==="review-approve"||a==="review-changes"){await save("submissions",{status:a==="review-approve"?"approved":"changes_requested"},id)}else if(a==="certificate"){let x=D.completion_recommendations.find(x=>x.id===id);if(x&&x.recommendation==="recommended"&&confirm("Approve final certificate?"))await save("certificates",{student_id:x.student_id,program_id:x.program_id,approved_by:user.id})}else if(a==="meet-consent"){await connectMeetConsent()}else if(a==="join"){
  if(demo){notice("Preview mode cannot join real Google Meet.");return}
  const win=window.open("","_blank");
  const r=await db.rpc("get_my_session_join_uri",{_session_id:id});
@@ -1239,6 +1278,38 @@ else if(type==="profile"){await save("profiles",{full_name:f.full_name},user.id)
 else if(type==="activity"){f.created_by=user.id;await save("timeline_events",f)}
 else if(type==="session"){f.duration_minutes=+f.duration_minutes;f.trainer_user_id=user.id;await save("live_sessions",f)}
 else if(type==="submission"){f.student_id=user.id;f.event_id=form.dataset.event;let prior=D.submissions.find(x=>x.student_id===user.id&&x.event_id===f.event_id&&x.status==="changes_requested");if(prior)await save("submissions",{content:f.content||"",submission_url:f.submission_url,status:"submitted"},prior.id);else await save("submissions",f)}
+else if(type==="lesson-video-upload"){
+ const selectedEvent=form.dataset.event;
+ const file=form.querySelector('input[name="video_file"]')?.files?.[0];
+ if(!file||file.type!=="video/mp4"||!file.name.toLowerCase().endsWith(".mp4")||
+    file.size<1||file.size>99614720){notice("Choose an MP4 file smaller than 95 MiB.","error");return}
+ if(demo){notice("Preview mode has no real R2 video storage.","error");return}
+ if(!videoStorageReady){notice("Private video storage is not active yet.","error");return}
+ const session=await db.auth.getSession(),jwt=session.data?.session?.access_token;
+ if(!jwt){notice("Google login expired. Sign in again.","error");return}
+ const authorization={"Authorization":"Bearer "+jwt};
+ let prepared;
+ try{
+   const res=await fetch("/api/videos/prepare",{
+      method:"POST",headers:{...authorization,"content-type":"application/json"},
+      body:JSON.stringify({event_id:selectedEvent,title:String(f.title||file.name),size_bytes:file.size})
+   });
+   const data=await res.json();
+   if(!res.ok)throw new Error(data.error||"Video preparation failed");
+   prepared=data;
+ }catch(error){notice(error.message,"error");return}
+ const progress=form.querySelector("[data-video-progress]");
+ if(progress)progress.textContent="Uploading video securely…";
+ try{
+   const res=await fetch("/api/videos/"+encodeURIComponent(prepared.id)+"/upload",{
+    method:"PUT",headers:{...authorization,"content-type":"video/mp4","x-upload-size":String(file.size)},
+    body:file
+   });
+   const data=await res.json();
+   if(!res.ok)throw new Error(data.error||"R2 upload failed");
+   await reload();render();notice("Recording uploaded and published.","success");
+ }catch(error){notice(error.message,"error")}
+}
 else if(type==="lesson-resource"){
  const eventId=form.dataset.event,programId=form.dataset.program,file=form.querySelector('input[name="file"]')?.files?.[0];
  const allowed={"video/mp4":"mp4","video/webm":"webm","application/pdf":"pdf","image/png":"png","image/jpeg":"jpg"};
