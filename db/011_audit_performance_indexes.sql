@@ -1,0 +1,20 @@
+-- Performance remediation: create covering indexes for 19 missing FK paths.
+create index if not exists hs_meet_link_creator_fk on app_private.meeting_links(created_by);
+create index if not exists hs_certificate_approved_by_fk on public.certificates(approved_by);
+create index if not exists hs_recommendation_student_fk on public.completion_recommendations(student_id);
+create index if not exists hs_enrollment_approved_by_fk on public.enrollments(approved_by);
+create index if not exists hs_evaluation_program_fk on public.evaluations(program_id);
+create index if not exists hs_guide_allocation_actor_fk on public.guide_allocations(allocated_by);
+create index if not exists hs_guide_allocation_student_fk on public.guide_allocations(student_id);
+create index if not exists hs_session_event_fk on public.live_sessions(timeline_event_id);
+create index if not exists hs_session_trainer_fk on public.live_sessions(trainer_user_id);
+create index if not exists hs_payment_reviewed_by_fk on public.payment_claims(reviewed_by);
+create index if not exists hs_program_guide_assigned_by_fk on public.program_guides(assigned_by);
+create index if not exists hs_program_guide_user_fk on public.program_guides(user_id);
+create index if not exists hs_program_staff_assigned_by_fk on public.program_staff(assigned_by);
+create index if not exists hs_program_staff_user_fk on public.program_staff(user_id);
+create index if not exists hs_quiz_attempt_quiz_fk on public.quiz_attempts(quiz_id);
+create index if not exists hs_quiz_creator_fk on public.quizzes(created_by);
+create index if not exists hs_site_setting_updated_by_fk on public.site_settings(updated_by);
+create index if not exists hs_staff_invite_created_by_fk on public.staff_invitations(created_by);
+create index if not exists hs_timeline_created_by_fk on public.timeline_events(created_by);
