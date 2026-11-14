@@ -747,3 +747,75 @@ body{font-size:14.5px;line-height:1.55}
 @media(prefers-reduced-motion:reduce){
  #app-shell.hs-student *,#app-shell.hs-student *:before,#app-shell.hs-student *:after{transition-duration:.01ms!important;animation-duration:.01ms!important}
 }
+
+
+/* Student calendar and enrollment, matching the approved classroom visual language */
+#app-shell.hs-student .st-calendar-head{display:flex;justify-content:space-between;align-items:end;gap:18px;margin-bottom:20px}
+#app-shell.hs-student .st-calendar-head>label{width:min(100%,380px);display:block;font-weight:750;font-size:12px;color:#51607c}
+#app-shell.hs-student .st-calendar-head .input{margin-top:8px}
+#app-shell.hs-student .st-calendar-pager{display:flex;align-items:center;gap:11px}
+#app-shell.hs-student .st-calendar-pager button{display:grid;place-items:center;border:1px solid #e3e5f1;background:#fff;color:#6355dc;width:43px;height:43px;border-radius:10px}
+#app-shell.hs-student .st-calendar-pager button:disabled{opacity:.35;cursor:not-allowed}
+#app-shell.hs-student .st-calendar-pager b{font-size:12px;color:#43506c;white-space:nowrap}
+#app-shell.hs-student .st-day-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+#app-shell.hs-student .st-day-card{background:#fff;border:1px solid #e6eaf3;border-radius:13px;min-width:0;overflow:hidden}
+#app-shell.hs-student .st-day-card.locked{background:#fafbfe}
+#app-shell.hs-student .st-day-top{display:flex;align-items:center;gap:10px;padding:14px 17px;border-bottom:1px solid #eaeef6}
+#app-shell.hs-student .st-day-top b{font-weight:800;font-size:13px;color:#2c3953}
+#app-shell.hs-student .st-day-top small{font-size:11px;color:#8f9aaf}
+#app-shell.hs-student .st-day-top>span{margin-left:auto;color:#6355e8}
+#app-shell.hs-student .st-day-card.locked .st-day-top>span{color:#abb5c5}
+#app-shell.hs-student .st-day-content{padding:12px 14px;min-height:61px}
+#app-shell.hs-student .st-day-content button{width:100%;border:0;background:none;color:#5042c4;display:flex;align-items:center;gap:9px;padding:8px 0;text-align:left;min-height:36px}
+#app-shell.hs-student .st-day-content button span{flex:1;min-width:0;font-size:12.5px;font-weight:750;color:#39445b;overflow-wrap:anywhere}
+#app-shell.hs-student .st-day-content button:hover span{color:#5646d6}
+#app-shell.hs-student .st-day-content>small{color:#919bb0;font-size:12px}
+#app-shell.hs-student .st-enrollment-grid{display:grid;grid-template-columns:minmax(0,1fr) 325px;gap:22px;align-items:start}
+#app-shell.hs-student .st-enrollment-grid .st-white-panel{padding:24px}
+#app-shell.hs-student .st-enrollment-grid h2{font-size:19px;margin:0 0 19px}
+#app-shell.hs-student .st-payment-field{display:block;font-size:12px;font-weight:800;color:#4c5b75;margin:0 0 19px}
+#app-shell.hs-student .st-payment-field .input{display:block;margin-top:8px;width:100%;border-color:#dfe4f0}
+#app-shell.hs-student .st-payment-field .input:focus{border-color:#9587f7;box-shadow:0 0 0 3px #9587f724}
+#app-shell.hs-student .st-payment-summary{background:#f8f7ff;border:1px solid #e6e2ff;border-radius:12px;padding:20px;margin:0 0 21px}
+#app-shell.hs-student .st-payment-summary h3{font-size:17px;margin:0 0 16px}
+#app-shell.hs-student .st-payment-summary>div{display:flex;justify-content:space-between;align-items:center;gap:15px;padding:8px 0;font-size:12px;color:#71809b}
+#app-shell.hs-student .st-payment-summary b{color:#30405c}
+#app-shell.hs-student .st-payment-summary .st-payment-total{border-top:1px solid #dddafa;margin-top:10px;padding-top:17px}
+#app-shell.hs-student .st-payment-summary .st-payment-total strong{font-size:25px;color:#262447}
+#app-shell.hs-student .st-payment-guidance h3{font-size:15px;margin:0 0 12px}
+#app-shell.hs-student .st-upi-details{border:1px solid #e2e8f3;border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px}
+#app-shell.hs-student .st-upi-details>div{display:flex;justify-content:space-between;align-items:center;gap:10px}
+#app-shell.hs-student .st-upi-details span{color:#7c879e;font-size:12px}
+#app-shell.hs-student .st-upi-details b{color:#283955;font-size:13px;overflow-wrap:anywhere}
+#app-shell.hs-student .st-upi-qr{width:190px;max-width:100%;margin:15px 0;border:1px solid #e8eaf3;border-radius:10px;padding:9px}
+#app-shell.hs-student .st-inline-alert{border:1px solid #f2e2c1;color:#976c29;background:#fff9ee;border-radius:10px;padding:14px;font-size:12.5px}
+#app-shell.hs-student .st-payment-form{margin-top:22px;padding-top:22px;border-top:1px solid #e6e9f3}
+#app-shell.hs-student .st-payment-form>p{font-size:12px;color:#7b89a1;line-height:1.8;margin-bottom:18px}
+#app-shell.hs-student .st-pending-panel{display:flex;gap:14px;align-items:flex-start;padding:17px;border-radius:10px;margin-top:18px;background:#fff6e7;color:#986727}
+#app-shell.hs-student .st-pending-panel b{display:block;font-size:14px}
+#app-shell.hs-student .st-pending-panel p{margin:5px 0 0;font-size:12px}
+#app-shell.hs-student .st-enrollment-row{display:flex;gap:12px;align-items:flex-start;padding:15px 0;border-bottom:1px solid #e9edf5;color:#6658dc}
+#app-shell.hs-student .st-enrollment-row:last-child{border-bottom:0}
+#app-shell.hs-student .st-enrollment-row>div{min-width:0}
+#app-shell.hs-student .st-enrollment-row b{display:block;font-size:13px;color:#27344f;overflow-wrap:anywhere}
+#app-shell.hs-student .st-enrollment-row small{display:block;font-size:11px;color:#8290a6;margin-top:5px}
+#app-shell.hs-student .st-tab-panel>.panel{box-shadow:none;border:0;padding:0;margin:0}
+#app-shell.hs-student .st-tab-panel>.panel .panel-head{padding:0 0 9px;margin-bottom:12px}
+@media(max-width:1100px){
+ #app-shell.hs-student .st-enrollment-grid{grid-template-columns:minmax(0,1fr) 285px;gap:16px}
+}
+@media(max-width:860px){
+ #app-shell.hs-student .st-enrollment-grid{grid-template-columns:1fr}
+ #app-shell.hs-student .st-calendar-head{align-items:start}
+}
+@media(max-width:600px){
+ #app-shell.hs-student .st-calendar-head{flex-direction:column;gap:14px}
+ #app-shell.hs-student .st-calendar-head>label{width:100%}
+ #app-shell.hs-student .st-calendar-pager{width:100%;justify-content:space-between}
+ #app-shell.hs-student .st-day-grid{grid-template-columns:1fr;gap:11px}
+ #app-shell.hs-student .st-enrollment-grid .st-white-panel{padding:18px}
+ #app-shell.hs-student .st-payment-summary{padding:16px}
+ #app-shell.hs-student .st-upi-details>div{align-items:flex-start;flex-direction:column;gap:4px}
+ #app-shell.hs-student .app-top small{display:none}
+ #app-shell.hs-student .app-top strong{font-size:15px}
+}
