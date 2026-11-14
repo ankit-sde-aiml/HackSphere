@@ -1208,7 +1208,13 @@ document.addEventListener("change",e=>{
 });
 document.addEventListener("input",e=>{if(e.target.closest('form[data-kind="program"]'))refreshProgramPreview(e.target.closest('form[data-kind="program"]'));if(e.target.id==="catalog-search"){search=e.target.value;drawCatalog()}else if(e.target.id==="student-program-search"){studentQuery=e.target.value;const result=document.getElementById("student-program-list");if(result)result.innerHTML=stCatalog()}});
 document.addEventListener("click",e=>{let b=e.target.closest("[data-filter]");if(!b)return;filter=b.dataset.filter;document.querySelectorAll("[data-filter]").forEach(x=>x.classList.toggle("active",x.dataset.filter===filter));drawCatalog()});
-document.addEventListener("submit",async e=>{let form=e.target.closest("form[data-kind]");if(!form)return;e.preventDefault();let f=Object.fromEntries(new FormData(form).entries()),type=form.dataset.kind;
+document.addEventListener("submit",async e=>{let form=e.target.closest("form[data-kind]");if(!form)return;e.preventDefault();
+if(form.dataset.busy==="true")return;
+form.dataset.busy="true";form.setAttribute("aria-busy","true");
+const submitButton=form.querySelector('[type="submit"]')||form.querySelector('button:not([type="button"])');
+const savedButton=submitButton?.innerHTML;if(submitButton){submitButton.disabled=true;submitButton.textContent="Saving…"}
+let f=Object.fromEntries(new FormData(form).entries()),type=form.dataset.kind;
+try{
 if(type==="csv-schedule"){await importCsvSchedule(form)}
 else if(type==="program"){
  f.training_days=+f.training_days;f.internship_days=+f.internship_days;f.fee_inr=+f.fee_inr;
@@ -1300,7 +1306,10 @@ else if(type==="upi"){upi=f;await save("site_settings",{key:"payments_upi",value
 else if(type==="invite"){let email=f.email.toLowerCase();if(f.trainer)await save("staff_invitations",{email,role:"trainer",created_by:user.id});if(f.guide)await save("staff_invitations",{email,role:"guide",created_by:user.id})}
 else if(type==="trainer"){f.role="trainer";f.assigned_by=user.id;await save("program_staff",f)}
 else if(type==="guide"){f.allocated_by=user.id;await save("guide_allocations",f)}
-else if(type==="recommend"){f.guide_user_id=user.id;await save("completion_recommendations",f)}});
+else if(type==="recommend"){f.guide_user_id=user.id;await save("completion_recommendations",f)}
+}catch(error){notice("Action failed: "+(error?.message||String(error)),"error")}
+finally{form.dataset.busy="false";form.removeAttribute("aria-busy");if(submitButton){submitButton.disabled=false;if(savedButton!==undefined)submitButton.innerHTML=savedButton}}
+});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){hideDialog();$("app-shell").classList.remove("drawer-open")}});
 
 const LEGAL_PAGES={"/about":"About HackSphere","/contact":"Contact & support","/pricing":"Programs & pricing","/terms":"Terms & conditions","/privacy":"Privacy policy","/refunds":"Refund & cancellation policy","/delivery":"Digital delivery policy"};
