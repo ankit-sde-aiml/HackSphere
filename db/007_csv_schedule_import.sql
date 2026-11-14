@@ -58,7 +58,12 @@ begin
    mins:=coalesce(nullif(rec->>'duration_minutes','')::integer,60);
    if mins<5 or mins>480 then raise exception 'Invalid class duration at day %',n; end if;
    insert into public.live_sessions(program_id,timeline_event_id,title,session_date,start_time,duration_minutes,status,trainer_user_id,meet_status)
-   values(_program_id,event_id,'Live: '||(rec->>'title'),event_date,start_at,mins,'scheduled',auth.uid(),'pending_authorization');
+   values(_program_id,event_id,'Live: '||(rec->>'title'),event_date,start_at,mins,'scheduled',
+     coalesce(
+       case when phase_name='training' then (select ps.user_id from public.program_staff ps where ps.program_id=_program_id and ps.role='trainer' order by ps.assigned_at limit 1)
+       else (select pg.user_id from public.program_guides pg where pg.program_id=_program_id order by pg.assigned_at limit 1) end,
+       auth.uid()),
+       'pending_authorization');
    live_count:=live_count+1;
   end if;
  end loop;
