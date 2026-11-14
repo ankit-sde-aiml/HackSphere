@@ -221,9 +221,30 @@ function adminMentorsV2(){
  card("Existing course templates",(D.course_catalog||[]).map(c=>row("▦",c.title,c.slug)).join("")||empty("No course templates","Optional templates help with multiple batches of the same course."));
 }
 function adminScheduleV2(){
- const programs=D.programs||[],program=programs[0],mentors=program?v2ProgramMentors(program.id):[];
- let form='<form class="form-grid" data-kind="v2-scheduled-class">'+choose("Program / Batch","program_id",programs.map(x=>[x.id,x.title]),program?.id)+field("Class topic","title","text","",true)+notes("Learning objectives","description")+field("Class date","scheduled_date","date","",true)+field("Start time","start_time","time","18:00",true)+field("Duration in minutes","duration_minutes","number",60,true)+choose("Class owner","responsible_mentor_id",mentors.map(x=>[x.mentor_id,who(x.mentor_id)]),mentors[0]?.mentor_id)+'<button class="btn btn-primary" type="submit">Schedule class</button></form>';
- return title("Schedule Builder","Admin decides who teaches, what is taught, and when. The owner receives upload permissions.")+card("Add training class",form)+card("Existing schedule",(D.timeline_events||[]).filter(e=>e.responsible_mentor_id).slice(0,100).map(e=>row("▤",e.title,date(e.scheduled_date)+" · "+who(e.responsible_mentor_id))).join("")||empty("No scheduled classes","Create a class above."));
+ const programs=D.programs||[],first=programs[0],mentors=first?v2ProgramMentors(first.id):[];
+ const form=programs.length?'<form data-kind="v2-scheduled-class" class="form-grid">'+
+ choose("Program / batch","program_id",programs.map(x=>[x.id,x.title+" · "+(x.batch_name||"Batch")]),first.id)+
+ field("Topic / class title","title","text","",true)+notes("Learning objectives","description")+
+ field("Class date","scheduled_date","date","",true)+
+ field("Start time","start_time","time","18:00",true)+field("Duration (minutes)","duration_minutes","number",60,true)+
+ choose("Responsible teaching mentor","responsible_mentor_id",mentors.map(m=>[m.mentor_id,who(m.mentor_id)]),mentors[0]?.mentor_id)+
+ '<button type="submit" class="btn btn-primary">Schedule teaching class</button></form>':
+ empty("No batch yet","Create a draft program first.");
+ const records=(D.timeline_events||[]).filter(e=>e.responsible_mentor_id);
+ const existing=records.length?records.slice(0,120).map(e=>{
+ const members=v2ProgramMentors(e.program_id);
+ const live=(D.live_sessions||[]).find(l=>l.timeline_event_id===e.id);
+ const editor='<form class="form-grid" data-kind="v2-edit-class" data-event="'+esc(e.id)+'">'+
+ field("Topic title","title","text",e.title,true)+field("Class date","scheduled_date","date",e.scheduled_date,true)+
+ field("Start time","start_time","time",live?.start_time?.slice(0,5)||"18:00",true)+
+ field("Duration minutes","duration_minutes","number",live?.duration_minutes||60,true)+
+ choose("Responsible mentor","responsible_mentor_id",members.map(m=>[m.mentor_id,who(m.mentor_id)]),e.responsible_mentor_id)+
+ '<button type="submit" class="btn btn-outline">Save schedule changes</button></form>';
+ return card(e.title+' — '+date(e.scheduled_date),'<p>'+esc(p(e.program_id)?.title||"Program")+
+ ' · '+esc(who(e.responsible_mentor_id))+'</p>'+editor);
+ }).join(""):empty("No teaching classes","Schedule the first class above.");
+ return title("Admin Teaching Schedule","Admin decides every class owner; only that mentor manages its recording, notes and quiz.")+
+ card("Schedule class",form)+existing;
 }
 function adminTeamsV2(){
  const programs=D.programs||[];
@@ -1355,7 +1376,12 @@ else if(a==="lesson-publication-toggle"){const ev=D.timeline_events.find(x=>x.id
  if(win){win.opener=null;win.location.href=r.data}else notice("Please allow popups to join the class.","error");
 }});
 document.addEventListener("change",e=>{
- if(e.target.id==="role-switch"){role=e.target.value;navigateTo("overview");return}
+ if(e.target.name==="program_id"&&e.target.closest('form[data-kind="v2-scheduled-class"]')){
+ const selector=e.target.closest("form").querySelector('[name="responsible_mentor_id"]');
+ if(selector){const mentors=v2ProgramMentors(e.target.value);selector.innerHTML=mentors.map(m=>'<option value="'+esc(m.mentor_id)+'">'+esc(who(m.mentor_id))+'</option>').join("")}
+ return;
+}
+if(e.target.id==="role-switch"){role=e.target.value;navigateTo("overview");return}
  if(e.target.id==="student-calendar-select"){studentCalendarChoice=e.target.value;timelineOffset=0;render();return}
  if(e.target.id==="student-enroll-program"){studentEnrollmentChoice=e.target.value;render();return}
  const f=e.target.closest("form[data-kind]");
@@ -1411,6 +1437,25 @@ else if(type==="v2-assign-mentor"){
  if(demo){D.program_mentors.push(f);render();return}
  const r=await db.from("program_mentors").upsert(f,{onConflict:"program_id,mentor_id"});if(r.error)throw r.error;
  await reload();render();notice("Mentor assigned to program.","success");
+}
+else if(type==="v2-edit-class"){
+ if(role!=="admin")throw Error("Admin access required");
+ const eventId=form.dataset.event;
+ const ev=D.timeline_events.find(e=>e.id===eventId);if(!ev)throw Error("Class not found");
+ const update={title:f.title,scheduled_date:f.scheduled_date,responsible_mentor_id:f.responsible_mentor_id};
+ if(demo){Object.assign(ev,update);render();return}
+ const r=await db.from("timeline_events").update(update).eq("id",eventId);
+ if(r.error)throw r.error;
+ const live=D.live_sessions.find(l=>l.timeline_event_id===eventId);
+ if(live){
+  const q=await db.from("live_sessions").update({
+   title:f.title,session_date:f.scheduled_date,start_time:f.start_time,
+   duration_minutes:Number(f.duration_minutes),trainer_user_id:f.responsible_mentor_id,
+   meet_status:"pending_authorization",meet_error:null
+  }).eq("id",live.id);
+  if(q.error){notice("Topic saved, live session update failed: "+q.error.message,"error")}
+ }
+ await reload();render();notice("Class schedule updated.","success");
 }
 else if(type==="v2-scheduled-class"){
  if(role!=="admin")throw Error("Admin access required");
