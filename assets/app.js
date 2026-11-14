@@ -366,6 +366,7 @@ function studentTabHtml(program,ev){
    '<span class="st-resource-icon">'+stIcon('file',20)+'</span><div><b>'+esc(r.title)+'</b>'+(r.note_text?'<p>'+esc(r.note_text)+'</p>':'')+'</div>'+
    ((r.storage_path||r.external_url)?'<button type="button" class="st-resource-open" data-action="student-resource" data-id="'+esc(r.id)+'" aria-label="Open '+esc(r.title)+'">'+stIcon('download',18)+'</button>':'')+'</article>').join('');
   if(ev.resource_url&&!stMediaFor(ev)&&/^https:\/\//.test(ev.resource_url))items+='<article class="st-resource"><span class="st-resource-icon">'+stIcon('external',20)+'</span><div><b>Lesson resource</b></div><button class="st-resource-open" data-action="student-legacy-link" data-id="'+esc(ev.id)+'">'+stIcon('external',18)+'</button></article>';
+  if(ev.resource_url?.startsWith("storage://hacksphere-course-files/")&&!stMediaFor(ev))items+='<article class="st-resource"><span class="st-resource-icon">'+stIcon('file',20)+'</span><div><b>Lesson attachment</b></div><button class="st-resource-open" data-action="student-legacy-file" data-id="'+esc(ev.id)+'" aria-label="Open lesson attachment">'+stIcon('download',18)+'</button></article>';
   return items||'<div class="st-tab-empty">'+stIcon('file',25)+'<h3>No notes published</h3><p>Notes and reference files will appear when your Trainer or Guide adds them.</p></div>';
  }
  if(studentTab==='tasks'){
@@ -393,7 +394,7 @@ function studentTabHtml(program,ev){
 
 async function studentSignedUrl(path){
  if(demo||!db){notice("This preview has no uploaded media.","error");return null}
- const r=await db.storage.from("hacksphere-course-files").createSignedUrl(path,300);
+ const r=await db.storage.from("hacksphere-course-files").createSignedUrl(path,3600);
  if(r.error){notice("Could not open the file: "+r.error.message,"error");return null}
  return r.data?.signedUrl||null;
 }
@@ -1112,6 +1113,7 @@ else if(a==="student-tab"){
  const panel=document.getElementById("student-lesson-panel");if(panel)panel.innerHTML=studentTabHtml(p(course),D.timeline_events.find(x=>x.id===lesson));
 }else if(a==="student-play"){await studentPlayRecording(id,b.dataset.source)}
 else if(a==="student-resource"){await studentOpenResource(id)}
+else if(a==="student-legacy-file"){const ev=D.timeline_events.find(x=>x.id===id&&x.program_id===course);if(!ev?.resource_url?.startsWith("storage://hacksphere-course-files/"))return;const win=window.open("","_blank");const signed=await studentSignedUrl(ev.resource_url.replace("storage://hacksphere-course-files/",""));if(!signed){if(win)win.close();return}if(win){win.opener=null;win.location.replace(signed)}else notice("Allow popups to open the attachment.","error")}
 else if(a==="student-legacy-link"){const ev=D.timeline_events.find(x=>x.id===id);if(ev?.resource_url&&/^https:\/\//.test(ev.resource_url))window.open(ev.resource_url,"_blank","noopener,noreferrer")}
 else if(a==="login")loginDialog();else if(a==="close-login")hideDialog();else if(a==="google-login")signIn();else if(a==="demo")demoOpen();else if(a==="toggle-public-menu"){const menu=$("mobile-links");menu.hidden=!menu.hidden;b.setAttribute("aria-expanded",String(!menu.hidden));b.setAttribute("aria-label",menu.hidden?"Open menu":"Close menu")}else if(a==="open-drawer")$("app-shell").classList.add("drawer-open");else if(a==="close-drawer")$("app-shell").classList.remove("drawer-open");else if(a==="signout")signOut();else if(a==="home")publicPage();else if(a==="navigate"){navigateTo(b.dataset.view)}else if(a==="open-course"){studentTab="overview";navigateTo("courses",id)}else if(a==="close-course"){navigateTo("courses")}else if(a==="lesson"){lesson=id;render()}else if(a==="enroll-public"){if(!user)loginDialog();else{navigateTo("enrollment");open()}}else if(a==="timeline-prev"){timelineOffset=Math.max(0,timelineOffset-1);render()}else if(a==="timeline-next"){timelineOffset=(timelineOffset+1)%Math.ceil(total(p(course||selectedPrograms()[0]?.id))/14);render()}else if(a==="secure-resource"){let event=D.timeline_events.find(x=>x.id===id);if(!event?.resource_url)return;let path=event.resource_url.replace("storage://hacksphere-course-files/","");if(demo){notice("Preview only — no private recording file is stored.");return}let r=await db.storage.from("hacksphere-course-files").createSignedUrl(path,600);if(r.error){notice(r.error.message,"error");return}if(/\.(mp4|webm)$/i.test(path)){let player=$("course-player");player.innerHTML='<video controls autoplay playsinline src="'+esc(r.data.signedUrl)+'"></video>';}else window.open(r.data.signedUrl,"_blank","noopener,noreferrer")}else if(a==="program-new"){navigateTo("program-new")}
 else if(a==="program-detail"){navigateTo("program-detail",id)}else if(a==="program-edit"){navigateTo("program-edit",id)}
