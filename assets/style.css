@@ -222,3 +222,25 @@ input[type="checkbox"]{accent-color:var(--primary)}
 @media(max-width:1200px){.editor-layout{grid-template-columns:minmax(0,1fr) 270px}.workspace-banner{grid-template-columns:auto 1fr}.workspace-banner>.btn{grid-column:2;justify-self:start}.mp-actions{max-width:230px}}
 @media(max-width:860px){.editor-layout{grid-template-columns:1fr}.editor-layout aside{position:static}.program-cover{grid-template-columns:60px minmax(0,1fr)}.program-cover-icon{width:60px;height:60px}.payment-review-card{align-items:flex-start;flex-wrap:wrap}.payment-action-column{width:100%;padding-left:63px}.workspace-banner{grid-template-columns:auto 1fr;gap:14px}.workspace-banner>.btn{grid-column:1/-1}.hero .container{gap:55px}}
 @media(max-width:620px){.hero .container{padding-top:58px;padding-bottom:64px}.hero h1{font-size:clamp(39px,10.7vw,57px)}.hero p{font-size:14px}.hero-window{border-radius:17px}.hero-proof{gap:12px 20px}.section-title h2{font-size:31px}.app-page{padding:21px 15px 40px}.page-title h1{font-size:26px}.page-title .form-actions{margin-top:15px}.workspace-banner{padding:22px;grid-template-columns:1fr}.workspace-banner h2{font-size:21px}.workspace-banner>.btn{grid-column:auto;justify-self:start}.banner-icon{width:46px;height:46px;border-radius:12px}.manage-program-card{display:grid;grid-template-columns:43px minmax(0,1fr);gap:11px;padding:14px}.mp-icon{width:43px;height:43px;font-size:20px}.mp-actions{grid-column:1/-1;max-width:none}.mp-meta{font-size:10px}.editor-layout{gap:13px}.editor-preview{padding:17px}.form-section-label{margin-top:12px}.program-cover{padding:19px;grid-template-columns:1fr}.program-cover h2{font-size:23px}.program-phase-track{gap:12px}.detail-facts{grid-template-columns:1fr 1fr}.payment-avatar{width:43px;height:43px}.payment-action-column{padding-left:0}.history-row{grid-template-columns:1fr auto}.history-amount{grid-column:1/-1}.task-card{flex-wrap:wrap}.task-card .btn{margin-left:50px}.profile-hero{padding:21px}.profile-large-avatar{width:60px;height:60px;font-size:21px}.profile-hero h2{font-size:19px}}
+
+
+/* 2.1 dashboard interactions: purposeful daily focus and role-aware action rails */
+.dashboard-banner{margin-bottom:22px}
+.dashboard-banner .banner-icon{background:#FFF9E61F;color:#FFCD73;font-size:28px}
+.learning-program-row{display:flex;align-items:center;gap:14px;padding:19px 3px;border-bottom:1px solid #E6EEE9}
+.learning-program-row:last-child{border-bottom:0}
+.learning-icon{width:48px;height:48px;display:grid;place-items:center;background:#E6F5EF;border-radius:13px;font-size:20px;color:#0D8277;flex:none}
+.learning-program-body{flex:1;min-width:0}
+.learning-program-body>b{display:block;font-size:13px;font-weight:850;letter-spacing:-.02em}
+.learning-program-body>small{display:block;font-size:11px;color:#78908C;margin:6px 0}
+.progress-caption{color:#8AA49E;font-size:10px;letter-spacing:.01em}
+.shortcut-list{display:flex;flex-direction:column;gap:7px}
+.shortcut-list>button{display:grid;grid-template-columns:38px minmax(0,1fr) 70px 15px;align-items:center;gap:12px;width:100%;padding:11px 12px;background:#FAFDFC;border:1px solid #E4EFEB;border-radius:12px;color:#19414B;text-align:left}
+.shortcut-list>button:hover{background:#EFF9F4;border-color:#AAD8C7}
+.shortcut-list b{font-size:12px;font-weight:800}
+.shortcut-list small{font-size:10px;color:#859991}
+.shortcut-list i{font-style:normal;font-size:15px;color:#0A8A80;text-align:right}
+.shortcut-icon{width:38px;height:38px;border-radius:10px;background:#E5F5EC;display:grid;place-items:center;color:#0A897D;font-size:17px}
+.page-title .form-actions{margin-left:auto;max-width:100%;justify-content:flex-end}
+@media(max-width:1160px){.shortcut-list>button{grid-template-columns:38px minmax(0,1fr) 15px}.shortcut-list>button small{display:none}}
+@media(max-width:620px){.dashboard-banner{margin-bottom:15px}.learning-program-row{display:grid;grid-template-columns:43px minmax(0,1fr);gap:10px}.learning-icon{width:43px;height:43px}.learning-program-row .btn{grid-column:2;justify-self:start}.shortcut-list>button{grid-template-columns:34px minmax(0,1fr) 16px}.shortcut-list .shortcut-icon{width:34px;height:34px}.page-title .form-actions{margin-left:0;justify-content:flex-start}}
