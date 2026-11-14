@@ -17,7 +17,7 @@ const choose=(name,id,values,selected=null)=>'<label class="field"><span>'+esc(n
 const notes=(name,id,initial="")=>'<label class="field"><span>'+esc(name)+'</span><textarea class="input" name="'+id+'">'+esc(initial)+'</textarea></label>';
 const click=(name,action,id="",kind="btn-light")=>'<button class="btn btn-small '+kind+'" data-action="'+action+'" data-id="'+esc(id)+'">'+esc(name)+"</button>";
 const keys=["lesson_resources","programs","enrollments","payment_claims","timeline_events","live_sessions","staff_roles","staff_invitations","program_staff","guide_allocations","submissions","evaluations","completion_recommendations","certificates","profiles","site_settings","program_guides","quizzes","quiz_questions","quiz_attempts"];
-let db=null,user=null,demo=false,role="student",page="overview",course=null,lesson=null,filter="All",search="",upi={},timelineOffset=0,paymentSection="pending",studentTab="overview",studentQuery="",studentEnrollmentChoice=null;
+let db=null,user=null,demo=false,role="student",page="overview",course=null,lesson=null,filter="All",search="",upi={},timelineOffset=0,paymentSection="pending",studentTab="overview",studentQuery="",studentEnrollmentChoice=null,studentCalendarChoice=null;
 let D={};const reset=()=>{D=Object.fromEntries(keys.map(k=>[k,[]]))};reset();
 const p=id=>D.programs.find(x=>x.id===id);
 const who=id=>{let x=D.profiles.find(x=>x.id===id);return x?.full_name||x?.email||String(id||"Student").slice(0,9)};
@@ -77,7 +77,7 @@ if(role==="student"){
  mobile.innerHTML=choices.map(([key,ico,label])=>'<button class="'+((page===key)||(key==="explore"&&page==="course-info")?'active':'')+'" data-action="navigate" data-view="'+key+'" aria-label="'+label+'">'+stIcon(ico,21)+'<span>'+label+'</span></button>').join("");
 }
 const view={overview:overview,courses:courses,programs:programAdmin,"program-new":programNew,"program-detail":programDetail,"program-edit":programEdit,timeline:timeline,sessions:sessions,reviews:reviews,students:students,payments:payments,"payment-history":paymentHistory,"payment-settings":paymentSettings,staff:staff,"staff-invite":staffInvite,guides:guides,performance:performance,complete:complete,documents:documents,enrollment:enrollment,settings:settings,profile:profilePage,submissions:mySubmissions};
-const studentViews={overview:studentOverview,courses:studentCourses,explore:studentExplore,"course-info":studentProgramInfo};
+const studentViews={overview:studentOverview,courses:studentCourses,explore:studentExplore,"course-info":studentProgramInfo,timeline:studentCalendar,enrollment:studentEnrollmentPage};
 $("app-page").innerHTML=course&&page==="courses"?(role==="student"?studentClassroom():classroom()):
 (role==="student"&&studentViews[page]?studentViews[page]():((view[page]||overview)()));
 if(role==="student"&&page==="enrollment"&&studentEnrollmentChoice){
@@ -241,6 +241,63 @@ function studentExplore(){
  '<label class="st-search">'+stIcon('search',19)+'<input type="search" id="student-program-search" placeholder="Search available programs" value="'+esc(studentQuery)+'" autocomplete="off" aria-label="Search programs"></label>'+
  '<div id="student-program-list" class="st-discover-grid">'+stCatalog()+'</div></div>';
 }
+
+function studentCalendar(){
+ const assigned=selectedPrograms(),program=assigned.find(pr=>pr.id===studentCalendarChoice)||assigned[0];
+ if(!program)return '<div class="st-view">'+stPageHeading('Learning calendar','Your program schedule.')+
+ '<div class="st-white-panel"><div class="st-empty"><h3>No courses enrolled</h3><p>Explore published programs to begin.</p>'+stAction('Explore programs','student-explore')+'</div></div></div>';
+ studentCalendarChoice=program.id;
+ const perPage=14,days=total(program),pages=Math.max(1,Math.ceil(days/perPage));
+ timelineOffset=Math.min(timelineOffset,pages-1);
+ const start=timelineOffset*perPage+1,end=Math.min(days,start+perPage-1);
+ const calendar=Array.from({length:end-start+1},(_,i)=>{
+  const number=start+i,scheduled=day(program.start_date,number-1);
+  const released=scheduled<=programToday(program);
+  const items=released?stActualEvents(program).filter(e=>e.scheduled_date===scheduled):[];
+  return '<article class="st-day-card'+(released?'':' locked')+'"><div class="st-day-top"><b>Day '+number+'</b><small>'+date(scheduled)+'</small>'+
+   '<span>'+stIcon(released?'check':'lock',17)+'</span></div>'+
+   '<div class="st-day-content">'+(released?(items.length?items.map(e=>'<button data-action="student-open-lesson" data-id="'+esc(e.id)+'">'+stIcon(e.activity_type==='quiz'?'quiz':'book',16)+'<span>'+esc(e.title)+'</span>'+stIcon('arrow',15)+'</button>').join(''):'<small>No lesson scheduled for this date.</small>'):'<small>Unlocks on scheduled date</small>')+'</div></article>';
+ }).join('');
+ return '<div class="st-view">'+stPageHeading('Learning calendar','Every day follows your program schedule.')+
+ '<div class="st-calendar-head"><label>Program<select class="input" id="student-calendar-select">'+assigned.map(pr=>'<option value="'+esc(pr.id)+'"'+(pr.id===program.id?' selected':'')+'>'+esc(pr.title)+'</option>').join('')+'</select></label>'+
+ '<div class="st-calendar-pager"><button data-action="student-calendar-prev"'+(timelineOffset===0?' disabled':'')+'>'+stIcon('back',18)+'</button><b>Days '+start+'–'+end+' of '+days+'</b><button data-action="student-calendar-next"'+(timelineOffset+1>=pages?' disabled':'')+'>'+stIcon('chevron',18)+'</button></div></div>'+
+ '<div class="st-day-grid">'+calendar+'</div></div>';
+}
+function studentEnrollmentPage(){
+ const available=D.programs.filter(pr=>['published','ongoing'].includes(pr.status)&&!pr.is_test);
+ const eligible=available.filter(pr=>!enrolled(pr));
+ const selected=eligible.find(pr=>pr.id===studentEnrollmentChoice)||eligible[0];
+ if(selected)studentEnrollmentChoice=selected.id;
+ const pending=selected&&stPendingFor(selected.id);
+ const my=D.enrollments.filter(e=>e.student_id===user.id);
+ const claims=D.payment_claims.filter(e=>e.student_id===user.id&&e.status==='pending');
+ const selectHtml=eligible.length?'<label class="st-payment-field">Choose a program<select class="input" id="student-enroll-program">'+eligible.map(pr=>'<option value="'+esc(pr.id)+'"'+(selected?.id===pr.id?' selected':'')+'>'+esc(pr.title)+'</option>').join('')+'</select></label>':'';
+ const paymentInfo=upi.upi_id?'<div class="st-upi-details"><div><span>Payee</span><b>'+esc(upi.payee||'HackSphere')+'</b></div><div><span>UPI ID</span><b>'+esc(upi.upi_id)+'</b></div></div>'+
+ (upi.qr_url&&/^https:\/\//.test(upi.qr_url)?'<img class="st-upi-qr" src="'+esc(upi.qr_url)+'" alt="Official HackSphere UPI payment QR code">':''):'<div class="st-inline-alert">Enrollment payments are not open yet.</div>';
+ let paymentForm='';
+ if(selected&&upi.upi_id&&!pending){
+  paymentForm='<form class="st-payment-form" data-kind="payment">'+
+  '<input type="hidden" name="program_id" value="'+esc(selected.id)+'">'+
+  '<label class="st-payment-field">Transaction UTR<input class="input" name="utr" type="text" minlength="6" placeholder="UPI reference number" required></label>'+
+  '<label class="st-payment-field">Payment screenshot<input class="input" type="file" name="proof_file" accept="image/png,image/jpeg,image/webp" required></label>'+
+  '<p>Enrollment activates after the payment is verified against the actual bank credit.</p>'+
+  '<button class="st-btn" type="submit">Submit for verification '+stIcon('arrow',17)+'</button></form>';
+ }else if(pending)paymentForm='<div class="st-pending-panel">'+stIcon('clock',22)+'<div><b>Verification pending</b><p>Your payment reference is awaiting review.</p></div></div>';
+ const summary=selected?'<div class="st-payment-summary"><h3>'+esc(selected.title)+'</h3>'+
+ '<div><span>Training</span><b>'+selected.training_days+' days</b></div>'+
+ '<div><span>Internship</span><b>'+selected.internship_days+' days</b></div>'+
+ '<div><span>Start date</span><b>'+date(selected.start_date)+'</b></div>'+
+ '<div class="st-payment-total"><span>Program fee</span><strong>'+money(selected.fee_inr)+'</strong></div></div>':
+ '<div class="st-empty"><h3>No open enrollments</h3><p>New programs will appear here when admissions open.</p></div>';
+ return '<div class="st-view">'+stPageHeading('Program enrollment','Enroll in another learning program.',stAction('Explore programs','student-explore',undefined,true))+
+ '<div class="st-enrollment-grid"><section class="st-white-panel"><h2>Choose your program</h2>'+selectHtml+summary+
+ '<div class="st-payment-guidance"><h3>Official payment details</h3>'+paymentInfo+'</div>'+paymentForm+'</section>'+
+ '<aside class="st-white-panel"><h2>My enrollments</h2>'+
+ (my.length?my.map(e=>'<div class="st-enrollment-row">'+stIcon('book',21)+'<div><b>'+esc(p(e.program_id)?.title||'Program')+'</b><small>'+(e.is_test?'Test access':esc(e.status))+'</small></div></div>').join(''):'<div class="st-empty-inline">No active enrollments yet.</div>')+
+ (claims.length?'<h2 style="margin-top:24px">Pending requests</h2>'+claims.map(c=>'<div class="st-enrollment-row">'+stIcon('clock',19)+'<div><b>'+esc(p(c.program_id)?.title||'Program')+'</b><small>Awaiting verification</small></div></div>').join(''):'')+
+ '</aside></div></div>';
+}
+
 function studentProgramInfo(){
  const pr=p(course);
  if(!pr||pr.is_test||!['published','ongoing'].includes(pr.status))return '<div class="st-view">'+stPageHeading('Program unavailable','This program is not currently accepting enrollment.')+'</div>';
@@ -1052,6 +1109,8 @@ async function importCsvSchedule(form){
 
 document.addEventListener("click",async e=>{let b=e.target.closest("[data-action]");if(!b)return;e.preventDefault();let a=b.dataset.action,id=b.dataset.id;if(a==="student-explore"){studentQuery="";navigateTo("explore")}
 else if(a==="student-course-info"){navigateTo("course-info",id)}
+else if(a==="student-calendar-prev"){timelineOffset=Math.max(0,timelineOffset-1);render()}
+else if(a==="student-calendar-next"){timelineOffset++;render()}
 else if(a==="student-enroll"){studentEnrollmentChoice=id;navigateTo("enrollment")}
 else if(a==="student-lesson"){lesson=id;studentTab="overview";render()}
 else if(a==="student-open-lesson"){const ev=D.timeline_events.find(x=>x.id===id);if(!ev)return;navigateTo("courses",ev.program_id);lesson=id;studentTab="overview";render()}
@@ -1078,6 +1137,8 @@ else if(a==="quiz-publish"){await save("quizzes",{published:true},id)}else if(a=
 }});
 document.addEventListener("change",e=>{
  if(e.target.id==="role-switch"){role=e.target.value;navigateTo("overview");return}
+ if(e.target.id==="student-calendar-select"){studentCalendarChoice=e.target.value;timelineOffset=0;render();return}
+ if(e.target.id==="student-enroll-program"){studentEnrollmentChoice=e.target.value;render();return}
  const f=e.target.closest("form[data-kind]");
  if(e.target.name==="program_id"&&f&&["guide","score"].includes(f.dataset.kind)){
   const value=e.target.value,select=f.querySelector('[name="student_id"]');
