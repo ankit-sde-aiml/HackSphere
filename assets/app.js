@@ -140,6 +140,50 @@ function overview(){
 }
 function xDate(s){return String(s.session_date||"")+"T"+String(s.start_time||"")}
 function courses(){let ps=selectedPrograms();return title("My learning programs","Select a program to open its classroom and daily curriculum.")+(ps.length?'<div class="grid">'+ps.map(x=>'<article class="course-card"><div class="course-art">▦</div><div class="course-body"><h3>'+esc(x.title)+'</h3><p>'+esc(x.description)+'</p><div class="course-meta">Day '+current(x)+" / "+total(x)+"</div><div class=\"course-footer\">"+tag(x.mode)+click("Open classroom","open-course",x.id,"btn-primary")+"</div></div></article>").join("")+"</div>":empty("No courses yet","Enroll in a published program or wait for your assignment."))}
+
+function quizPanel(ev){
+ if(ev?.activity_type!=="quiz")return "";
+ const q=D.quizzes.find(x=>x.timeline_event_id===ev.id);
+ if(!q&&role==="student")return card("Quiz not available",'<div class="alert">The Trainer has not published questions for this lesson.</div>');
+ if(!q){
+  return card("Create a quiz",'<form data-kind="quiz-create" data-event="'+esc(ev.id)+'">'+field("Quiz title","title","text",ev.title,true)+field("Time limit (minutes)","time_limit_minutes","number","20",true)+field("Max attempts","max_attempts","number","2",true)+'<button class="btn btn-primary">Create quiz</button></form>');
+ }
+ const qs=D.quiz_questions.filter(x=>x.quiz_id===q.id).sort((a,b)=>a.position-b.position);
+ if(role==="student"){
+  if(!q.published)return card("Quiz not published","Your Trainer will publish this quiz when ready.");
+  const attempts=D.quiz_attempts.filter(a=>a.quiz_id===q.id&&a.student_id===user.id);
+  let stats=attempts.length?'<div class="alert success">'+attempts.map(a=>"Attempt: "+a.score+" / "+a.max_score).join(" • ")+"</div>":"";
+  if(attempts.length>=q.max_attempts)return card(q.title,stats+empty("Maximum attempts used","Ask your Trainer for feedback."));
+  if(!qs.length)return card(q.title,empty("No questions yet","The Trainer is preparing this assessment."));
+  const questionCards=qs.map((question,i)=>[
+    '<fieldset class="quiz-question" data-question="'+esc(question.id)+'">',
+    '<legend><span class="quiz-number">'+(i+1)+'</span>'+esc(question.prompt)+'</legend>',
+    ...question.options.map((answer,idx)=>'<label class="quiz-option"><input type="radio" name="q_'+esc(question.id)+'" value="'+idx+'" required><span>'+esc(answer)+'</span></label>'),
+    '</fieldset>'
+  ].join("")).join("");
+  return card("Knowledge check — "+q.title,
+   '<div class="quiz-intro">Attempt '+(attempts.length+1)+' of '+q.max_attempts+' · '+qs.length+' questions · '+q.time_limit_minutes+' min recommended</div>'+
+   stats+'<form data-kind="quiz-attempt" data-quiz="'+esc(q.id)+'">'+questionCards+'<button class="btn btn-primary">Submit quiz answers</button></form>');
+ }
+ const summary=qs.length?'<div class="quiz-summary">'+qs.map((x,i)=>'<div class="quiz-summary-row"><b>'+(i+1)+'. '+esc(x.prompt)+'</b><small>'+x.options.map(esc).join(" / ")+'</small></div>').join("")+'</div>':
+ '<div class="alert warning">This quiz has no questions yet.</div>';
+ const createQuestion=[
+  '<form data-kind="quiz-question" data-quiz="'+esc(q.id)+'">',
+  field("Question","prompt","text","",true),
+  '<div class="form-grid">',
+  field("Option A","option_a","text","",true),
+  field("Option B","option_b","text","",true),
+  field("Option C","option_c","text","",true),
+  field("Option D","option_d","text","",true),
+  '</div>',
+  choose("Correct answer","correct_index",[["0","A"],["1","B"],["2","C"],["3","D"]]),
+  '<button class="btn btn-primary">Add question</button></form>'
+ ].join("");
+ return card("Quiz builder — "+q.title,
+  '<div class="quiz-intro">'+qs.length+' questions · '+(q.published?"Published":"Unpublished")+'</div>'+
+  summary+createQuestion+(!q.published?click("Publish quiz","quiz-publish",q.id,"btn-primary"):""));
+}
+
 function classroom(){
  let program=p(course);
  if(!program)return empty("Program not found","Return to your enrolled courses.");
@@ -160,6 +204,7 @@ function classroom(){
    '<button class="btn btn-primary">Submit for review</button></form>'
   ].join(""));
  }
+ if(selected?.activity_type==="quiz")actions.push(quizPanel(selected));
  if(role!=="student"&&selected){
   actions.push([
    '<form data-kind="media-upload" data-event="'+esc(selected.id)+'" data-program="'+esc(program.id)+'">',
@@ -703,7 +748,7 @@ else if(a==="staff-invite"){navigateTo("staff-invite")}
 else if(a==="payment-history"){navigateTo("payment-history")}
 else if(a==="payment-settings"){navigateTo("payment-settings")}
 else if(a==="profile"){navigateTo("profile")}
-else if(a==="publish"){let x=p(id);await save("programs",{status:x.status==="draft"?"published":"draft"},id)}else if(a==="proof"){let claim=D.payment_claims.find(x=>x.id===id);if(!claim?.proof_path){notice("No screenshot attached.","error");return}if(demo){notice("Screenshot is not available in preview mode.");return}let r=await db.storage.from("hacksphere-payment-proofs").createSignedUrl(claim.proof_path,300);if(r.error)notice(r.error.message,"error");else window.open(r.data.signedUrl,"_blank","noopener,noreferrer")}else if(a==="approve-pay"||a==="reject-pay"){if(a==="approve-pay"&&!confirm("Have you personally verified the actual bank credit for this transaction?"))return;await save("payment_claims",{status:a==="approve-pay"?"approved":"rejected",reviewed_by:user.id,reviewed_at:new Date().toISOString()},id)}else if(a==="letter"){printCredential("offer_letter",id)}else if(a==="certificate-print"){printCredential("certificate",id)}else if(a==="check-code"){let code=prompt("Enter your HackSphere document ID");if(code)showVerification(code)}else if(a==="close-verify"){document.getElementById("verify-overlay")?.remove()}else if(a==="review-approve"||a==="review-changes"){await save("submissions",{status:a==="review-approve"?"approved":"changes_requested"},id)}else if(a==="certificate"){let x=D.completion_recommendations.find(x=>x.id===id);if(x&&x.recommendation==="recommended"&&confirm("Approve final certificate?"))await save("certificates",{student_id:x.student_id,program_id:x.program_id,approved_by:user.id})}else if(a==="join"){notice("Google Meet account authorization is pending.","error")}});
+else if(a==="quiz-publish"){await save("quizzes",{published:true},id)}else if(a==="publish"){let x=p(id);await save("programs",{status:x.status==="draft"?"published":"draft"},id)}else if(a==="proof"){let claim=D.payment_claims.find(x=>x.id===id);if(!claim?.proof_path){notice("No screenshot attached.","error");return}if(demo){notice("Screenshot is not available in preview mode.");return}let r=await db.storage.from("hacksphere-payment-proofs").createSignedUrl(claim.proof_path,300);if(r.error)notice(r.error.message,"error");else window.open(r.data.signedUrl,"_blank","noopener,noreferrer")}else if(a==="approve-pay"||a==="reject-pay"){if(a==="approve-pay"&&!confirm("Have you personally verified the actual bank credit for this transaction?"))return;await save("payment_claims",{status:a==="approve-pay"?"approved":"rejected",reviewed_by:user.id,reviewed_at:new Date().toISOString()},id)}else if(a==="letter"){printCredential("offer_letter",id)}else if(a==="certificate-print"){printCredential("certificate",id)}else if(a==="check-code"){let code=prompt("Enter your HackSphere document ID");if(code)showVerification(code)}else if(a==="close-verify"){document.getElementById("verify-overlay")?.remove()}else if(a==="review-approve"||a==="review-changes"){await save("submissions",{status:a==="review-approve"?"approved":"changes_requested"},id)}else if(a==="certificate"){let x=D.completion_recommendations.find(x=>x.id===id);if(x&&x.recommendation==="recommended"&&confirm("Approve final certificate?"))await save("certificates",{student_id:x.student_id,program_id:x.program_id,approved_by:user.id})}else if(a==="join"){notice("Google Meet account authorization is pending.","error")}});
 document.addEventListener("change",e=>{
  if(e.target.id==="role-switch"){role=e.target.value;navigateTo("overview");return}
  const f=e.target.closest("form[data-kind]");
@@ -754,6 +799,28 @@ else if(type==="media-upload"){
  await save("timeline_events",{resource_url:"storage://hacksphere-course-files/"+path},eventId);
 }
 
+else if(type==="quiz-create"){
+ let eventId=form.dataset.event;
+ await save("quizzes",{timeline_event_id:eventId,title:f.title,time_limit_minutes:Number(f.time_limit_minutes),max_attempts:Number(f.max_attempts),published:false,created_by:user.id});
+}
+else if(type==="quiz-question"){
+ let opts=[f.option_a,f.option_b,f.option_c,f.option_d];
+ if(opts.some(x=>x.trim().length<1)){notice("Complete all four options.","error");return}
+ if(demo){D.quiz_questions.push({id:"demo-q"+Math.random().toString(36).slice(2),quiz_id:form.dataset.quiz,prompt:f.prompt,options:opts,position:D.quiz_questions.length+1});notice("Preview question added.","success");render()}
+ else {
+  let r=await db.rpc("add_quiz_question",{_quiz_id:form.dataset.quiz,_prompt:f.prompt,_options:opts,_correct_index:Number(f.correct_index),_points:1});
+  if(r.error){notice(r.error.message,"error");return}
+  await reload();render();notice("Question added securely.","success");
+ }
+}
+else if(type==="quiz-attempt"){
+ let answers={};let fields=[...form.querySelectorAll("fieldset[data-question]")];
+ for(let q of fields){let chosen=q.querySelector('input[type="radio"]:checked');if(!chosen){notice("Answer every question.","error");return}answers[q.dataset.question]=Number(chosen.value)}
+ if(demo){notice("Preview mode cannot submit a real graded quiz.");return}
+ let r=await db.rpc("submit_quiz",{_quiz_id:form.dataset.quiz,_answers:answers});
+ if(r.error){notice("Quiz failed: "+r.error.message,"error");return}
+ await reload();render();notice("Quiz scored: "+r.data.score+" / "+r.data.max_score+" ("+r.data.percentage+"%)","success");
+}
 else if(type==="score"){f.score=+f.score;f.max_score=+f.max_score;f.evaluator_id=user.id;await save("evaluations",f)}
 else if(type==="payment"){const file=form.querySelector('input[name="proof_file"]')?.files?.[0];if(!file||!["image/png","image/jpeg","image/webp"].includes(file.type)||file.size>5242880){notice("Upload a valid screenshot under 5 MB.","error");return}delete f.proof_file;f.student_id=user.id;f.amount_inr=p(f.program_id).fee_inr;if(demo){f.proof_path="demo-student/preview.png";await save("payment_claims",f)}else{const ext=file.type==="image/png"?"png":file.type==="image/webp"?"webp":"jpg";const path=user.id+"/"+crypto.randomUUID()+"."+ext;let uploaded=await db.storage.from("hacksphere-payment-proofs").upload(path,file,{contentType:file.type,upsert:false});if(uploaded.error){notice(uploaded.error.message,"error");return}f.proof_path=path;await save("payment_claims",f)}}
 else if(type==="upi"){upi=f;await save("site_settings",{key:"payments_upi",value:f,updated_by:user.id})}
