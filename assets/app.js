@@ -29,7 +29,7 @@ const options=arr=>arr.map(x=>[x.id,x.title]);
 const menu={student:[["overview","◈","Overview"],["courses","▦","My courses"],["explore","◉","Explore programs"],["timeline","▤","Daily timeline"],["sessions","▷","Live classes"],["submissions","▥","Assignments"],["enrollment","◫","Enrollment"],["performance","◎","My performance"],["documents","✧","Certificates & letters"],["profile","♧","My profile"]],trainer:[["overview","◈","Overview"],["courses","▦","My programs"],["timeline","▤","Training lessons"],["sessions","▷","Live classes"],["reviews","▥","Review submissions"],["performance","◎","Student scores"],["profile","♧","My profile"]],guide:[["overview","◈","Overview"],["courses","▦","My programs"],["timeline","▤","Internship timeline"],["reviews","▥","Project reviews"],["performance","◎","Internship scores"],["complete","✧","Completion reviews"],["profile","♧","My profile"]],admin:[["overview","◈","Overview"],["programs","▦","Programs"],["students","♧","Students"],["timeline","▤","Timeline manager"],["sessions","▷","Live classes"],["reviews","▥","Submissions"],["payments","◫","Payment approvals"],["staff","♙","Staff & roles"],["guides","◇","Guide allocation"],["performance","◎","Scores"],["complete","✧","Certificates"],["settings","⚙","Settings"],["profile","♧","My profile"]]};
 menu.student.push(["global-events","✦","Industry Connect"],["my-internship","◇","My Internship"]);
 menu.admin.push(["global-events","✦","Global Sessions"],["mentor-assignments","♙","Program Mentors"],["schedule-v2","▤","Schedule Builder"],["teams-overview","◇","Internship Teams"]);
-menu.mentor=[["overview","◈","Overview"],["courses","▦","Program Overview"],["mentor-classes","▤","My Classes & Uploads"],["mentor-teams","◇","My Internship Teams"],["sessions","▷","Live Classes"],["global-events","✦","Industry Connect"],["performance","◎","Student Progress"],["profile","♧","My Profile"]];
+menu.mentor=[["overview","◈","Overview"],["courses","▦","Program Overview"],["mentor-classes","▤","My Classes & Uploads"],["mentor-teams","◇","My Internship Teams"],["reviews","▥","Mini Project Reviews"],["sessions","▷","Live Classes"],["global-events","✦","Industry Connect"],["performance","◎","Student Progress"],["profile","♧","My Profile"]];
 function seed(){let a=day(today(),-27),b=day(today(),-69);D.programs=[{id:"demo-stack",title:"Full Stack Development",description:"Learn to build practical applications.",start_date:a,training_days:60,internship_days:30,fee_inr:2999,mode:"Hybrid",status:"ongoing"},{id:"demo-design",title:"UI/UX Design",description:"Product thinking and portfolio projects.",start_date:b,training_days:45,internship_days:30,fee_inr:1999,mode:"Hybrid",status:"ongoing"}];D.profiles=[{id:"demo-student",full_name:"Preview Learner",email:"student@example.com"},{id:"demo-trainer",full_name:"Sample Trainer",email:"trainer@example.com"},{id:"demo-guide",full_name:"Sample Guide",email:"guide@example.com"}];D.enrollments=[{id:"demo-enroll",program_id:"demo-stack",student_id:"demo-student",status:"active",offer_letter_code:"HS-OL-PREVIEW"},{id:"demo-enroll2",program_id:"demo-design",student_id:"demo-student",status:"active"}];D.program_staff=[{program_id:"demo-stack",user_id:"demo-trainer"}];D.staff_roles=[{user_id:"demo-trainer",role:"trainer"},{user_id:"demo-guide",role:"guide"}];D.guide_allocations=[{id:"demo-guide-link",program_id:"demo-design",student_id:"demo-student",guide_user_id:"demo-guide"}];for(let i=0;i<90;i+=3)D.timeline_events.push({id:"d"+i,program_id:"demo-stack",phase:i<60?"training":"internship",activity_type:i<60?"lecture":"project",scheduled_date:day(a,i),title:i<60?["HTML & CSS foundations","JavaScript essentials","React components","Developer workflow"][i/3%4]:"Internship project milestone "+(i-59),description:"Practice and submit your scheduled activity.",published_to_students:true});D.live_sessions=[{id:"demo-live",program_id:"demo-stack",title:"JavaScript Functions & Scope",session_date:today(),start_time:"19:00",status:"scheduled"}];D.payment_claims=[{id:"demo-pay",program_id:"demo-stack",student_id:"demo-student",amount_inr:2999,status:"approved",utr:"PREVIEW00001"}];D.evaluations=[{id:"demo-score",program_id:"demo-stack",student_id:"demo-student",phase:"training",activity_title:"HTML assignment",score:8,max_score:10,feedback:"Great progress!"}];upi={upi_id:"preview@upi",payee:"Preview only — do not pay"}}
 
 const routePath=()=>"/"+(demo?"preview":"workspace")+"/"+role+"/"+(course&&page==="courses"?"classroom/"+encodeURIComponent(course):course&&["program-detail","program-edit","timeline","course-info"].includes(page)?page+"/"+encodeURIComponent(course):page);
@@ -136,7 +136,7 @@ async function hsPublicRoute(){
 }
 
 function render(){if(!user)return;$("app-shell").classList.toggle("hs-student",role==="student");let roles=demo?["student","mentor","admin"]:["student",...(D.staff_roles.some(x=>x.user_id===user.id&&x.role==="admin")?["admin"]:[]),...(D.program_mentors.some(x=>x.mentor_id===user.id)||D.staff_roles.some(x=>x.user_id===user.id&&["mentor","trainer","guide"].includes(x.role))?["mentor"]:[])];if(!roles.includes(role))role=roles.includes("admin")?"admin":roles.includes("mentor")?"mentor":"student";let allowedExtra=role==="admin"?["program-new","program-detail","program-edit","staff-invite","payment-history","payment-settings","profile"]:role==="student"?["profile","submissions","course-info"]:["profile"];if(!menu[role].some(x=>x[0]===page)&&!allowedExtra.includes(page))page="overview";$("role-switch").hidden=(role==="student"&&roles.length===1);$("role-switch").innerHTML=roles.map(x=>'<option '+(role===x?"selected":"")+' value="'+x+'">'+({student:"Student",trainer:"Trainer",guide:"Internship Guide",mentor:"Mentor",admin:"Administrator"})[x]+"</option>").join("");const navGroups={
- mentor:[["Program",["overview","courses","global-events","performance"]],["My Assigned Work",["mentor-classes","mentor-teams","sessions"]],["Account",["profile"]]],
+ mentor:[["Program",["overview","courses","global-events","performance"]],["My Assigned Work",["mentor-classes","mentor-teams","reviews","sessions"]],["Account",["profile"]]],
  admin:[["Workspace",["overview","programs","students"]],["Learning operations",["timeline","sessions","reviews","performance"]],["Finance & certification",["payments","complete"]],["Team & settings",["staff","guides","mentor-assignments","settings","profile"]],["Platform Events",["global-events"]],["Program Setup",["schedule-v2","teams-overview"]]],
  student:[["My learning",["overview","courses","explore","timeline","sessions","submissions"]],["Account & outcomes",["enrollment","my-internship","global-events","performance","documents","profile"]]],
  trainer:[["Teaching",["overview","courses","timeline","sessions","reviews"]],["Outcomes & account",["performance","profile"]]],
@@ -292,7 +292,7 @@ function adminScheduleV2(){
  const programs=D.programs||[],first=programs[0],mentors=first?v2ProgramMentors(first.id):[];
  const form=programs.length?'<form data-kind="v2-scheduled-class" class="form-grid">'+
  choose("Program / batch","program_id",programs.map(x=>[x.id,x.title+" · "+(x.batch_name||"Batch")]),first.id)+
- field("Topic / class title","title","text","",true)+notes("Learning objectives","description")+
+ choose("Activity type","activity_type",[["lecture","Live lecture"],["project","Weekly mini project"],["assignment","Weekly assignment"],["quiz","Topic quiz"],["resource","Study resource"]],"lecture")+field("Topic / activity title","title","text","",true)+notes("Learning objectives or project requirements","description")+
  field("Class date","scheduled_date","date","",true)+
  field("Start time","start_time","time","18:00",true)+field("Duration (minutes)","duration_minutes","number",60,true)+
  choose("Responsible teaching mentor","responsible_mentor_id",mentors.map(m=>[m.mentor_id,who(m.mentor_id)]),mentors[0]?.mentor_id)+
@@ -1073,20 +1073,23 @@ function students(){
  +card("Enrolled students",entries.join("")||empty("No enrollments yet","Students appear here after payment approval."));
 }
 function reviews(){
- let events=D.timeline_events,items=D.submissions.filter(s=>{
-  let ev=events.find(x=>x.id===s.event_id);
-  if(!ev)return false;
-  return role==="admin"||
-   (role==="trainer"&&ev.phase==="training"&&D.program_staff.some(ps=>ps.program_id===ev.program_id&&ps.user_id===user.id))||
-   (role==="guide"&&ev.phase==="internship"&&D.guide_allocations.some(g=>g.program_id===ev.program_id&&g.guide_user_id===user.id&&g.student_id===s.student_id));
+ const items=D.submissions.filter(sub=>{
+ const ev=D.timeline_events.find(e=>e.id===sub.event_id);
+ return ev&&(role==="admin"||(role==="mentor"&&ev.responsible_mentor_id===user.id));
  });
- return title("Submission reviews","Review training assignments or internship project work for your assigned students.")
- +card("Pending and reviewed submissions",items.map(s=>{
-  let ev=events.find(x=>x.id===s.event_id);
-  let link=s.submission_url&&/^https:\/\//.test(s.submission_url)?'<a href="'+esc(s.submission_url)+'" target="_blank" rel="noopener noreferrer" class="btn btn-small btn-outline">Open work ↗</a>':"";
-  let actions='<div class="form-actions">'+link+(s.status!=="approved"?click("Approve","review-approve",s.id,"btn-primary")+click("Request changes","review-changes",s.id,"btn-outline"):"")+'</div>';
-  return row("▥",ev?.title||"Assignment",who(s.student_id)+" · "+(s.content||"Work submitted")+" · "+s.status,actions)
- }).join("")||empty("No submissions to review","Student submissions will appear when an assignment or project has been submitted."));
+ const list=items.map(sub=>{
+ const ev=D.timeline_events.find(e=>e.id===sub.event_id);
+ const link=sub.submission_url&&/^https:\/\//.test(sub.submission_url)?
+ '<a href="'+esc(sub.submission_url)+'" target="_blank" rel="noopener noreferrer" class="btn btn-small btn-outline">View submission</a>':"";
+ const action=sub.status==="approved"?tag("Approved"):
+ click("Approve","review-approve",sub.id,"btn-primary")+
+ click("Request changes","review-changes",sub.id,"btn-outline");
+ return row("▥",ev?.title||"Mini project",who(sub.student_id)+" · "+sub.status+
+ " · "+(sub.content||""),'<div class="form-actions">'+link+action+'</div>');
+ }).join("");
+ return title("Mini Project & Assignment Reviews",
+ "All students receive the same weekly project; only the responsible mentor can review its submissions.")+
+ card("Assigned submission queue",list||empty("No submissions yet","Only work from activities assigned to you will appear here."));
 }
 function performance(){
  let all=role==="student"?D.evaluations.filter(x=>x.student_id===user.id):D.evaluations;
@@ -1577,14 +1580,16 @@ else if(type==="v2-scheduled-class"){
  const session={session_date:f.scheduled_date,start_time:f.start_time,duration_minutes:Number(f.duration_minutes)};
  const obj={program_id:f.program_id,title:f.title,description:f.description||"",
  scheduled_date:f.scheduled_date,responsible_mentor_id:f.responsible_mentor_id,
- phase:"training",activity_type:"lecture",created_by:user.id,published_to_students:true};
+ phase:"training",activity_type:f.activity_type,created_by:user.id,published_to_students:true};
  if(demo){D.timeline_events.push({id:"demo-session",...obj});render();return}
  const r=await db.from("timeline_events").insert(obj).select("id").single();if(r.error)throw r.error;
- const live=await db.from("live_sessions").insert({...session,program_id:f.program_id,
- timeline_event_id:r.data.id,title:f.title,trainer_user_id:f.responsible_mentor_id,
- status:"scheduled",meet_status:"pending_authorization"});
- if(live.error)notice("Topic saved, but live session scheduling needs correction: "+live.error.message,"error");
- await reload();render();notice("Scheduled class created.","success");
+ if(f.activity_type==="lecture"){
+  const live=await db.from("live_sessions").insert({...session,program_id:f.program_id,
+   timeline_event_id:r.data.id,title:f.title,trainer_user_id:f.responsible_mentor_id,
+   status:"scheduled",meet_status:"pending_authorization"});
+  if(live.error)notice("Activity saved, but live class setup failed: "+live.error.message,"error");
+ }
+ await reload();render();notice("Program activity scheduled.","success");
 }
 else if(type==="v2-team-project"){
  const obj={project_title:f.project_title||null,project_brief:f.project_brief||null,
