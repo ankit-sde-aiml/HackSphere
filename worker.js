@@ -89,7 +89,9 @@ async function routePrivateVideos(request,env,path){
   const ctx=await videoSupabase(request,env);if(!ctx)return videoReply("Login expired",401);
   if(request.headers.get("content-type")?.split(";")[0]!=="video/mp4")
     return videoReply("Only MP4 video files are accepted",415);
-  const bytes=Number(request.headers.get("content-length")||0);
+  const bytes=Number(request.headers.get("x-upload-size")||request.headers.get("content-length")||0);
+  const actualHeader=request.headers.get("content-length");
+  if(actualHeader!==null&&Number(actualHeader)!==bytes)return videoReply("File size header mismatch",400);
   if(!Number.isSafeInteger(bytes)||bytes<1||bytes>99614720)
     return videoReply("MP4 must be 1 byte to 95 MiB",413);
   const authorized=await videoRpc(ctx,"authorize_video_upload",{_video_id:videoId});
@@ -98,10 +100,11 @@ async function routePrivateVideos(request,env,path){
   const key=authorized.object_key;
   if(!request.body)return videoReply("No upload body",400);
   try{
-   await env.COURSE_VIDEOS.put(key,request.body,{
+   const stored=await env.COURSE_VIDEOS.put(key,request.body,{
     httpMetadata:{contentType:"video/mp4",cacheControl:"private, no-store"},
     customMetadata:{videoId,uploadedBy:ctx.user.id}
    });
+   if(stored?.size!==bytes){await env.COURSE_VIDEOS.delete(key).catch(()=>{});return videoReply("Uploaded size mismatch",400)}
   }catch(e){return videoReply("R2 upload failed; retry with the original MP4",502)}
   const completed=await videoRpc(ctx,"finish_video_upload",{
     _video_id:videoId,_size_bytes:bytes});
