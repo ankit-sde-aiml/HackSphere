@@ -26,7 +26,7 @@ const current=x=>Math.max(0,Math.min(total(x),Math.floor((new Date(programToday(
 const enrolled=x=>demo||D.enrollments.some(y=>y.program_id===x.id&&y.student_id===user?.id&&y.status==="active");
 const selectedPrograms=()=>demo||role==="admin"?D.programs:role==="trainer"?D.programs.filter(x=>D.program_staff.some(y=>y.program_id===x.id&&y.user_id===user.id)):role==="guide"?D.programs.filter(x=>D.program_guides.some(y=>y.program_id===x.id&&y.user_id===user.id)||D.guide_allocations.some(y=>y.program_id===x.id&&y.guide_user_id===user.id)):D.programs.filter(enrolled);
 const options=arr=>arr.map(x=>[x.id,x.title]);
-const menu={student:[["overview","◈","Overview"],["courses","▦","My courses"],["explore","◉","Explore programs"],["timeline","▤","Daily timeline"],["sessions","▷","Live classes"],["submissions","▥","My submissions"],["enrollment","◫","Enrollment"],["performance","◎","My performance"],["documents","✧","Documents"],["profile","♧","My profile"]],trainer:[["overview","◈","Overview"],["courses","▦","My programs"],["timeline","▤","Training lessons"],["sessions","▷","Live classes"],["reviews","▥","Review submissions"],["performance","◎","Student scores"],["profile","♧","My profile"]],guide:[["overview","◈","Overview"],["courses","▦","My programs"],["timeline","▤","Internship timeline"],["reviews","▥","Project reviews"],["performance","◎","Internship scores"],["complete","✧","Completion reviews"],["profile","♧","My profile"]],admin:[["overview","◈","Overview"],["programs","▦","Programs"],["students","♧","Students"],["timeline","▤","Timeline manager"],["sessions","▷","Live classes"],["reviews","▥","Submissions"],["payments","◫","Payment approvals"],["staff","♙","Staff & roles"],["guides","◇","Guide allocation"],["performance","◎","Scores"],["complete","✧","Certificates"],["settings","⚙","Settings"],["profile","♧","My profile"]]};
+const menu={student:[["overview","◈","Overview"],["courses","▦","My courses"],["explore","◉","Explore programs"],["timeline","▤","Daily timeline"],["sessions","▷","Live classes"],["submissions","▥","Assignments"],["enrollment","◫","Enrollment"],["performance","◎","My performance"],["documents","✧","Certificates & letters"],["profile","♧","My profile"]],trainer:[["overview","◈","Overview"],["courses","▦","My programs"],["timeline","▤","Training lessons"],["sessions","▷","Live classes"],["reviews","▥","Review submissions"],["performance","◎","Student scores"],["profile","♧","My profile"]],guide:[["overview","◈","Overview"],["courses","▦","My programs"],["timeline","▤","Internship timeline"],["reviews","▥","Project reviews"],["performance","◎","Internship scores"],["complete","✧","Completion reviews"],["profile","♧","My profile"]],admin:[["overview","◈","Overview"],["programs","▦","Programs"],["students","♧","Students"],["timeline","▤","Timeline manager"],["sessions","▷","Live classes"],["reviews","▥","Submissions"],["payments","◫","Payment approvals"],["staff","♙","Staff & roles"],["guides","◇","Guide allocation"],["performance","◎","Scores"],["complete","✧","Certificates"],["settings","⚙","Settings"],["profile","♧","My profile"]]};
 function seed(){let a=day(today(),-27),b=day(today(),-69);D.programs=[{id:"demo-stack",title:"Full Stack Development",description:"Learn to build practical applications.",start_date:a,training_days:60,internship_days:30,fee_inr:2999,mode:"Hybrid",status:"ongoing"},{id:"demo-design",title:"UI/UX Design",description:"Product thinking and portfolio projects.",start_date:b,training_days:45,internship_days:30,fee_inr:1999,mode:"Hybrid",status:"ongoing"}];D.profiles=[{id:"demo-student",full_name:"Preview Learner",email:"student@example.com"},{id:"demo-trainer",full_name:"Sample Trainer",email:"trainer@example.com"},{id:"demo-guide",full_name:"Sample Guide",email:"guide@example.com"}];D.enrollments=[{id:"demo-enroll",program_id:"demo-stack",student_id:"demo-student",status:"active",offer_letter_code:"HS-OL-PREVIEW"},{id:"demo-enroll2",program_id:"demo-design",student_id:"demo-student",status:"active"}];D.program_staff=[{program_id:"demo-stack",user_id:"demo-trainer"}];D.staff_roles=[{user_id:"demo-trainer",role:"trainer"},{user_id:"demo-guide",role:"guide"}];D.guide_allocations=[{id:"demo-guide-link",program_id:"demo-design",student_id:"demo-student",guide_user_id:"demo-guide"}];for(let i=0;i<90;i+=3)D.timeline_events.push({id:"d"+i,program_id:"demo-stack",phase:i<60?"training":"internship",activity_type:i<60?"lecture":"project",scheduled_date:day(a,i),title:i<60?["HTML & CSS foundations","JavaScript essentials","React components","Developer workflow"][i/3%4]:"Internship project milestone "+(i-59),description:"Practice and submit your scheduled activity."});D.live_sessions=[{id:"demo-live",program_id:"demo-stack",title:"JavaScript Functions & Scope",session_date:today(),start_time:"19:00",status:"scheduled"}];D.payment_claims=[{id:"demo-pay",program_id:"demo-stack",student_id:"demo-student",amount_inr:2999,status:"approved",utr:"PREVIEW00001"}];D.evaluations=[{id:"demo-score",program_id:"demo-stack",student_id:"demo-student",phase:"training",activity_title:"HTML assignment",score:8,max_score:10,feedback:"Great progress!"}];upi={upi_id:"preview@upi",payee:"Preview only — do not pay"}}
 
 const routePath=()=>"/"+(demo?"preview":"workspace")+"/"+role+"/"+(course&&page==="courses"?"classroom/"+encodeURIComponent(course):course&&["program-detail","program-edit","timeline","course-info"].includes(page)?page+"/"+encodeURIComponent(course):page);
@@ -77,7 +77,7 @@ if(role==="student"){
  mobile.innerHTML=choices.map(([key,ico,label])=>'<button class="'+((page===key)||(key==="explore"&&page==="course-info")?'active':'')+'" data-action="navigate" data-view="'+key+'" aria-label="'+label+'">'+stIcon(ico,21)+'<span>'+label+'</span></button>').join("");
 }
 const view={overview:overview,courses:courses,programs:programAdmin,"program-new":programNew,"program-detail":programDetail,"program-edit":programEdit,timeline:timeline,sessions:sessions,reviews:reviews,students:students,payments:payments,"payment-history":paymentHistory,"payment-settings":paymentSettings,staff:staff,"staff-invite":staffInvite,guides:guides,performance:performance,complete:complete,documents:documents,enrollment:enrollment,settings:settings,profile:profilePage,submissions:mySubmissions};
-const studentViews={overview:studentOverview,courses:studentCourses,explore:studentExplore,"course-info":studentProgramInfo,timeline:studentCalendar,enrollment:studentEnrollmentPage};
+const studentViews={overview:studentOverview,courses:studentCourses,explore:studentExplore,"course-info":studentProgramInfo,timeline:studentCalendar,enrollment:studentEnrollmentPage,sessions:studentSessions,submissions:studentAssignments,performance:studentPerformance,documents:studentDocuments,profile:studentProfile};
 $("app-page").innerHTML=course&&page==="courses"?(role==="student"?studentClassroom():classroom()):
 (role==="student"&&studentViews[page]?studentViews[page]():((view[page]||overview)()));
 if(role==="student"&&page==="enrollment"&&studentEnrollmentChoice){
@@ -240,6 +240,70 @@ function studentExplore(){
  return '<div class="st-view">'+stPageHeading('Explore programs','Find the right program for your next skill.')+
  '<label class="st-search">'+stIcon('search',19)+'<input type="search" id="student-program-search" placeholder="Search available programs" value="'+esc(studentQuery)+'" autocomplete="off" aria-label="Search programs"></label>'+
  '<div id="student-program-list" class="st-discover-grid">'+stCatalog()+'</div></div>';
+}
+
+
+function studentSessions(){
+ const permitted=new Set(selectedPrograms().map(pr=>pr.id));
+ const sessions=D.live_sessions.filter(l=>permitted.has(l.program_id)).slice().sort((a,b)=>String(a.session_date+a.start_time).localeCompare(String(b.session_date+b.start_time)));
+ const upcoming=sessions.filter(l=>l.session_date>=today());
+ const history=sessions.filter(l=>l.session_date<today()).reverse().slice(0,10);
+ const cards=items=>items.map(l=>{
+  const prog=p(l.program_id);
+  const ready=l.meet_status==='ready';
+  return '<article class="st-list-card"><span class="st-list-icon">'+stIcon('video',22)+'</span><div><h3>'+esc(l.title)+'</h3><p>'+esc(prog?.title||'Program')+'</p><small>'+date(l.session_date)+' · '+esc(String(l.start_time||'').slice(0,5))+' · '+Number(l.duration_minutes||60)+' min</small></div>'+
+  '<div class="st-list-action">'+(ready&&l.session_date>=today()?'<button class="st-btn st-btn-outline" data-action="join" data-id="'+esc(l.id)+'">Join '+stIcon('arrow',16)+'</button>':'<span class="st-subdued">'+(ready?'Class finished':'Meeting link pending')+'</span>')+'</div></article>';
+ }).join('');
+ return '<div class="st-view">'+stPageHeading('Live classes','Your upcoming and previous sessions.')+
+ '<div class="st-white-panel"><h2>Upcoming sessions</h2>'+(upcoming.length?cards(upcoming):'<div class="st-empty-inline">No upcoming classes scheduled.</div>')+'</div>'+
+ (history.length?'<div class="st-white-panel st-section-gap"><h2>Previous sessions</h2>'+cards(history)+'</div>':'')+'</div>';
+}
+function studentAssignments(){
+ const progs=selectedPrograms();
+ const events=progs.flatMap(stActualEvents).filter(e=>['assignment','project','milestone'].includes(e.activity_type)).sort((a,b)=>String(b.scheduled_date).localeCompare(String(a.scheduled_date)));
+ const records=D.submissions.filter(s=>s.student_id===user.id);
+ const statuses=ev=>records.filter(s=>s.event_id===ev.id).sort((a,b)=>String(b.submitted_at).localeCompare(String(a.submitted_at)))[0];
+ const pending=events.filter(e=>!statuses(e)||statuses(e).status==='changes_requested');
+ const completed=events.filter(e=>statuses(e)&&statuses(e).status!=='changes_requested');
+ const items=(arr,showStatus)=>arr.map(ev=>{
+  const sub=statuses(ev);
+  const status=sub?(sub.status==='approved'?'Approved':sub.status==='changes_requested'?'Changes requested':'Awaiting review'):'Ready to submit';
+  return '<article class="st-list-card"><span class="st-list-icon">'+stIcon('task',21)+'</span><div><h3>'+esc(ev.title)+'</h3><p>'+esc(p(ev.program_id)?.title||'Course')+' · '+date(ev.scheduled_date)+'</p>'+
+   (showStatus?'<small>'+status+'</small>':'')+'</div><div class="st-list-action"><button class="st-btn st-btn-outline" data-action="student-open-lesson" data-id="'+esc(ev.id)+'">'+(sub?'View':'Open')+' '+stIcon('arrow',16)+'</button></div></article>';
+ }).join('');
+ return '<div class="st-view">'+stPageHeading('Assignments','Your practice and project submissions.')+
+ '<div class="st-white-panel"><h2>Available tasks</h2>'+(pending.length?items(pending,true):'<div class="st-empty-inline">No tasks waiting for submission.</div>')+'</div>'+
+ '<div class="st-white-panel st-section-gap"><h2>Submitted work</h2>'+(completed.length?items(completed,true):'<div class="st-empty-inline">Your submitted work will appear here.</div>')+'</div></div>';
+}
+function studentPerformance(){
+ const evaluations=D.evaluations.filter(x=>x.student_id===user.id);
+ const quizAttempts=(D.quiz_attempts||[]).filter(x=>x.student_id===user.id);
+ const scores=evaluations.map(e=>'<article class="st-list-card"><span class="st-list-icon">'+stIcon('check',21)+'</span>'+
+ '<div><h3>'+esc(e.activity_title)+'</h3><p>'+esc(p(e.program_id)?.title||'Program')+' · '+esc(e.phase)+'</p>'+(e.feedback?'<small>'+esc(e.feedback)+'</small>':'')+'</div><div class="st-score">'+e.score+' / '+e.max_score+'</div></article>').join('');
+ const attempts=quizAttempts.map(a=>{
+  const quiz=D.quizzes.find(q=>q.id===a.quiz_id);
+  return '<article class="st-list-card"><span class="st-list-icon">'+stIcon('quiz',21)+'</span><div><h3>'+esc(quiz?.title||'Quiz')+'</h3><p>'+date(a.submitted_at?.slice(0,10))+'</p></div><div class="st-score">'+a.score+' / '+a.max_score+'</div></article>';
+ }).join('');
+ return '<div class="st-view">'+stPageHeading('My performance','Scores and feedback from your learning activities.')+
+ '<div class="st-white-panel"><h2>Trainer & Guide evaluations</h2>'+(scores||'<div class="st-empty-inline">No evaluations yet.</div>')+'</div>'+
+ '<div class="st-white-panel st-section-gap"><h2>Quiz results</h2>'+(attempts||'<div class="st-empty-inline">No quiz attempts yet.</div>')+'</div></div>';
+}
+function studentDocuments(){
+ const enrollments=D.enrollments.filter(e=>e.student_id===user.id&&!e.is_test);
+ const certificates=D.certificates.filter(c=>c.student_id===user.id&&!p(c.program_id)?.is_test);
+ const letters=enrollments.map(e=>'<article class="st-list-card"><span class="st-list-icon">'+stIcon('file',21)+'</span><div><h3>'+esc(p(e.program_id)?.title||'Program')+'</h3><p>Offer letter · '+esc(e.offer_letter_code||'Pending')+'</p></div><div class="st-list-action">'+
+ (e.offer_letter_code?'<button class="st-btn st-btn-outline" data-action="letter" data-id="'+esc(e.id)+'">View '+stIcon('external',16)+'</button>':'<span class="st-subdued">Pending</span>')+'</div></article>').join('');
+ const certs=certificates.map(c=>'<article class="st-list-card"><span class="st-list-icon">'+stIcon('file',21)+'</span><div><h3>'+esc(p(c.program_id)?.title||'Program')+'</h3><p>Certificate · '+esc(c.code||'Pending')+'</p></div><div class="st-list-action"><button class="st-btn st-btn-outline" data-action="certificate-print" data-id="'+esc(c.id)+'">View '+stIcon('external',16)+'</button></div></article>').join('');
+ return '<div class="st-view">'+stPageHeading('My documents','Your verified program letters and certificates.')+
+ '<div class="st-white-panel"><h2>Offer letters</h2>'+(letters||'<div class="st-empty-inline">No verified offer letters yet.</div>')+'</div>'+
+ '<div class="st-white-panel st-section-gap"><h2>Certificates</h2>'+(certs||'<div class="st-empty-inline">Certificates appear after final approval.</div>')+'</div></div>';
+}
+function studentProfile(){
+ const name=D.profiles.find(x=>x.id===user.id)?.full_name||user.user_metadata?.full_name||'Learner';
+ return '<div class="st-view">'+stPageHeading('My profile','Account and display preferences.')+
+ '<div class="st-profile-card"><span class="st-profile-avatar">'+esc(name.slice(0,2).toUpperCase())+'</span><div><h2>'+esc(name)+'</h2><p>'+esc(user.email||'Google account')+'</p></div></div>'+
+ '<div class="st-white-panel st-profile-edit"><h2>Display name</h2><form data-kind="profile">'+field("Name","full_name","text",name,true)+
+ '<button class="st-btn" type="submit">Save changes '+stIcon('arrow',17)+'</button></form></div></div>';
 }
 
 function studentCalendar(){
