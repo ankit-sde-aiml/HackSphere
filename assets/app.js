@@ -250,7 +250,7 @@ function studentSessions(){
  const history=sessions.filter(l=>l.session_date<today()).reverse().slice(0,10);
  const cards=items=>items.map(l=>{
   const prog=p(l.program_id);
-  const ready=l.meet_status==='ready';
+  const ready=l.meet_status==='ready'&&l.status==='scheduled';
   return '<article class="st-list-card"><span class="st-list-icon">'+stIcon('video',22)+'</span><div><h3>'+esc(l.title)+'</h3><p>'+esc(prog?.title||'Program')+'</p><small>'+date(l.session_date)+' · '+esc(String(l.start_time||'').slice(0,5))+' · '+Number(l.duration_minutes||60)+' min</small></div>'+
   '<div class="st-list-action">'+(ready&&l.session_date>=today()?'<button class="st-btn st-btn-outline" data-action="join" data-id="'+esc(l.id)+'">Join '+stIcon('arrow',16)+'</button>':'<span class="st-subdued">'+(ready?'Class finished':'Meeting link pending')+'</span>')+'</div></article>';
  }).join('');
@@ -289,8 +289,8 @@ function studentPerformance(){
  '<div class="st-white-panel st-section-gap"><h2>Quiz results</h2>'+(attempts||'<div class="st-empty-inline">No quiz attempts yet.</div>')+'</div></div>';
 }
 function studentDocuments(){
- const enrollments=D.enrollments.filter(e=>e.student_id===user.id&&!e.is_test);
- const certificates=D.certificates.filter(c=>c.student_id===user.id&&!p(c.program_id)?.is_test);
+ const enrollments=D.enrollments.filter(e=>e.student_id===user.id&&!e.is_test&&['active','completed'].includes(e.status));
+ const certificates=D.certificates.filter(c=>c.student_id===user.id&&c.status==='approved'&&!p(c.program_id)?.is_test);
  const letters=enrollments.map(e=>'<article class="st-list-card"><span class="st-list-icon">'+stIcon('file',21)+'</span><div><h3>'+esc(p(e.program_id)?.title||'Program')+'</h3><p>Offer letter · '+esc(e.offer_letter_code||'Pending')+'</p></div><div class="st-list-action">'+
  (e.offer_letter_code?'<button class="st-btn st-btn-outline" data-action="letter" data-id="'+esc(e.id)+'">View '+stIcon('external',16)+'</button>':'<span class="st-subdued">Pending</span>')+'</div></article>').join('');
  const certs=certificates.map(c=>'<article class="st-list-card"><span class="st-list-icon">'+stIcon('file',21)+'</span><div><h3>'+esc(p(c.program_id)?.title||'Program')+'</h3><p>Certificate · '+esc(c.code||'Pending')+'</p></div><div class="st-list-action"><button class="st-btn st-btn-outline" data-action="certificate-print" data-id="'+esc(c.id)+'">View '+stIcon('external',16)+'</button></div></article>').join('');
