@@ -881,3 +881,9 @@ body{font-size:14.5px;line-height:1.55}
  .teaching-video-row{flex-wrap:wrap;align-items:flex-start}
  .teaching-video-box button[type=submit]{width:100%}
 }
+
+/* Teaching staff publishing — visible only in their classroom, not Student UI */
+.teaching-publication{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border:1px solid #e1e8ec;background:#f8fafb;border-radius:11px;padding:11px 14px;margin:0 0 14px}
+.teaching-publication span{font-size:12px;font-weight:750;color:#586d7e}
+.teaching-publication .btn{min-height:40px}
+@media(max-width:520px){.teaching-publication{flex-direction:column;align-items:stretch}.teaching-publication .btn{width:100%}}
