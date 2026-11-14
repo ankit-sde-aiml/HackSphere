@@ -382,7 +382,7 @@ function eligibleStudents(programId,roleFilter=role){
 }
 function students(){
  let en=D.enrollments;
- let entries=en.map(e=>row("♧",who(e.student_id),[p(e.program_id)?.title||"Program",e.status,"Offer Letter: "+(e.offer_letter_code||"Pending")].join(" · "),tag(e.status)));
+ let entries=en.map(e=>row("♧",who(e.student_id),[p(e.program_id)?.title||"Program",e.status,e.is_test?"QA TEST SEAT":"Offer Letter: "+(e.offer_letter_code||"Pending")].join(" · "),tag(e.is_test?"Test":e.status)));
  return title("Student directory","View all program enrollments and verified student access.")
  +card("Enrolled students",entries.join("")||empty("No enrollments yet","Students appear here after payment approval."));
 }
@@ -428,7 +428,7 @@ function performance(){
  +'</div><div>'+(form||card("Your scores","Evaluation details will appear when your work is reviewed."))+'</div></div>';
 }
 function paymentInstructions(){return upi.upi_id?'<div class="alert success"><b>Official UPI</b><br>ID: '+esc(upi.upi_id)+"<br>Payee: "+esc(upi.payee||"HackSphere")+"<br>"+esc(upi.instructions||"")+"</div>"+(upi.qr_url&&upi.qr_url.startsWith("https://")?'<img alt="Official UPI QR code" src="'+esc(upi.qr_url)+'" style="width:175px;margin:12px 0;border-radius:12px">':""):'<div class="alert warning">Official UPI payment details are not configured. Please do not send money yet.</div>'}
-function enrollment(){let ps=D.programs.filter(x=>["published","ongoing"].includes(x.status)),mine=D.enrollments.filter(x=>x.student_id===user.id);return title("My enrollments","Enrollment activates after manual verification of actual bank credit.")+'<div class="two-col"><div>'+card("UPI enrollment",paymentInstructions()+(upi.upi_id?'<form data-kind="payment">'+choose("Program","program_id",options(ps))+field("Transaction UTR","utr","text","",true)+'<label class="field"><span>Payment screenshot (PNG / JPG / WebP, max 5 MB)</span><input class="input" type="file" name="proof_file" accept="image/png,image/jpeg,image/webp" required></label><div class="alert warning">Your UTR and screenshot are submitted for verification. Only a matching actual bank credit activates enrollment.</div><button class="btn btn-primary">Submit for bank verification</button></form>':""))+'</div><div>'+card("Enrolled programs",mine.length?mine.map(x=>row("▦",p(x.program_id)?.title||"Program",x.offer_letter_code||"Offer letter pending",tag(x.status))).join(""):empty("No enrollments","Purchase verification is required."))+"</div></div>"}
+function enrollment(){let ps=D.programs.filter(x=>["published","ongoing"].includes(x.status)&&!x.is_test),mine=D.enrollments.filter(x=>x.student_id===user.id);return title("My enrollments","Enrollment activates after manual verification of actual bank credit.")+'<div class="two-col"><div>'+card("UPI enrollment",paymentInstructions()+(upi.upi_id?'<form data-kind="payment">'+choose("Program","program_id",options(ps))+field("Transaction UTR","utr","text","",true)+'<label class="field"><span>Payment screenshot (PNG / JPG / WebP, max 5 MB)</span><input class="input" type="file" name="proof_file" accept="image/png,image/jpeg,image/webp" required></label><div class="alert warning">Your UTR and screenshot are submitted for verification. Only a matching actual bank credit activates enrollment.</div><button class="btn btn-primary">Submit for bank verification</button></form>':""))+'</div><div>'+card("Enrolled programs",mine.length?mine.map(x=>row("▦",p(x.program_id)?.title||"Program",x.is_test?"QA TEST ACCESS — NO PAYMENT":x.offer_letter_code||"Offer letter pending",tag(x.is_test?"Test only":x.status))).join(""):empty("No enrollments","Purchase verification is required."))+"</div></div>"}
 function upiForm(){return '<form data-kind="upi">'+field("Official UPI ID","upi_id","text",upi.upi_id||"",true)+field("Payee","payee","text",upi.payee||"",true)+field("QR image HTTPS URL","qr_url","url",upi.qr_url||"")+notes("Student instructions","instructions")+'<button class="btn btn-primary">Save payment settings</button></form>'}
 function payments(){
  let pending=D.payment_claims.filter(x=>x.status==="pending").slice().sort((a,b)=>String(a.created_at).localeCompare(String(b.created_at)));
@@ -541,8 +541,8 @@ function documents(){
  const mine=D.enrollments.filter(x=>x.student_id===user.id);
  const certs=D.certificates.filter(x=>x.student_id===user.id);
  const letters=mine.length?mine.map(x=>row("▣",p(x.program_id)?.title||"Program",
- x.offer_letter_code||"Pending",
- click("Print / Save PDF","letter",x.id,"btn-primary"))).join(""):empty("No offer letters","Offer letters are available after verified UPI enrollment.");
+ x.is_test?"QA seat — no bank payment":x.offer_letter_code||"Pending",
+ x.is_test?tag("Not a real document"):click("Print / Save PDF","letter",x.id,"btn-primary"))).join(""):empty("No offer letters","Offer letters are available after verified UPI enrollment.");
  const certificates=certs.length?certs.map(x=>row("✧",p(x.program_id)?.title||"Program",x.code,
  click("Print / Save PDF","certificate-print",x.id,"btn-primary"))).join(""):empty("No certificates yet","Guide recommendation and admin approval are required.");
  return title("My documents","Verifiable offer letters and completion certificates, with a unique document ID.")
@@ -552,6 +552,7 @@ function printCredential(kind,id){
  let item=kind==="certificate"?D.certificates.find(x=>x.id===id):D.enrollments.find(x=>x.id===id);
  if(!item){notice("Document not found.","error");return}
  const program=p(item.program_id);
+ if(item.is_test||program?.is_test){notice("QA test enrollments do not issue verified documents.","error");return}
  const code=kind==="certificate"?item.code:item.offer_letter_code;
  if(!code){notice("Document code is not ready.","error");return}
  let name=kind==="certificate"?item.issued_name:item.offer_letter_name;
@@ -641,6 +642,60 @@ function refreshProgramPreview(form){
 }
 
 function settings(){return title("Website settings","Manage verified payment information and connected services.")+card("Official UPI payment configuration",upiForm())+card("Authentication & live classes",'<div class="alert success"><b>Google Sign-In is active.</b><br>HackSphere authentication is connected to Supabase. Your first Administrator account is authorized.</div><div class="alert warning" style="margin-top:10px"><b>Google Meet automatic creation not connected.</b><br>Trainer-specific OAuth and secure server-side Meet API setup are still required.</div>')}
+
+function parseCsv(text){
+ if(text.length>2000000)throw Error("CSV exceeds 2 MB limit");
+ const result=[];let current=[],cell="",inside=false;
+ text=text.replace(/^\uFEFF/,"").replace(/\r\n/g,"\n");
+ for(let i=0;i<text.length;i++){
+  let c=text[i];
+  if(c==='"'){
+   if(inside&&text[i+1]==='"'){cell+='"';i++}else inside=!inside;
+  }else if(c===','&&!inside){current.push(cell.trim());cell=""}
+  else if(c==='\n'&&!inside){current.push(cell.trim());if(current.some(Boolean))result.push(current);current=[];cell=""}
+  else cell+=c;
+ }
+ if(inside)throw Error("Unclosed CSV quote");
+ current.push(cell.trim());if(current.some(Boolean))result.push(current);
+ if(result.length<2)throw Error("CSV has no data rows");
+ const header=result.shift().map(x=>x.trim().toLowerCase());
+ const fields=["day","phase","activity_type","title","description","live","start_time","duration_minutes"];
+ for(let k of ["day","phase","activity_type","title"])if(!header.includes(k))throw Error("Missing column: "+k);
+ const data=result.map((cells,idx)=>{
+  if(cells.length>header.length)throw Error("Extra column at CSV row "+(idx+2));
+  let obj={};header.forEach((h,j)=>obj[h]=cells[j]||"");
+  let row={};fields.forEach(k=>row[k]=obj[k]||"");row.day=String(row.day).trim();return row;
+ });
+ return data;
+}
+async function importCsvSchedule(form){
+ const file=form.querySelector('input[name="schedule_file"]')?.files?.[0];
+ if(!file||file.size>2000000){notice("Choose a CSV file under 2 MB.","error");return}
+ const programId=form.dataset.program,pr=p(programId);if(!pr){notice("Program not found.","error");return}
+ let entries;
+ try{entries=parseCsv(await file.text());for(let i=0;i<entries.length;i++){const x=entries[i],n=Number(x.day);
+   if(!Number.isInteger(n)||n<1||n>total(pr))throw Error("Row "+(i+2)+": day must be between 1 and "+total(pr));
+   if((n<=pr.training_days?"training":"internship")!==x.phase)throw Error("Row "+(i+2)+": phase does not match date");
+   if(!["lecture","recording","assignment","quiz","project","milestone","resource"].includes(x.activity_type))throw Error("Row "+(i+2)+": invalid activity");
+   if(x.title.length<3||x.title.length>160)throw Error("Row "+(i+2)+": title length invalid");
+   if(["yes","true","1"].includes(x.live.toLowerCase())&&(!/^\d{2}:\d{2}$/.test(x.start_time)||!["lecture","project","milestone"].includes(x.activity_type)))throw Error("Row "+(i+2)+": invalid live class time/type");
+ }}catch(err){notice("CSV error: "+err.message,"error");return}
+ const live=entries.filter(r=>["yes","true","1"].includes(r.live.toLowerCase())).length;
+ if(!confirm("Import "+entries.length+" activities and schedule "+live+" live classes for "+pr.title+"? Existing identical dated titles will be skipped. Google Meet links will remain pending OAuth."))return;
+ if(demo){
+   for(const x of entries){if(D.timeline_events.some(e=>e.program_id===programId&&e.scheduled_date===day(pr.start_date,Number(x.day)-1)&&e.title===x.title))continue;
+    const id="demo-import-"+Math.random().toString(36).slice(2),scheduled_date=day(pr.start_date,Number(x.day)-1);
+    D.timeline_events.push({id,program_id:programId,phase:x.phase,activity_type:x.activity_type,scheduled_date,title:x.title,description:x.description});
+    if(["yes","true","1"].includes(x.live.toLowerCase()))D.live_sessions.push({id:"demo-live-"+id,program_id:programId,timeline_event_id:id,title:"Live: "+x.title,session_date:scheduled_date,start_time:x.start_time,meet_status:"pending_authorization",status:"scheduled"});
+   }
+   notice("Imported into preview only.","success");render();return;
+ }
+ const result=await db.rpc("import_program_schedule",{_program_id:programId,_rows:entries});
+ if(result.error){notice("Import failed: "+result.error.message,"error");return}
+ await reload();render();
+ notice(result.data.inserted+" activities imported; "+result.data.duplicates_skipped+" duplicates skipped; "+result.data.live_classes_scheduled+" Meet authorizations pending.","success");
+}
+
 document.addEventListener("click",async e=>{let b=e.target.closest("[data-action]");if(!b)return;e.preventDefault();let a=b.dataset.action,id=b.dataset.id;if(a==="login")loginDialog();else if(a==="close-login")hideDialog();else if(a==="google-login")signIn();else if(a==="demo")demoOpen();else if(a==="toggle-public-menu")$("mobile-links").hidden=!$("mobile-links").hidden;else if(a==="open-drawer")$("app-shell").classList.add("drawer-open");else if(a==="close-drawer")$("app-shell").classList.remove("drawer-open");else if(a==="signout")signOut();else if(a==="home")publicPage();else if(a==="navigate"){navigateTo(b.dataset.view)}else if(a==="open-course"){navigateTo("courses",id)}else if(a==="close-course"){navigateTo("courses")}else if(a==="lesson"){lesson=id;render()}else if(a==="enroll-public"){if(!user)loginDialog();else{navigateTo("enrollment");open()}}else if(a==="timeline-prev"){timelineOffset=Math.max(0,timelineOffset-1);render()}else if(a==="timeline-next"){timelineOffset=(timelineOffset+1)%Math.ceil(total(p(course||selectedPrograms()[0]?.id))/14);render()}else if(a==="secure-resource"){let event=D.timeline_events.find(x=>x.id===id);if(!event?.resource_url)return;let path=event.resource_url.replace("storage://hacksphere-course-files/","");if(demo){notice("Preview only — no private recording file is stored.");return}let r=await db.storage.from("hacksphere-course-files").createSignedUrl(path,600);if(r.error){notice(r.error.message,"error");return}if(/\.(mp4|webm)$/i.test(path)){let player=$("course-player");player.innerHTML='<video controls autoplay playsinline src="'+esc(r.data.signedUrl)+'"></video>';}else window.open(r.data.signedUrl,"_blank","noopener,noreferrer")}else if(a==="program-new"){navigateTo("program-new")}
 else if(a==="program-detail"){navigateTo("program-detail",id)}else if(a==="program-edit"){navigateTo("program-edit",id)}
 else if(a==="program-timeline"){navigateTo("timeline",id)}
@@ -663,7 +718,8 @@ document.addEventListener("change",e=>{
 document.addEventListener("input",e=>{if(e.target.closest('form[data-kind="program"]'))refreshProgramPreview(e.target.closest('form[data-kind="program"]'));if(e.target.id==="catalog-search"){search=e.target.value;drawCatalog()}});
 document.addEventListener("click",e=>{let b=e.target.closest("[data-filter]");if(!b)return;filter=b.dataset.filter;document.querySelectorAll("[data-filter]").forEach(x=>x.classList.toggle("active",x.dataset.filter===filter));drawCatalog()});
 document.addEventListener("submit",async e=>{let form=e.target.closest("form[data-kind]");if(!form)return;e.preventDefault();let f=Object.fromEntries(new FormData(form).entries()),type=form.dataset.kind;
-if(type==="program"){
+if(type==="csv-schedule"){await importCsvSchedule(form)}
+else if(type==="program"){
  f.training_days=+f.training_days;f.internship_days=+f.internship_days;f.fee_inr=+f.fee_inr;
  if(!f.trainer_id||!f.guide_id){notice("Choose an assigned Trainer and Internship Guide first.","error");return}
  if(demo){
