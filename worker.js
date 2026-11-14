@@ -4,9 +4,162 @@ const CSS = __CSS_JSON__;
 const APP = __APP_JSON__;
 const baseHeaders = {"x-content-type-options":"nosniff","x-frame-options":"DENY","referrer-policy":"strict-origin-when-cross-origin","permissions-policy":"camera=(),microphone=(),geolocation=()"};
 function respond(body,type,cache="no-store",status=200){return new Response(body,{status,headers:{...baseHeaders,"content-type":type,"cache-control":cache}})}
+
+// R2 video gateway. Uses the existing site's origin to keep session cookies first-party.
+// Supabase Auth validates the JWT; Postgres RPC validates ownership, purchase and release.
+const videoReply=(message,status,more={})=>new Response(JSON.stringify({error:message}),{
+ status,headers:{"content-type":"application/json","cache-control":"no-store",
+ "x-content-type-options":"nosniff",...more}});
+const videoJson=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,
+ headers:{"content-type":"application/json","cache-control":"no-store",
+ "x-content-type-options":"nosniff",...headers}});
+const videoGuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function videoBearer(request,cookiesAllowed=false){
+ let h=request.headers.get("authorization")||"";
+ if(h.startsWith("Bearer "))return h.slice(7);
+ if(!cookiesAllowed)return "";
+ let cookie=(request.headers.get("cookie")||"").split(";").map(x=>x.trim())
+    .find(x=>x.startsWith("hs_stream_auth="));
+ if(!cookie)return "";
+ try{return decodeURIComponent(cookie.slice("hs_stream_auth=".length))}catch(e){return ""}
+}
+async function videoSupabase(request,env,allowCookie=false){
+ const token=videoBearer(request,allowCookie);
+ if(token.length<60||token.length>8000||!env.SUPABASE_URL||!env.SUPABASE_PUBLISHABLE_KEY)return null;
+ const url=env.SUPABASE_URL.replace(/\/$/,"");
+ const headers={Authorization:"Bearer "+token,apikey:env.SUPABASE_PUBLISHABLE_KEY};
+ let user=null;
+ try{
+  const r=await fetch(url+"/auth/v1/user",{headers});
+  if(!r.ok)return null;
+  user=await r.json();
+  if(!user?.id||!videoGuid.test(user.id))return null;
+ }catch(e){return null}
+ return {user,token,headers,url};
+}
+async function videoRpc(ctx,name,args){
+ try{
+  const r=await fetch(ctx.url+"/rest/v1/rpc/"+name,{
+   method:"POST",headers:{...ctx.headers,"content-type":"application/json"},
+   body:JSON.stringify(args)});
+  if(!r.ok)return null;
+  return await r.json();
+ }catch(e){return null}
+}
+function parseVideoRange(value,total){
+ if(!value)return {partial:false,start:0,end:total-1};
+ if(!/^bytes=(?:\d+-\d*|-\d+)$/.test(value))return null;
+ const raw=value.slice(6),p=raw.split("-");
+ let start,end;
+ if(p[0]===""){const length=Number(p[1]);if(!Number.isSafeInteger(length)||length<=0)return null;
+  start=Math.max(0,total-length);end=total-1;
+ }else{
+  start=Number(p[0]);
+  if(!Number.isSafeInteger(start)||start>=total)return null;
+  end=p[1]===""?total-1:Number(p[1]);
+  if(!Number.isSafeInteger(end)||end<start)return null;
+  end=Math.min(end,total-1);
+ }
+ return {partial:true,start,end};
+}
+async function routePrivateVideos(request,env,path){
+ const match=path.match(/^\/api\/videos\/([0-9a-f-]{36})\/(session|upload|stream)$/i);
+ if(path==="/api/videos/status"){
+  if(request.method!=="GET")return videoReply("Method not allowed",405,{allow:"GET"});
+  return videoJson({r2Connected:!!env.COURSE_VIDEOS,maxUploadBytes:99614720,accept:"video/mp4"});
+ }
+ if(!env.COURSE_VIDEOS)return videoReply(
+   "Private R2 video storage is not activated yet. Enable R2 and attach COURSE_VIDEOS binding.",
+   503);
+ if(path==="/api/videos/prepare"&&request.method==="POST"){
+  const ctx=await videoSupabase(request,env);if(!ctx)return videoReply("Sign in as a Trainer or Guide",401);
+  let input;try{input=await request.json()}catch(e){return videoReply("Invalid JSON",400)}
+  if(!videoGuid.test(String(input?.event_id||""))||typeof input?.title!=="string"||
+    !Number.isSafeInteger(input?.size_bytes)||input.size_bytes<1||input.size_bytes>99614720)
+      return videoReply("Expected MP4 class, title and size <= 95 MiB",400);
+  const video=await videoRpc(ctx,"prepare_video_upload",{
+   _event_id:input.event_id,_title:input.title,_size_bytes:input.size_bytes});
+  if(!video?.id||!video?.object_key)return videoReply("Class upload not authorized",403);
+  return videoJson({id:video.id,maxUploadBytes:99614720});
+ }
+ if(!match)return videoReply("Video route not found",404);
+ const videoId=match[1],verb=match[2];
+ if(!videoGuid.test(videoId))return videoReply("Invalid video identifier",400);
+ if(verb==="upload"&&request.method==="PUT"){
+  const ctx=await videoSupabase(request,env);if(!ctx)return videoReply("Login expired",401);
+  if(request.headers.get("content-type")?.split(";")[0]!=="video/mp4")
+    return videoReply("Only MP4 video files are accepted",415);
+  const bytes=Number(request.headers.get("content-length")||0);
+  if(!Number.isSafeInteger(bytes)||bytes<1||bytes>99614720)
+    return videoReply("MP4 must be 1 byte to 95 MiB",413);
+  const authorized=await videoRpc(ctx,"authorize_video_upload",{_video_id:videoId});
+  if(!authorized?.object_key||authorized.size_bytes!==bytes)
+    return videoReply("Not the designated host, session expired, or file size changed",403);
+  const key=authorized.object_key;
+  if(!request.body)return videoReply("No upload body",400);
+  try{
+   await env.COURSE_VIDEOS.put(key,request.body,{
+    httpMetadata:{contentType:"video/mp4",cacheControl:"private, no-store"},
+    customMetadata:{videoId,uploadedBy:ctx.user.id}
+   });
+  }catch(e){return videoReply("R2 upload failed; retry with the original MP4",502)}
+  const completed=await videoRpc(ctx,"finish_video_upload",{
+    _video_id:videoId,_size_bytes:bytes});
+  if(completed!==true){
+   await env.COURSE_VIDEOS.delete(key).catch(()=>{});
+   return videoReply("Video received but registration failed; retry",502);
+  }
+  return videoJson({success:true,videoId},201);
+ }
+ if(verb==="session"&&request.method==="POST"){
+  const ctx=await videoSupabase(request,env);if(!ctx)return videoReply("Login required",401);
+  const access=await videoRpc(ctx,"authorize_video_stream",{_video_id:videoId});
+  if(!access?.object_key)return videoReply("Active purchase or lesson release required",403);
+  // Media elements cannot attach Authorization headers; a short-lived first-party
+  // HttpOnly cookie is sent only to this Worker path. The JWT is revalidated on each range.
+  const cookie="hs_stream_auth="+encodeURIComponent(ctx.token)+
+    "; Path=/api/videos/; Max-Age=3300; HttpOnly; Secure; SameSite=Strict";
+  return videoJson({streamUrl:"/api/videos/"+videoId+"/stream"},200,{"set-cookie":cookie});
+ }
+ if(verb==="stream"&&(request.method==="GET"||request.method==="HEAD")){
+  const ctx=await videoSupabase(request,env,true);if(!ctx)return videoReply("Session expired",401);
+  const access=await videoRpc(ctx,"authorize_video_stream",{_video_id:videoId});
+  if(!access?.object_key)return videoReply("Active purchase or release date required",403);
+  let object;
+  try{object=await env.COURSE_VIDEOS.head(access.object_key)}catch(e){return videoReply("R2 storage temporarily unavailable",502)}
+  if(!object)return videoReply("Recording not uploaded",404);
+  const total=object.size;
+  if(!Number.isSafeInteger(total)||total<=0)return videoReply("Recording unavailable",502);
+  const parsed=parseVideoRange(request.headers.get("range"),total);
+  if(!parsed)return new Response(null,{status:416,headers:{
+   "accept-ranges":"bytes","content-range":"bytes */"+total,
+   "cache-control":"private, no-store","x-content-type-options":"nosniff"}});
+  const partLength=parsed.end-parsed.start+1;
+  const headers=new Headers({
+   "content-type":"video/mp4","content-length":String(partLength),
+   "accept-ranges":"bytes","cache-control":"private, no-store",
+   "content-disposition":"inline","x-content-type-options":"nosniff",
+   "cross-origin-resource-policy":"same-origin",
+   "x-frame-options":"DENY"
+  });
+  if(object.httpEtag)headers.set("etag",object.httpEtag);
+  if(parsed.partial)headers.set("content-range",
+    "bytes "+parsed.start+"-"+parsed.end+"/"+total);
+  if(request.method==="HEAD")return new Response(null,{status:parsed.partial?206:200,headers});
+  let result;
+  try{result=await env.COURSE_VIDEOS.get(access.object_key,parsed.partial?
+      {range:{offset:parsed.start,length:partLength}}:undefined)}
+  catch(e){return videoReply("Unable to read the recording",502)}
+  if(!result||!("body" in result))return videoReply("Recording unavailable",404);
+  return new Response(result.body,{status:parsed.partial?206:200,headers});
+ }
+ return videoReply("Method not allowed",405,{allow:verb==="upload"?"PUT":verb==="session"?"POST":"GET, HEAD"});
+}
+
 export default {
  async fetch(request,env){
    const url=new URL(request.url),path=url.pathname;
+   if(path.startsWith("/api/videos/"))return routePrivateVideos(request,env,path);
    if(path==="/api/health")return Response.json({name:"HackSphere",status:"ok",databaseConfigured:!!(env.SUPABASE_URL&&env.SUPABASE_PUBLISHABLE_KEY)},{headers:{"cache-control":"no-store"}});
    if(path==="/api/config")return Response.json({supabaseUrl:env.SUPABASE_URL||"",supabasePublishableKey:env.SUPABASE_PUBLISHABLE_KEY||""},{headers:{"cache-control":"no-store"}});
    if(path==="/favicon.svg")return respond('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="g" x2="1" y2="1"><stop stop-color="#12c4ae"/><stop offset="1" stop-color="#087e7b"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#g)"/><path d="M35 7 16 35h15l-5 22 22-32H33z" fill="#fff"/></svg>',"image/svg+xml; charset=utf-8","public, max-age=86400");
