@@ -686,7 +686,23 @@ function refreshProgramPreview(form){
  set("preview-intern-start",start&&t>0?date(day(start,t)):"Calculated automatically");
 }
 
-function settings(){return title("Website settings","Manage verified payment information and connected services.")+card("Official UPI payment configuration",upiForm())+card("Authentication & live classes",'<div class="alert success"><b>Google Sign-In is active.</b><br>HackSphere authentication is connected to Supabase. Your first Administrator account is authorized.</div><div class="alert warning" style="margin-top:10px"><b>Google Meet automatic creation not connected.</b><br>Trainer-specific OAuth and secure server-side Meet API setup are still required.</div>')}
+function merchantForm(){
+ const v=D.site_settings.find(x=>x.key==="legal_business")?.value||{};
+ const ready=Boolean(v.business_name&&v.support_email&&v.address&&v.refund_policy);
+ return '<div class="alert '+(ready?'success':'warning')+'">'+(ready?'Merchant policy fields are filled. Verify their accuracy before payment-gateway review.':'Merchant policy fields are incomplete. Real business contact, address and refund rules are required before gateway review.')+'</div>'+
+ '<form data-kind="merchant">'+
+ field("Legal business / operating name","business_name","text",v.business_name||"",true)+
+ choose("Entity type","legal_entity_type",[["","Choose type"],["Individual / unregistered business","Individual / unregistered business"],["Sole proprietorship","Sole proprietorship"],["Partnership","Partnership"],["LLP","LLP"],["Private limited company","Private limited company"]],v.legal_entity_type||"")+
+ '<div class="form-grid">'+field("Customer support email","support_email","email",v.support_email||"",true)+field("Support phone","support_phone","tel",v.support_phone||"")+'</div>'+
+ notes("Physical business address","address",v.address||"")+
+ field("Support availability","support_hours","text",v.support_hours||"")+
+ notes("Approved refund & cancellation policy (include eligibility, process and timeline)","refund_policy",v.refund_policy||"")+
+ field("Privacy requests email (optional)","privacy_contact","email",v.privacy_contact||"")+
+ '<button class="btn btn-primary">Publish verified merchant details</button></form>'+
+ '<div class="form-actions" style="margin-top:14px"><a class="btn btn-outline" href="/contact" target="_blank">View contact page ↗</a><a class="btn btn-outline" href="/refunds" target="_blank">View refund policy ↗</a></div>';
+}
+
+function settings(){return title("Website settings","Manage verified payment information and connected services.")+card("Official UPI payment configuration",upiForm())+card("Merchant information & public policies",merchantForm())+card("Authentication & live classes",'<div class="alert success"><b>Google Sign-In is active.</b><br>HackSphere authentication is connected to Supabase. Your first Administrator account is authorized.</div><div class="alert warning" style="margin-top:10px"><b>Google Meet automatic creation not connected.</b><br>Trainer-specific OAuth and secure server-side Meet API setup are still required.</div>')}
 
 function parseCsv(text){
  if(text.length>2000000)throw Error("CSV exceeds 2 MB limit");
@@ -821,6 +837,7 @@ else if(type==="quiz-attempt"){
  if(r.error){notice("Quiz failed: "+r.error.message,"error");return}
  await reload();render();notice("Quiz scored: "+r.data.score+" / "+r.data.max_score+" ("+r.data.percentage+"%)","success");
 }
+else if(type==="merchant"){await save("site_settings",{key:"legal_business",value:f,updated_by:user.id})}
 else if(type==="score"){f.score=+f.score;f.max_score=+f.max_score;f.evaluator_id=user.id;await save("evaluations",f)}
 else if(type==="payment"){const file=form.querySelector('input[name="proof_file"]')?.files?.[0];if(!file||!["image/png","image/jpeg","image/webp"].includes(file.type)||file.size>5242880){notice("Upload a valid screenshot under 5 MB.","error");return}delete f.proof_file;f.student_id=user.id;f.amount_inr=p(f.program_id).fee_inr;if(demo){f.proof_path="demo-student/preview.png";await save("payment_claims",f)}else{const ext=file.type==="image/png"?"png":file.type==="image/webp"?"webp":"jpg";const path=user.id+"/"+crypto.randomUUID()+"."+ext;let uploaded=await db.storage.from("hacksphere-payment-proofs").upload(path,file,{contentType:file.type,upsert:false});if(uploaded.error){notice(uploaded.error.message,"error");return}f.proof_path=path;await save("payment_claims",f)}}
 else if(type==="upi"){upi=f;await save("site_settings",{key:"payments_upi",value:f,updated_by:user.id})}
@@ -829,6 +846,40 @@ else if(type==="trainer"){f.role="trainer";f.assigned_by=user.id;await save("pro
 else if(type==="guide"){f.allocated_by=user.id;await save("guide_allocations",f)}
 else if(type==="recommend"){f.guide_user_id=user.id;await save("completion_recommendations",f)}});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){hideDialog();$("app-shell").classList.remove("drawer-open")}});
-async function init(){try{if(location.pathname.startsWith("/preview/")){demo=true;reset();seed();user={id:"demo-student",email:"student@example.com",user_metadata:{full_name:"Preview Learner"}};readRoute();open();return}let r=await fetch("/api/config",{cache:"no-store"}),config=await r.json();if(config.supabaseUrl&&config.supabasePublishableKey&&window.supabase){db=window.supabase.createClient(config.supabaseUrl,config.supabasePublishableKey);let x=await db.auth.getUser();if(x.data.user){user=x.data.user;await reload();if(location.pathname==="/"&&D.staff_roles.some(r=>r.user_id===user.id&&r.role==="admin"))role="admin";open()}else catalog();let verify=new URLSearchParams(location.search).get("verify");if(verify)showVerification(verify)}else drawCatalog()}catch(e){console.warn(e);drawCatalog()}}
+
+const LEGAL_PAGES={"/about":"About HackSphere","/contact":"Contact & support","/pricing":"Programs & pricing","/terms":"Terms & conditions","/privacy":"Privacy policy","/refunds":"Refund & cancellation policy","/delivery":"Digital delivery policy"};
+async function showLegalPage(){
+ const name=LEGAL_PAGES[location.pathname];if(!name)return false;
+ let b={};
+ if(db){try{let r=await db.rpc("get_hacksphere_public_business");if(!r.error)b=r.data||{}}catch(e){}}
+ let contact=(b.support_email?'<a href="mailto:'+esc(b.support_email)+'">'+esc(b.support_email)+'</a>':'Support email: pending business confirmation');
+ let phone=b.support_phone?'<p><b>Phone:</b> '+esc(b.support_phone)+'</p>':'';
+ let address=b.address?'<p><b>Business address:</b> '+esc(b.address)+'</p>':'Business address: pending verified merchant details';
+ let businessName=b.business_name||"HackSphere";
+ let legalContact='<div class="legal-contact"><h3>Contact the operator</h3><p><b>Name:</b> '+esc(businessName)+'</p><p><b>Email:</b> '+contact+'</p>'+phone+'<p>'+address+'</p>'+(b.support_hours?'<p><b>Support hours:</b> '+esc(b.support_hours)+'</p>':'')+'</div>';
+ const sections={
+ "/about":'<p>HackSphere is an online learning management platform focused on structured technical training, project assignments and guided internship-style projects. Each course shows its own duration, published schedule, delivery format and fee.</p><h2>How learning works</h2><p>Student access follows the scheduled program calendar. Trainer evaluations and Internship Guide reviews are tracked separately, and any final completion certificate requires administrator approval.</p><p>HackSphere is not an employment placement agency. Enrollment does not guarantee a job, stipend, government accreditation or campus recruitment.</p>',
+ "/contact":'<p>Use the verified support details below for questions about courses, payment verification, account access, cancellations or refunds. Please include your program and enrollment reference—not passwords or card details.</p>'+legalContact,
+ "/pricing":'<p>Program prices, duration, start dates and available modes are shown on the published course cards. The amount shown for a course is the program enrollment fee in INR, unless a published offer states otherwise.</p><div id="public-price-list" class="policy-price-list"></div><p>During manual UPI enrollment, payment instructions are displayed only after the administrator configures official payment details. A submitted UTR is not proof of payment until actual bank credit is verified. Gateway checkout will be introduced only after a compliant merchant onboarding and integration process.</p>',
+ "/terms":'<h2>Digital learning service</h2><p>By signing up, students receive access to the specific training and project internship schedule attached to an approved enrollment. Course dates, materials and instructor activities are program-specific. Future content unlocks by date, irrespective of past evaluation scores.</p><h2>Accounts and acceptable use</h2><p>Each person must use their own Google identity. Sharing login access, redistributing protected videos, misrepresenting assignment work or attempting to bypass restricted content is not permitted. Trainers and Internship Guides require administrator authorization.</p><h2>Fees and certificates</h2><p>Enrollment becomes active after verified payment or a separately disclosed authorized scholarship/test grant. A project certificate is issued only after the required completion review; participation alone does not guarantee certification or employment. See the Refunds & cancellations policy for any published refund terms.</p><h2>Support</h2>'+legalContact,
+ "/privacy":'<h2>Information collected</h2><p>HackSphere uses Google account identity (name, email and provider identifier), enrolled programs, learning progress, quiz attempts, assignment links, feedback and certificate information. For manual UPI payment verification, the service may process the UTR and a payment-proof screenshot. Do not upload card numbers or banking passwords.</p><h2>Purpose and access</h2><p>Information is used to authenticate accounts, operate courses, assess submissions, verify enrollments and issue eligible documents. Admin, assigned Trainer, designated Internship Guide and the enrolled student have role-scoped access. Future content and private recordings are governed by server-side access policies.</p><h2>Service providers</h2><p>HackSphere uses Google OAuth for identity, Supabase for application data and private storage, and Cloudflare for website delivery. Google Meet may be used for live classes when enabled. Payment gateway providers may be introduced in the future, subject to their applicable notices and consent requirements.</p><h2>Privacy enquiries</h2><p>To request access, correction or deletion of personal data, contact the designated business support address. Operational retention and grievance contact details must be confirmed by the merchant before public payment-gateway launch.</p>'+legalContact,
+ "/refunds":b.refund_policy?.trim()?'<div class="legal-policy-text">'+esc(b.refund_policy)+'</div>'+legalContact:'<div class="alert warning"><b>Refund and cancellation policy not yet published.</b><br>The business operator must approve and publish an accurate policy covering eligibility, request process, refund method and processing timeline before accepting public payments or submitting the site for payment-gateway review.</div>'+legalContact,
+ "/delivery":'<h2>Digital service — no physical shipping</h2><p>HackSphere delivers access to online training materials, lessons and project dashboards electronically after approved enrollment. No physical product is shipped.</p><h2>Access timelines</h2><p>Students receive their account access after successful Google authentication and confirmation of their enrollment. A UPI claim is reviewed against actual bank credit; approval is manual. Specific lessons are released on their scheduled program dates, and internship activities follow the defined internship phase.</p><h2>Delivery enquiries</h2>'+legalContact
+ };
+ let nav='<nav class="legal-pill-nav" aria-label="Information pages">'+Object.entries(LEGAL_PAGES).map(([path,label])=>'<a class="'+(path===location.pathname?'active':'')+'" href="'+path+'">'+esc(label)+'</a>').join("")+'</nav>';
+ const html='<section class="legal-page"><div class="container"><div class="legal-hero"><div class="eyebrow">HACKSPHERE · PLATFORM INFORMATION</div><h1>'+esc(name)+'</h1><p>Clear information about our online learning services.</p></div>'+nav+
+ '<article class="legal-article">'+sections[location.pathname]+'</article></div></section>';
+ const main=document.querySelector('#marketing main');main.innerHTML=html;
+ document.title=name+" | HackSphere";
+ $("marketing").hidden=false;$("app-shell").hidden=true;
+ if(location.pathname==="/pricing"){
+  const list=$("public-price-list");
+  if(db){const r=await db.from("programs").select("title,description,fee_inr,training_days,internship_days,mode,start_date").eq("is_test",false).in("status",["published","ongoing"]).limit(50);if(!r.error&&r.data?.length)list.innerHTML=r.data.map(x=>'<div class="price-row"><div><b>'+esc(x.title)+'</b><small>'+x.training_days+' training + '+x.internship_days+' internship days · '+esc(x.mode)+'</small></div><strong>'+money(x.fee_inr)+'</strong></div>').join("");else list.innerHTML=empty("No public programs yet","Prices will be shown when admissions open.");}
+  else list.innerHTML=empty("Pricing currently unavailable","Try again later.");
+ }
+ return true;
+}
+
+async function init(){try{if(location.pathname.startsWith("/preview/")){demo=true;reset();seed();user={id:"demo-student",email:"student@example.com",user_metadata:{full_name:"Preview Learner"}};readRoute();open();return}let r=await fetch("/api/config",{cache:"no-store"}),config=await r.json();if(config.supabaseUrl&&config.supabasePublishableKey&&window.supabase){db=window.supabase.createClient(config.supabaseUrl,config.supabasePublishableKey);if(await showLegalPage())return;let x=await db.auth.getUser();if(x.data.user){user=x.data.user;await reload();if(location.pathname==="/"&&D.staff_roles.some(r=>r.user_id===user.id&&r.role==="admin"))role="admin";open()}else catalog();let verify=new URLSearchParams(location.search).get("verify");if(verify)showVerification(verify)}else {if(!await showLegalPage())drawCatalog()}}catch(e){console.warn(e);if(!await showLegalPage())drawCatalog()}}
 init();
 })();
