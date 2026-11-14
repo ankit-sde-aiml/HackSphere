@@ -819,3 +819,11 @@ body{font-size:14.5px;line-height:1.55}
  #app-shell.hs-student .app-top small{display:none}
  #app-shell.hs-student .app-top strong{font-size:15px}
 }
+
+@media(min-width:861px) and (max-width:1180px){
+ #app-shell.hs-student .st-classroom-grid{grid-template-columns:1fr;gap:20px}
+ #app-shell.hs-student .st-overview-grid{grid-template-columns:1fr;gap:22px}
+ #app-shell.hs-student .st-overview-side{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+ #app-shell.hs-student .st-curriculum{max-width:none}
+}
+#app-shell.hs-student .role-select[hidden]{display:none!important}
