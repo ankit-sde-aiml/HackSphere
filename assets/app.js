@@ -419,7 +419,7 @@ function timeline(){
     +card(program.title,nav+rows.join(""))
     +'</div><div>'+form+'</div></div>';
 }
-function sessions(){let ps=selectedPrograms(),listings=D.live_sessions.filter(s=>ps.some(x=>x.id===s.program_id));return title("Live sessions","Trainer creates the calendar; Google Meet API needs additional OAuth authorization.")+'<div class="two-col"><div>'+card("Class calendar",listings.length?listings.map(s=>row("▷",s.title,date(s.session_date)+" • "+String(s.start_time).slice(0,5)+" IST",role==="student"?(s.meet_status==="ready"?click("Join Live Class","join",s.id,"btn-primary"):'<span class="pill orange">Meet authorization pending</span>'):tag(s.meet_status==="ready"?"Meet ready":"Meeting not connected"))).join(""):empty("No scheduled classes","Trainers will schedule live sessions."))+'</div><div>'+(role==="student"?card("Secure access","You can join only as an active enrolled student during the class time window. Meet controls final admission."):card("Schedule a class",'<div class="alert warning">Google Meet auto-creation is pending trainer OAuth configuration. This calendar saves a session only.</div><form data-kind="session">'+choose("Program","program_id",options(ps))+field("Lecture topic","title","text","",true)+field("Class date","session_date","date","",true)+field("Start time IST","start_time","time","19:00",true)+field("Duration minutes","duration_minutes","number","60",true)+'<button class="btn btn-primary">Schedule</button></form>'))+"</div></div>"}
+function sessions(){let ps=selectedPrograms(),listings=D.live_sessions.filter(s=>ps.some(x=>x.id===s.program_id));let pending=listings.filter(x=>x.status==="scheduled"&&x.meet_status!=="ready").length;let meetTools=role==="student"?"":'<div class="alert warning" style="margin-bottom:16px"><b>Google Meet authorization</b><br>'+pending+' class(es) await meeting-space creation. Grant Google Meet permission using your Trainer Google account, then HackSphere generates each pending class link in a batch. Google Meet API must be enabled in Google Cloud.</div><div class="form-actions" style="margin-bottom:16px"><button class="btn btn-primary" data-action="meet-consent">Connect Google Meet & generate links ↗</button></div>';return title("Live sessions","Classes follow each program calendar. Access to meeting links is enrollment-checked and time-limited.")+meetTools+'<div class="two-col"><div>'+card("Class calendar",listings.length?listings.map(s=>row("▷",s.title,date(s.session_date)+" • "+String(s.start_time).slice(0,5)+" IST",role==="student"?(s.meet_status==="ready"?click("Join Live Class","join",s.id,"btn-primary"):'<span class="pill orange">Meet authorization pending</span>'):tag(s.meet_status==="ready"?"Meet ready":"Meeting not connected"))).join(""):empty("No scheduled classes","Trainers will schedule live sessions."))+'</div><div>'+(role==="student"?card("Secure access","You can join only as an active enrolled student during the class time window. Meet controls final admission."):card("Schedule a class",'<div class="alert warning">Google Meet auto-creation is pending trainer OAuth configuration. This calendar saves a session only.</div><form data-kind="session">'+choose("Program","program_id",options(ps))+field("Lecture topic","title","text","",true)+field("Class date","session_date","date","",true)+field("Start time IST","start_time","time","19:00",true)+field("Duration minutes","duration_minutes","number","60",true)+'<button class="btn btn-primary">Schedule</button></form>'))+"</div></div>"}
 function eligibleStudents(programId,roleFilter=role){
  let assigned=D.enrollments.filter(e=>e.program_id===programId&&e.status!=="suspended");
  if(roleFilter==="guide")assigned=assigned.filter(e=>D.guide_allocations.some(g=>g.program_id===programId&&g.student_id===e.student_id&&g.guide_user_id===user.id));
@@ -704,6 +704,50 @@ function merchantForm(){
 
 function settings(){return title("Website settings","Manage verified payment information and connected services.")+card("Official UPI payment configuration",upiForm())+card("Merchant information & public policies",merchantForm())+card("Authentication & live classes",'<div class="alert success"><b>Google Sign-In is active.</b><br>HackSphere authentication is connected to Supabase. Your first Administrator account is authorized.</div><div class="alert warning" style="margin-top:10px"><b>Google Meet automatic creation not connected.</b><br>Trainer-specific OAuth and secure server-side Meet API setup are still required.</div>')}
 
+async function connectMeetConsent(){
+ if(demo){notice("Preview mode cannot authorize Google Meet.");return}
+ if(!db||!user){notice("Google Login required.","error");return}
+ try{
+  sessionStorage.setItem("hacksphere_meet_sync","1");
+  const r=await db.auth.signInWithOAuth({provider:"google",options:{
+    redirectTo:location.origin+"/",
+    scopes:"https://www.googleapis.com/auth/meetings.space.created",
+    queryParams:{access_type:"offline",prompt:"consent select_account"}
+  }});
+  if(r.error){sessionStorage.removeItem("hacksphere_meet_sync");notice("Meet consent failed: "+r.error.message,"error")}
+ }catch(e){notice(e.message,"error")}
+}
+let meetSyncRunning=false;
+async function syncPendingMeet(){
+ if(meetSyncRunning||demo||!db||!user)return;
+ meetSyncRunning=true;
+ try{
+  const r=await db.auth.getSession();
+  const session=r.data?.session;
+  if(!session?.access_token||!session?.provider_token){notice("Google Meet permission was not returned. Reconnect from Live classes.","error");return}
+  const assigned=D.program_staff.filter(x=>x.user_id===user.id).map(x=>x.program_id);
+  const guided=D.program_guides.filter(x=>x.user_id===user.id).map(x=>x.program_id);
+  const permitted=new Set([...assigned,...guided]);
+  const pending=D.live_sessions.filter(x=>x.status==="scheduled"&&x.meet_status!=="ready"&&(permitted.has(x.program_id)||role==="admin")).slice(0,100);
+  if(!pending.length){notice("No pending Meet sessions for your assigned programs.","success");return}
+  let passed=0,failed=[];
+  for(const cls of pending){
+   let response;
+   try{
+    response=await fetch("/api/meet/create",{method:"POST",
+     headers:{"Authorization":"Bearer "+session.access_token,"Content-Type":"application/json"},
+     body:JSON.stringify({session_id:cls.id,google_token:session.provider_token})});
+    const payload=await response.json();
+    if(response.ok&&payload.success)passed++;
+    else failed.push((cls.title||cls.id)+": "+(payload.error||response.status));
+   }catch(error){failed.push((cls.title||cls.id)+": "+error.message)}
+  }
+  await reload();render();
+  if(passed)notice("Created "+passed+" restricted Google Meet links.","success");
+  if(failed.length)notice(failed.length+" Meet links failed. "+failed[0],"error");
+ }finally{meetSyncRunning=false}
+}
+
 function parseCsv(text){
  if(text.length>2000000)throw Error("CSV exceeds 2 MB limit");
  const result=[];let current=[],cell="",inside=false;
@@ -764,7 +808,13 @@ else if(a==="staff-invite"){navigateTo("staff-invite")}
 else if(a==="payment-history"){navigateTo("payment-history")}
 else if(a==="payment-settings"){navigateTo("payment-settings")}
 else if(a==="profile"){navigateTo("profile")}
-else if(a==="quiz-publish"){await save("quizzes",{published:true},id)}else if(a==="publish"){let x=p(id);await save("programs",{status:x.status==="draft"?"published":"draft"},id)}else if(a==="proof"){let claim=D.payment_claims.find(x=>x.id===id);if(!claim?.proof_path){notice("No screenshot attached.","error");return}if(demo){notice("Screenshot is not available in preview mode.");return}let r=await db.storage.from("hacksphere-payment-proofs").createSignedUrl(claim.proof_path,300);if(r.error)notice(r.error.message,"error");else window.open(r.data.signedUrl,"_blank","noopener,noreferrer")}else if(a==="approve-pay"||a==="reject-pay"){if(a==="approve-pay"&&!confirm("Have you personally verified the actual bank credit for this transaction?"))return;await save("payment_claims",{status:a==="approve-pay"?"approved":"rejected",reviewed_by:user.id,reviewed_at:new Date().toISOString()},id)}else if(a==="letter"){printCredential("offer_letter",id)}else if(a==="certificate-print"){printCredential("certificate",id)}else if(a==="check-code"){let code=prompt("Enter your HackSphere document ID");if(code)showVerification(code)}else if(a==="close-verify"){document.getElementById("verify-overlay")?.remove()}else if(a==="review-approve"||a==="review-changes"){await save("submissions",{status:a==="review-approve"?"approved":"changes_requested"},id)}else if(a==="certificate"){let x=D.completion_recommendations.find(x=>x.id===id);if(x&&x.recommendation==="recommended"&&confirm("Approve final certificate?"))await save("certificates",{student_id:x.student_id,program_id:x.program_id,approved_by:user.id})}else if(a==="join"){notice("Google Meet account authorization is pending.","error")}});
+else if(a==="quiz-publish"){await save("quizzes",{published:true},id)}else if(a==="publish"){let x=p(id);await save("programs",{status:x.status==="draft"?"published":"draft"},id)}else if(a==="proof"){let claim=D.payment_claims.find(x=>x.id===id);if(!claim?.proof_path){notice("No screenshot attached.","error");return}if(demo){notice("Screenshot is not available in preview mode.");return}let r=await db.storage.from("hacksphere-payment-proofs").createSignedUrl(claim.proof_path,300);if(r.error)notice(r.error.message,"error");else window.open(r.data.signedUrl,"_blank","noopener,noreferrer")}else if(a==="approve-pay"||a==="reject-pay"){if(a==="approve-pay"&&!confirm("Have you personally verified the actual bank credit for this transaction?"))return;await save("payment_claims",{status:a==="approve-pay"?"approved":"rejected",reviewed_by:user.id,reviewed_at:new Date().toISOString()},id)}else if(a==="letter"){printCredential("offer_letter",id)}else if(a==="certificate-print"){printCredential("certificate",id)}else if(a==="check-code"){let code=prompt("Enter your HackSphere document ID");if(code)showVerification(code)}else if(a==="close-verify"){document.getElementById("verify-overlay")?.remove()}else if(a==="review-approve"||a==="review-changes"){await save("submissions",{status:a==="review-approve"?"approved":"changes_requested"},id)}else if(a==="certificate"){let x=D.completion_recommendations.find(x=>x.id===id);if(x&&x.recommendation==="recommended"&&confirm("Approve final certificate?"))await save("certificates",{student_id:x.student_id,program_id:x.program_id,approved_by:user.id})}else if(a==="meet-consent"){await connectMeetConsent()}else if(a==="join"){
+ if(demo){notice("Preview mode cannot join real Google Meet.");return}
+ const win=window.open("","_blank");
+ const r=await db.rpc("get_my_session_join_uri",{_session_id:id});
+ if(r.error){if(win)win.close();notice("Join unavailable: "+r.error.message,"error");return}
+ if(win){win.opener=null;win.location.href=r.data}else notice("Please allow popups to join the class.","error");
+}});
 document.addEventListener("change",e=>{
  if(e.target.id==="role-switch"){role=e.target.value;navigateTo("overview");return}
  const f=e.target.closest("form[data-kind]");
@@ -880,6 +930,11 @@ async function showLegalPage(){
  return true;
 }
 
-async function init(){try{if(location.pathname.startsWith("/preview/")){demo=true;reset();seed();user={id:"demo-student",email:"student@example.com",user_metadata:{full_name:"Preview Learner"}};readRoute();open();return}let r=await fetch("/api/config",{cache:"no-store"}),config=await r.json();if(config.supabaseUrl&&config.supabasePublishableKey&&window.supabase){db=window.supabase.createClient(config.supabaseUrl,config.supabasePublishableKey);if(await showLegalPage())return;let x=await db.auth.getUser();if(x.data.user){user=x.data.user;await reload();if(location.pathname==="/"&&D.staff_roles.some(r=>r.user_id===user.id&&r.role==="admin"))role="admin";open()}else catalog();let verify=new URLSearchParams(location.search).get("verify");if(verify)showVerification(verify)}else {if(!await showLegalPage())drawCatalog()}}catch(e){console.warn(e);if(!await showLegalPage())drawCatalog()}}
+async function init(){try{if(location.pathname.startsWith("/preview/")){demo=true;reset();seed();user={id:"demo-student",email:"student@example.com",user_metadata:{full_name:"Preview Learner"}};readRoute();open();return}let r=await fetch("/api/config",{cache:"no-store"}),config=await r.json();if(config.supabaseUrl&&config.supabasePublishableKey&&window.supabase){db=window.supabase.createClient(config.supabaseUrl,config.supabasePublishableKey);if(await showLegalPage())return;let x=await db.auth.getUser();if(x.data.user){user=x.data.user;await reload();if(location.pathname==="/"){const assigned=D.staff_roles.filter(r=>r.user_id===user.id).map(r=>r.role);role=assigned.includes("admin")?"admin":assigned.includes("trainer")?"trainer":assigned.includes("guide")?"guide":"student"}open();
+ if(sessionStorage.getItem("hacksphere_meet_sync")==="1"){
+ sessionStorage.removeItem("hacksphere_meet_sync");
+ setTimeout(()=>syncPendingMeet(),1000);
+ }
+ }else catalog();let verify=new URLSearchParams(location.search).get("verify");if(verify)showVerification(verify)}else {if(!await showLegalPage())drawCatalog()}}catch(e){console.warn(e);if(!await showLegalPage())drawCatalog()}}
 init();
 })();
