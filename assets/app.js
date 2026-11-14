@@ -164,10 +164,42 @@ if(role==="student"&&page==="enrollment"&&studentEnrollmentChoice){
 const v2ProgramMentors=pid=>(D.program_mentors||[]).filter(x=>x.program_id===pid);
 const v2DateTime=x=>{try{return new Date(x).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short",timeZone:"Asia/Kolkata"})}catch{return String(x||"")}};
 function globalEventsV2(){
- const admin=role==="admin",all=(D.global_events||[]).filter(x=>admin||["published","completed"].includes(x.status)).sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
- const form=admin?card("Schedule an industry expert session",'<form data-kind="v2-global-event" class="form-grid">'+field("Session title","title","text","",true)+field("Speaker name","speaker_name","text","",true)+field("Speaker role","speaker_role")+field("Company","speaker_company")+field("Date and time (your timezone)","starts_at","datetime-local","",true)+field("Duration in minutes","duration_minutes","number",60,true)+field("Google Meet / Zoom HTTPS link","join_url","url")+notes("Description","description")+'<label class="field"><span>Publish status</span><select class="input" name="status"><option value="published">Published</option><option value="draft">Draft</option></select></label><button type="submit" class="btn btn-primary">Create global session</button></form>'):"";
- const rows=all.length?all.map(x=>'<div class="list-row"><span class="row-icon">✦</span><div class="row-body"><strong>'+esc(x.title)+'</strong><small>'+esc(x.speaker_name)+' · '+esc(x.speaker_role||"Guest expert")+(x.speaker_company?" · "+esc(x.speaker_company):"")+'</small><small>'+esc(v2DateTime(x.starts_at))+' · '+x.duration_minutes+' mins · '+esc(x.status)+'</small><small>'+esc(x.description||"")+'</small></div>'+(!admin&&x.status==="published"?click("Join near start","v2-join-event",x.id,"btn-primary"):"")+'</div>').join(""):empty("No sessions scheduled","Admin can publish an industry session anytime. Every enrolled student sees the same event.");
- return title("Industry Connect","Platform-wide guest talks and career sessions, scheduled only by Admin.")+form+card("Global sessions",rows);
+ const admin=role==="admin";
+ const events=(D.global_events||[]).filter(e=>admin||["published","completed"].includes(e.status))
+ .sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
+ const editor=admin?card("Schedule platform-wide guest session",
+ '<form data-kind="v2-global-event" class="form-grid">'+
+ field("Session title","title","text","",true)+field("Speaker name","speaker_name","text","",true)+
+ field("Speaker position","speaker_role")+field("Company","speaker_company")+
+ field("Local date and time","starts_at","datetime-local","",true)+
+ field("Duration in minutes","duration_minutes","number",60,true)+
+ field("Meeting join URL (HTTPS)","join_url","url")+notes("Agenda","description")+
+ choose("Visibility","status",[["draft","Draft"],["published","Publish for all enrolled students"]],"draft")+
+ '<button class="btn btn-primary" type="submit">Create global session</button></form>'):"";
+ const rows=events.map(e=>{
+ const headline='<div class="list-row"><span class="row-icon">✦</span><div class="row-body"><strong>'+
+ esc(e.title)+'</strong><small>'+esc(e.speaker_name)+" · "+esc(e.speaker_role||"Guest expert")+
+ (e.speaker_company?" · "+esc(e.speaker_company):"")+'</small>'+
+ '<small>'+esc(v2DateTime(e.starts_at))+' · '+e.duration_minutes+' mins · '+esc(e.status)+'</small>'+
+ '<small>'+esc(e.description||"")+'</small></div>'+
+ (!admin&&e.status==="published"?click("Join near start","v2-join-event",e.id,"btn-primary"):"")+'</div>';
+ if(!admin)return headline;
+ const localTime=e.starts_at?new Date(e.starts_at).toISOString().slice(0,16):"";
+ const form='<form class="form-grid" data-kind="v2-edit-event" data-event="'+esc(e.id)+'">'+
+ field("Session title","title","text",e.title,true)+
+ field("Speaker","speaker_name","text",e.speaker_name,true)+
+ field("Speaker position","speaker_role","text",e.speaker_role||"")+
+ field("Company","speaker_company","text",e.speaker_company||"")+
+ field("Start (UTC)","starts_at","datetime-local",localTime,true)+
+ field("Duration","duration_minutes","number",e.duration_minutes,true)+
+ choose("Status","status",[["draft","Draft"],["published","Published"],["cancelled","Cancelled"],["completed","Completed"]],e.status)+
+ notes("Description","description",e.description||"")+
+ field("Replace join link (optional)","join_url","url")+
+ '<button class="btn btn-outline" type="submit">Save changes</button></form>';
+ return card(e.title,headline+form);
+ }).join("");
+ return title("Industry Connect","Admin schedules guest experts whenever needed; every actively enrolled student, regardless of program, can attend.")+
+ editor+(rows||empty("No sessions scheduled","Admin may add a career guidance session at any time."));
 }
 function mentorClassesV2(){
  const my=(D.timeline_events||[]).filter(e=>e.responsible_mentor_id===user.id).sort((a,b)=>a.scheduled_date.localeCompare(b.scheduled_date));
@@ -1414,6 +1446,21 @@ if(type==="program-v2"){
  const r=await db.rpc("create_program_v2",args);
  if(r.error)throw r.error;
  await reload();navigateTo("program-detail",r.data);notice("Draft created. Assign mentors, then build schedule.","success");
+}
+else if(type==="v2-edit-event"){
+ if(role!=="admin")throw Error("Admin only");
+ const id=form.dataset.event;
+ const patch={title:f.title,speaker_name:f.speaker_name,speaker_role:f.speaker_role||null,
+ speaker_company:f.speaker_company||null,starts_at:new Date(f.starts_at+"Z").toISOString(),
+ duration_minutes:Number(f.duration_minutes),status:f.status,description:f.description||null};
+ if(demo){const ev=D.global_events.find(x=>x.id===id);Object.assign(ev,patch);render();return}
+ const r=await db.from("global_events").update(patch).eq("id",id);
+ if(r.error)throw r.error;
+ if(f.join_url?.trim()){
+  const link=await db.rpc("set_global_event_join_url",{_event_id:id,_url:f.join_url.trim()});
+  if(link.error)notice("Session details saved but link update failed: "+link.error.message,"error");
+ }
+ await reload();render();notice("Global session updated.","success");
 }
 else if(type==="v2-global-event"){
  if(role!=="admin")throw Error("Admin access required");
