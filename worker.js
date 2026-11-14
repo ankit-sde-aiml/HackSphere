@@ -233,7 +233,7 @@ export default {
    if(path==="/favicon.svg")return respond('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="g" x2="1" y2="1"><stop stop-color="#12c4ae"/><stop offset="1" stop-color="#087e7b"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#g)"/><path d="M35 7 16 35h15l-5 22 22-32H33z" fill="#fff"/></svg>',"image/svg+xml; charset=utf-8","public, max-age=86400");
    if(path==="/favicon.ico")return Response.redirect(url.origin+"/favicon.svg",302);
    if(path==="/robots.txt")return respond("User-agent: *\nAllow: /\nDisallow: /preview/\nDisallow: /workspace/\nSitemap: "+url.origin+"/sitemap.xml\n","text/plain; charset=utf-8","public, max-age=3600");
-   if(path==="/sitemap.xml"){const paths=["/","/about","/contact","/pricing","/terms","/privacy","/refunds","/delivery"];return respond('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+paths.map(p=>'<url><loc>'+url.origin+p+'</loc></url>').join('')+'</urlset>',"application/xml; charset=utf-8","public, max-age=3600");}
+   if(path==="/sitemap.xml"){const paths=["/","/programs","/about","/contact","/pricing","/terms","/privacy","/refunds","/delivery"];return respond('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+paths.map(p=>'<url><loc>'+url.origin+p+'</loc></url>').join('')+'</urlset>',"application/xml; charset=utf-8","public, max-age=3600");}
    if(path==="/assets/style.css")return respond(CSS,"text/css; charset=utf-8","public, max-age=300");
    if(path==="/assets/app.js")return respond(APP,"application/javascript; charset=utf-8","public, max-age=300");
    if(path==="/api/meet/create") {
@@ -298,7 +298,7 @@ export default {
    if(path.startsWith("/api/join/"))return Response.json({error:"Google Meet OAuth integration is not configured"},{status:503,headers:{"cache-control":"no-store"}});
    if(path.startsWith("/api/"))return Response.json({error:"Unknown API route"},{status:404,headers:{"cache-control":"no-store"}});
    if(request.method!=="GET"&&request.method!=="HEAD")return respond("Method Not Allowed","text/plain", "no-store",405);
-   if(!(path==="/"||["/about","/contact","/pricing","/terms","/privacy","/refunds","/delivery"].includes(path)||path.startsWith("/preview/")||path.startsWith("/workspace/")))return respond("Page not found","text/plain; charset=utf-8","no-store",404);
+   if(!(path==="/"||["/about","/contact","/pricing","/terms","/privacy","/refunds","/delivery","/programs"].includes(path)||/^\/programs\/[a-z0-9-]{1,120}$/i.test(path)||path.startsWith("/preview/")||path.startsWith("/workspace/")))return respond("Page not found","text/plain; charset=utf-8","no-store",404);
    return respond(request.method==="HEAD"?null:HTML,"text/html; charset=utf-8");
  }
 };
