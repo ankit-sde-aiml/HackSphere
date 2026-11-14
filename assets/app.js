@@ -25,7 +25,7 @@ const current=x=>Math.max(0,Math.min(total(x),Math.floor((new Date(today())-new 
 const enrolled=x=>demo||D.enrollments.some(y=>y.program_id===x.id&&y.student_id===user?.id&&y.status==="active");
 const selectedPrograms=()=>demo||role==="admin"?D.programs:role==="trainer"?D.programs.filter(x=>D.program_staff.some(y=>y.program_id===x.id&&y.user_id===user.id)):role==="guide"?D.programs.filter(x=>D.guide_allocations.some(y=>y.program_id===x.id&&y.guide_user_id===user.id)):D.programs.filter(enrolled);
 const options=arr=>arr.map(x=>[x.id,x.title]);
-const menu={student:[["overview","◈","Overview"],["courses","▦","My programs"],["timeline","▤","Daily timeline"],["enrollment","◫","Enrollment"],["performance","◎","My performance"],["documents","✧","Documents"]],trainer:[["overview","◈","Overview"],["courses","▦","My programs"],["timeline","▤","Training lessons"],["sessions","▷","Live classes"],["reviews","▥","Review submissions"],["performance","◎","Student scores"]],guide:[["overview","◈","Overview"],["courses","▦","My programs"],["timeline","▤","Internship timeline"],["reviews","▥","Project reviews"],["performance","◎","Internship scores"],["complete","✧","Completion reviews"]],admin:[["overview","◈","Overview"],["programs","▦","Programs"],["students","♧","Students"],["timeline","▤","Timeline manager"],["sessions","▷","Live classes"],["reviews","▥","Submissions"],["payments","◫","Payment approvals"],["staff","♙","Staff & roles"],["guides","◇","Guide allocation"],["performance","◎","Scores"],["complete","✧","Certificates"],["settings","⚙","Settings"]]};
+const menu={student:[["overview","◈","Overview"],["courses","▦","My programs"],["timeline","▤","Daily timeline"],["sessions","▷","Live classes"],["submissions","▥","My submissions"],["enrollment","◫","Enrollment"],["performance","◎","My performance"],["documents","✧","Documents"],["profile","♧","My profile"]],trainer:[["overview","◈","Overview"],["courses","▦","My programs"],["timeline","▤","Training lessons"],["sessions","▷","Live classes"],["reviews","▥","Review submissions"],["performance","◎","Student scores"],["profile","♧","My profile"]],guide:[["overview","◈","Overview"],["courses","▦","My programs"],["timeline","▤","Internship timeline"],["reviews","▥","Project reviews"],["performance","◎","Internship scores"],["complete","✧","Completion reviews"],["profile","♧","My profile"]],admin:[["overview","◈","Overview"],["programs","▦","Programs"],["students","♧","Students"],["timeline","▤","Timeline manager"],["sessions","▷","Live classes"],["reviews","▥","Submissions"],["payments","◫","Payment approvals"],["staff","♙","Staff & roles"],["guides","◇","Guide allocation"],["performance","◎","Scores"],["complete","✧","Certificates"],["settings","⚙","Settings"],["profile","♧","My profile"]]};
 function seed(){let a=day(today(),-27),b=day(today(),-69);D.programs=[{id:"demo-stack",title:"Full Stack Development",description:"Learn to build practical applications.",start_date:a,training_days:60,internship_days:30,fee_inr:2999,mode:"Hybrid",status:"ongoing"},{id:"demo-design",title:"UI/UX Design",description:"Product thinking and portfolio projects.",start_date:b,training_days:45,internship_days:30,fee_inr:1999,mode:"Hybrid",status:"ongoing"}];D.profiles=[{id:"demo-student",full_name:"Preview Learner",email:"student@example.com"},{id:"demo-trainer",full_name:"Sample Trainer",email:"trainer@example.com"},{id:"demo-guide",full_name:"Sample Guide",email:"guide@example.com"}];D.enrollments=[{id:"demo-enroll",program_id:"demo-stack",student_id:"demo-student",status:"active",offer_letter_code:"HS-OL-PREVIEW"},{id:"demo-enroll2",program_id:"demo-design",student_id:"demo-student",status:"active"}];D.program_staff=[{program_id:"demo-stack",user_id:"demo-trainer"}];D.staff_roles=[{user_id:"demo-trainer",role:"trainer"},{user_id:"demo-guide",role:"guide"}];D.guide_allocations=[{id:"demo-guide-link",program_id:"demo-design",student_id:"demo-student",guide_user_id:"demo-guide"}];for(let i=0;i<90;i+=3)D.timeline_events.push({id:"d"+i,program_id:"demo-stack",phase:i<60?"training":"internship",activity_type:i<60?"lecture":"project",scheduled_date:day(a,i),title:i<60?["HTML & CSS foundations","JavaScript essentials","React components","Developer workflow"][i/3%4]:"Internship project milestone "+(i-59),description:"Practice and submit your scheduled activity."});D.live_sessions=[{id:"demo-live",program_id:"demo-stack",title:"JavaScript Functions & Scope",session_date:today(),start_time:"19:00",status:"scheduled"}];D.payment_claims=[{id:"demo-pay",program_id:"demo-stack",student_id:"demo-student",amount_inr:2999,status:"approved",utr:"PREVIEW00001"}];D.evaluations=[{id:"demo-score",program_id:"demo-stack",student_id:"demo-student",phase:"training",activity_title:"HTML assignment",score:8,max_score:10,feedback:"Great progress!"}];upi={upi_id:"preview@upi",payee:"Preview only — do not pay"}}
 
 const routePath=()=>"/"+(demo?"preview":"workspace")+"/"+role+"/"+(course&&page==="courses"?"classroom/"+encodeURIComponent(course):(page==="program-detail"||page==="program-edit")&&course?page+"/"+encodeURIComponent(course):page);
@@ -338,8 +338,96 @@ function performance(){
 function paymentInstructions(){return upi.upi_id?'<div class="alert success"><b>Official UPI</b><br>ID: '+esc(upi.upi_id)+"<br>Payee: "+esc(upi.payee||"HackSphere")+"<br>"+esc(upi.instructions||"")+"</div>"+(upi.qr_url&&upi.qr_url.startsWith("https://")?'<img alt="Official UPI QR code" src="'+esc(upi.qr_url)+'" style="width:175px;margin:12px 0;border-radius:12px">':""):'<div class="alert warning">Official UPI payment details are not configured. Please do not send money yet.</div>'}
 function enrollment(){let ps=D.programs.filter(x=>["published","ongoing"].includes(x.status)),mine=D.enrollments.filter(x=>x.student_id===user.id);return title("My enrollments","Enrollment activates after manual verification of actual bank credit.")+'<div class="two-col"><div>'+card("UPI enrollment",paymentInstructions()+(upi.upi_id?'<form data-kind="payment">'+choose("Program","program_id",options(ps))+field("Transaction UTR","utr","text","",true)+'<label class="field"><span>Payment screenshot (PNG / JPG / WebP, max 5 MB)</span><input class="input" type="file" name="proof_file" accept="image/png,image/jpeg,image/webp" required></label><div class="alert warning">Your UTR and screenshot are submitted for verification. Only a matching actual bank credit activates enrollment.</div><button class="btn btn-primary">Submit for bank verification</button></form>':""))+'</div><div>'+card("Enrolled programs",mine.length?mine.map(x=>row("▦",p(x.program_id)?.title||"Program",x.offer_letter_code||"Offer letter pending",tag(x.status))).join(""):empty("No enrollments","Purchase verification is required."))+"</div></div>"}
 function upiForm(){return '<form data-kind="upi">'+field("Official UPI ID","upi_id","text",upi.upi_id||"",true)+field("Payee","payee","text",upi.payee||"",true)+field("QR image HTTPS URL","qr_url","url",upi.qr_url||"")+notes("Student instructions","instructions")+'<button class="btn btn-primary">Save payment settings</button></form>'}
-function payments(){return title("Payment approvals","Verify actual bank credit before approving UPI claims.")+'<div class="two-col"><div>'+card("Pending payments",D.payment_claims.filter(x=>x.status==="pending").map(x=>row("◫",who(x.student_id),money(x.amount_inr)+" • "+x.utr,click("View screenshot","proof",x.id)+click("Approve","approve-pay",x.id,"btn-primary")+click("Reject","reject-pay",x.id))).join("")||empty("No pending claims","Payment queue is clear."))+'</div><div>'+card("UPI payment setup",upiForm())+"</div></div>"}
-function staff(){let trs=D.staff_roles.filter(x=>x.role==="trainer");return title("Staff management","Invite Google identities with Trainer and/or Internship Guide roles.")+'<div class="equal-col"><div>'+card("Invite staff",'<form data-kind="invite">'+field("Google email","email","email","",true)+'<label class="checkbox"><input type="checkbox" name="trainer"> Trainer</label><label class="checkbox"><input type="checkbox" name="guide"> Internship Guide</label><button class="btn btn-primary">Create invitation</button></form><div class="alert">Invited staff signs in using the exact Google account. Email delivery needs a verified sending domain.</div>')+'</div><div>'+card("Assign program Trainer",'<form data-kind="trainer">'+choose("Program","program_id",options(D.programs))+choose("Trainer","user_id",trs.map(x=>[x.user_id,who(x.user_id)]))+'<button class="btn btn-primary">Assign Trainer</button></form>')+"</div></div>"+card("Staff roles",D.staff_roles.map(x=>row("♙",who(x.user_id),x.role,tag("Assigned"))).join("")||empty("No staff yet","Invite your first trainer or guide."))}
+function payments(){
+ let pending=D.payment_claims.filter(x=>x.status==="pending").slice().sort((a,b)=>String(a.created_at).localeCompare(String(b.created_at)));
+ let outstanding=pending.reduce((sum,x)=>sum+Number(x.amount_inr||0),0);
+ let intro=[
+ '<div class="workspace-banner payment-banner"><div class="banner-icon">◫</div>',
+ '<div><span class="eyebrow">FINANCE OPERATIONS</span><h2>Verify payments before unlocking access.</h2><p>Check every UPI transfer in your actual bank statement. A screenshot or transaction reference is evidence, not confirmation.</p></div>',
+ '<button class="btn btn-white" data-action="payment-history">View history ↗</button></div>'
+ ].join("");
+ const actions='<div class="form-actions">'+click("Payment history","payment-history","","btn-outline")+click("UPI settings","payment-settings","","btn-light")+'</div>';
+ let pendingCards=pending.length?pending.map(x=>{
+ let student=who(x.student_id),prog=p(x.program_id);
+ return '<article class="payment-review-card"><div class="payment-avatar">₹</div>'+
+ '<div class="payment-review-body"><div class="payment-person">'+esc(student)+' <span class="pill orange">Needs verification</span></div>'+
+ '<p>'+esc(prog?.title||"Program")+' · '+money(x.amount_inr)+'</p>'+
+ '<div class="payment-reference">UTR: <b>'+esc(x.utr)+'</b></div></div>'+
+ '<div class="payment-action-column">'+click("View proof","proof",x.id,"btn-outline")+click("Approve","approve-pay",x.id,"btn-primary")+click("Reject","reject-pay",x.id,"btn-danger")+'</div></article>';
+ }).join(""):empty("No payments waiting","Every submitted UPI claim will appear here for your verification.");
+ return title("UPI payment approvals","Control student enrollment using real bank-credit verification.",actions)+intro+
+ '<div class="stat-grid">'+
+ '<div class="stat"><span class="sicon">◫</span><b>'+pending.length+'</b><small>Awaiting approval</small></div>'+
+ '<div class="stat"><span class="sicon">₹</span><b>'+money(outstanding)+'</b><small>Claims to verify</small></div>'+
+ '<div class="stat"><span class="sicon">✓</span><b>'+D.payment_claims.filter(x=>x.status==="approved").length+'</b><small>Approved claims</small></div>'+
+ '<div class="stat"><span class="sicon">✕</span><b>'+D.payment_claims.filter(x=>x.status==="rejected").length+'</b><small>Rejected claims</small></div>'+
+ '</div>'+card("Payment verification queue",pendingCards);
+}
+function paymentHistory(){
+ const records=D.payment_claims.filter(x=>x.status!=="pending");
+ let list=records.length?records.map(x=>'<div class="history-row">'+
+ '<span class="history-amount">'+money(x.amount_inr)+'</span>'+
+ '<div><b>'+esc(who(x.student_id))+'</b><small>'+esc(p(x.program_id)?.title||"Program")+' · '+esc(x.utr)+'</small></div>'+
+ tag(x.status)+'</div>').join(""):empty("No completed reviews","Approved and rejected payments will be listed here.");
+ return title("Payment history","Track UPI payment decisions without mixing them with pending claims.")+
+ '<div class="editor-breadcrumb"><button data-action="navigate" data-view="payments">Payment approvals</button><span>/</span><b>History</b></div>'+
+ card("Reviewed transactions",list);
+}
+function paymentSettings(){
+ return title("Official UPI configuration","Configure the verified payee shown to students before any payment.")+
+ '<div class="editor-breadcrumb"><button data-action="navigate" data-view="payments">Payment approvals</button><span>/</span><b>UPI settings</b></div>'+
+ '<div class="editor-layout"><div>'+
+ card("Bank/UPI payment details",upiForm())+
+ '</div><aside>'+card("Student payment rules",'<div class="alert warning"><b>Always validate incoming credit.</b><br>Uploaded proof or UTR does not confirm a payment. Only Administrator can approve a claim.</div><p class="help-hint">The official UPI ID and QR appear to students only once you publish them here.</p>')+
+ '</aside></div>';
+}
+function staff(){
+ const staff=D.staff_roles,invites=D.staff_invitations;
+ const people=new Map();
+ for(const x of staff){if(!people.has(x.user_id))people.set(x.user_id,[]);people.get(x.user_id).push(x.role)}
+ let employees=[...people].map(([uid,rr])=>'<article class="manage-program-card"><div class="mp-icon">♙</div><div class="mp-body">'+
+ '<div class="mp-title">'+esc(who(uid))+'</div>'+
+ '<div class="mp-meta">'+(D.profiles.find(x=>x.id===uid)?.email||"Staff account")+'</div>'+
+ '<div class="mp-meta">'+rr.map(r=>'<span class="pill">'+esc(r)+'</span>').join(" ")+'</div>'+
+ '</div><div class="mp-actions">'+tag("Active")+'</div></article>').join("");
+ let trainers=D.staff_roles.filter(x=>x.role==="trainer").map(x=>[x.user_id,who(x.user_id)]);
+ return title("Staff & teaching team","Invite Google accounts, assign Trainer roles, and prepare Guides for internship allocation.",
+ '<button class="btn btn-primary" data-action="staff-invite">+ Invite staff</button>')+
+ '<div class="stat-grid">'+
+ '<div class="stat"><span class="sicon">♙</span><b>'+people.size+'</b><small>Staff members</small></div>'+
+ '<div class="stat"><span class="sicon">▷</span><b>'+staff.filter(x=>x.role==="trainer").length+'</b><small>Trainers</small></div>'+
+ '<div class="stat"><span class="sicon">◇</span><b>'+staff.filter(x=>x.role==="guide").length+'</b><small>Internship Guides</small></div>'+
+ '<div class="stat"><span class="sicon">◷</span><b>'+invites.filter(x=>x.status==="pending").length+'</b><small>Pending invitations</small></div>'+
+ '</div>'+
+ '<div class="two-col"><div>'+
+ card("Staff directory",employees||empty("No staff onboarded","Invite the first Trainer or Guide by Google email."))+
+ card("Pending invitations",invites.length?invites.map(x=>row('♙',x.email,x.role+' · '+x.status,tag(x.status))).join(""):empty("No invitations","Invite team members from the dedicated invitation screen."))+
+ '</div><div>'+
+ card("Assign Trainer to program",D.programs.length&&trainers.length?[
+  '<form data-kind="trainer">',
+  choose("Program","program_id",options(D.programs)),
+  choose("Trainer","user_id",trainers),
+  '<button class="btn btn-primary">Assign Trainer</button></form>'
+ ].join(""):empty("No Trainers available","Invite a Trainer and have them sign in with their Google account."))+
+ '</div></div>';
+}
+function staffInvite(){
+ return title("Invite staff","Send Trainer and/or Internship Guide access to a verified Google account.")+
+ '<div class="editor-breadcrumb"><button data-action="navigate" data-view="staff">Staff directory</button><span>/</span><b>Invite a team member</b></div>'+
+ '<div class="editor-layout"><div>'+card("Staff invitation",[
+ '<form data-kind="invite">',
+ field("Google account email","email","email","",true),
+ '<p style="color:var(--muted);font-size:12px;margin:4px 0 16px">The person must sign in with this exact verified Google account.</p>',
+ '<label class="checkbox"><input type="checkbox" name="trainer"> Trainer — Training classes, assignments, scores</label>',
+ '<label class="checkbox"><input type="checkbox" name="guide"> Internship Guide — Project milestones, reviews, scores</label>',
+ '<div class="alert">One person may have both roles. The dashboard role switcher appears after the invitation is accepted.</div>',
+ '<div class="form-actions" style="margin-top:20px"><button class="btn btn-primary">Create invitation</button>',
+ '<button type="button" class="btn btn-outline" data-action="navigate" data-view="staff">Cancel</button></div>',
+ '</form>'
+ ].join(""))+'</div><aside>'+
+ card("Invite workflow",'<div class="process-list"><p><b>01.</b> Admin creates invitation record</p><p><b>02.</b> Staff opens HackSphere website URL</p><p><b>03.</b> Staff signs in using the invited Google account</p><p><b>04.</b> Permissions become available after verified matching</p></div><div class="alert warning">Email sending is not configured. Share the website link with the invited person.</div>')+
+ '</aside></div>';
+}
 function guides(){
  let eligible=D.programs.filter(pr=>day(pr.start_date,pr.training_days)<=today());
  let selected=eligible[0]?.id;
