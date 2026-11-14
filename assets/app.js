@@ -522,10 +522,16 @@ function studentCalendar(){
    '<span>'+stIcon(released?'check':'lock',17)+'</span></div>'+
    '<div class="st-day-content">'+(released?(items.length?items.map(e=>'<button data-action="student-open-lesson" data-id="'+esc(e.id)+'">'+stIcon(e.activity_type==='quiz'?'quiz':'book',16)+'<span>'+esc(e.title)+'</span>'+stIcon('arrow',15)+'</button>').join(''):'<small>No lesson scheduled for this date.</small>'):'<small>Unlocks on scheduled date</small>')+'</div></article>';
  }).join('');
- return '<div class="st-view">'+stPageHeading('Learning calendar','Every day follows your program schedule.')+
+ const globalUpcoming=(D.global_events||[]).filter(e=>e.status==="published"&&new Date(e.starts_at).getTime()>=Date.now()-3600000)
+ .sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at)).slice(0,5);
+ const globalSection=globalUpcoming.length?'<section class="st-white-panel st-section-gap"><h2>Industry Connect — All Programs</h2>'+
+ globalUpcoming.map(e=>'<div class="list-row"><div class="row-body"><strong>'+esc(e.title)+'</strong><small>'+esc(e.speaker_name)+' · '+esc(v2DateTime(e.starts_at))+'</small></div>'+
+ '<button class="btn btn-small btn-primary" data-action="v2-join-event" data-id="'+esc(e.id)+'">Join near start</button></div>').join('')+
+ '</section>':'';
+ return '<div class="st-view">'+stPageHeading('Learning calendar','Your class schedule plus platform-wide industry sessions.')+
  '<div class="st-calendar-head"><label>Program<select class="input" id="student-calendar-select">'+assigned.map(pr=>'<option value="'+esc(pr.id)+'"'+(pr.id===program.id?' selected':'')+'>'+esc(pr.title)+'</option>').join('')+'</select></label>'+
  '<div class="st-calendar-pager"><button data-action="student-calendar-prev"'+(timelineOffset===0?' disabled':'')+'>'+stIcon('back',18)+'</button><b>Days '+start+'–'+end+' of '+days+'</b><button data-action="student-calendar-next"'+(timelineOffset+1>=pages?' disabled':'')+'>'+stIcon('chevron',18)+'</button></div></div>'+
- '<div class="st-day-grid">'+calendar+'</div></div>';
+ '<div class="st-day-grid">'+calendar+'</div>'+globalSection+'</div>';
 }
 function studentEnrollmentPage(){
  const available=D.programs.filter(pr=>['published','ongoing'].includes(pr.status)&&!pr.is_test);
@@ -1002,7 +1008,23 @@ function timeline(){
     +card(program.title,nav+rows.join(""))
     +'</div><div>'+form+'</div></div>';
 }
-function sessions(){let ps=selectedPrograms(),listings=D.live_sessions.filter(s=>ps.some(x=>x.id===s.program_id));let pending=listings.filter(x=>x.status==="scheduled"&&x.meet_status!=="ready").length;let meetTools=role==="student"?"":'<div class="alert warning" style="margin-bottom:16px"><b>Google Meet authorization</b><br>'+pending+' class(es) await meeting-space creation. Grant Google Meet permission using your Trainer Google account, then HackSphere generates each pending class link in a batch. Google Meet API must be enabled in Google Cloud.</div><div class="form-actions" style="margin-bottom:16px"><button class="btn btn-primary" data-action="meet-consent">Connect Google Meet & generate links ↗</button></div>';return title("Live sessions","Classes follow each program calendar. Access to meeting links is enrollment-checked and time-limited.")+meetTools+'<div class="two-col"><div>'+card("Class calendar",listings.length?listings.map(s=>row("▷",s.title,date(s.session_date)+" • "+String(s.start_time).slice(0,5)+" IST",role==="student"?(s.meet_status==="ready"?click("Join Live Class","join",s.id,"btn-primary"):'<span class="pill orange">Meet authorization pending</span>'):tag(s.meet_status==="ready"?"Meet ready":"Meeting not connected"))).join(""):empty("No scheduled classes","Trainers will schedule live sessions."))+'</div><div>'+(role==="student"?card("Secure access","You can join only as an active enrolled student during the class time window. Meet controls final admission."):card("Schedule a class",'<div class="alert warning">Google Meet auto-creation is pending trainer OAuth configuration. This calendar saves a session only.</div><form data-kind="session">'+choose("Program","program_id",options(ps))+field("Lecture topic","title","text","",true)+field("Class date","session_date","date","",true)+field("Start time IST","start_time","time","19:00",true)+field("Duration minutes","duration_minutes","number","60",true)+'<button class="btn btn-primary">Schedule</button></form>'))+"</div></div>"}
+function sessions(){
+ const assigned=selectedPrograms();
+ const rows=(D.live_sessions||[]).filter(s=>assigned.some(x=>x.id===s.program_id));
+ const pending=rows.filter(e=>e.status==="scheduled"&&e.meet_status!=="ready"&&(role==="admin"||e.trainer_user_id===user.id));
+ const meetingInfo=role==="student"?
+ '<div class="alert">Only active enrolled students can obtain the class joining link near scheduled time.</div>':
+ pending.length?'<div class="alert warning">'+pending.length+' Google Meet link(s) pending. The designated teaching mentor must grant the Google Meet OAuth permission. Google Meet API enablement is separately required.</div>'+
+ '<button class="btn btn-primary" data-action="meet-consent">Connect Google Meet & create my class links</button>':
+ '<div class="alert">No pending Google Meet authorizations for your scheduled teaching classes.</div>';
+ const calendar=rows.map(s=>row("▷",s.title,
+ date(s.session_date)+" · "+String(s.start_time).slice(0,5)+" IST · "+(s.meet_status==="ready"?"Link ready":"Link pending"),
+ s.meet_status==="ready"?click("Join class","join",s.id,"btn-primary"):"")).join("");
+ return title("Live Classes","One calendar for your assigned program. Admin controls the schedule and class ownership.")+
+ card("Google Meet",meetingInfo)+
+ card("Class calendar",calendar||empty("No live classes","Admin will set the teaching calendar."))+
+ (role==="admin"?card("Admin scheduling",'<button data-action="navigate" data-view="schedule-v2" class="btn btn-primary">Open Teaching Schedule Builder</button>'):"");
+}
 function eligibleStudents(programId,roleFilter=role){
  let assigned=D.enrollments.filter(e=>e.program_id===programId&&e.status!=="suspended");
  if(roleFilter==="guide")assigned=assigned.filter(e=>D.guide_allocations.some(g=>g.program_id===programId&&g.student_id===e.student_id&&g.guide_user_id===user.id));
