@@ -260,9 +260,9 @@ function programAdmin(){
  '<div class="mp-meta">Starts '+date(x.start_date)+' &nbsp; · &nbsp; '+esc(x.mode)+' &nbsp; · &nbsp; '+money(x.fee_inr)+'</div></div>'+
  '<div class="mp-actions">'+click("Manage program →","program-detail",x.id,"btn-primary")+click(x.status==="draft"?"Publish":"Unpublish","publish",x.id,"btn-outline")+'</div></article>';
  }).join("");
- return title("Programs & batches","Manage each course and internship as its own independent, dated program.")+
- feature+counts+card("All programs",items.length?'<div class="manage-program-list">'+rows+'</div>':empty("No programs yet","Create your first batch. You can prepare the schedule while it remains a private draft."))+
- '<div class="help-hint">New program → Add daily lessons → Assign Trainer → Publish → Approve enrollments → Allocate Guide when internship starts.</div>'
+ return title("Programs & batches","Create and manage independent training and internship cohorts.",action)+
+ counts+card("All programs",items.length?'<div class="manage-program-list">'+rows+'</div>':empty("No programs yet","Create your first batch. You can prepare the schedule while it remains a private draft."))+
+ '<div class="help-hint">Create program with Trainer & Guide → Add or import dated lessons → Publish → Verify payment → Allocate student Guide at internship start.</div>'
 }
 function programNew(){
  if(role!=="admin")return empty("Access denied","Administrator role required.");
