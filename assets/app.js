@@ -197,9 +197,28 @@ function studentInternshipV2(){
  return title("My Internship","After training you will work on one major project with a five-student team.")+(content||empty("Team allocation pending","Your internship team and mentor will appear here after the training phase."));
 }
 function adminMentorsV2(){
- const mentors=(D.program_mentors||[]),profiles=D.profiles||[],progs=D.programs||[];
- let form='<form class="form-grid" data-kind="v2-assign-mentor">'+choose("Program / Batch","program_id",progs.map(x=>[x.id,x.title]),progs[0]?.id)+choose("Mentor account","mentor_id",profiles.map(x=>[x.id,x.full_name||x.email]),profiles[0]?.id)+field("Max internship teams","max_internship_teams","number",5,true)+'<button class="btn btn-primary" type="submit">Assign mentor</button></form>';
- return title("Program Mentors","All mentors have shared program access. Teaching and internship ownership are assigned separately.")+card("Assign to program",form)+card("Current mentors",mentors.map(m=>row("♙",who(m.mentor_id),p(m.program_id)?.title||"Program"+" · capacity "+m.max_internship_teams)).join("")||empty("No mentors assigned","Assign a mentor to a program to grant shared access."));
+ const authorizedIds=[...new Set((D.staff_roles||[]).filter(r=>["mentor","trainer","guide","admin"].includes(r.role)).map(r=>r.user_id))];
+ const programs=D.programs||[],records=D.program_mentors||[];
+ const form=programs.length&&authorizedIds.length?
+ '<form class="form-grid" data-kind="v2-assign-mentor">'+
+ choose("Program / batch","program_id",programs.map(x=>[x.id,x.title+" · "+(x.batch_name||"Default")]),programs[0].id)+
+ choose("Invited mentor account","mentor_id",authorizedIds.map(id=>[id,who(id)]),authorizedIds[0])+
+ field("Maximum internship teams","max_internship_teams","number",5,true)+
+ '<label class="checkbox"><input type="checkbox" name="can_supervise_internship" checked> Can supervise internship teams</label>'+
+ '<button class="btn btn-primary" type="submit">Assign / update mentor</button></form>':
+ empty("Create a batch and invite mentors","A mentor must accept a verified Google invitation before being assigned.");
+ const list=records.map(m=>row("♙",who(m.mentor_id),
+ (p(m.program_id)?.title||"Program")+" · "+m.max_internship_teams+" team capacity · "+
+ (m.can_supervise_internship?"Internship mentor":"Teaching only"),
+ click("Remove","v2-remove-mentor",m.program_id+"|"+m.mentor_id,"btn-outline"))).join("");
+ const newCourse='<form data-kind="v2-course-catalog" class="form-grid">'+
+ field("Reusable course title","title","text","",true)+field("Course slug","slug","text","",true)+
+ notes("Course overview","description")+
+ '<button class="btn btn-primary" type="submit">Save course template</button></form>';
+ return title("Programs & Mentors","Membership gives common viewing access; only scheduled teaching sessions and assigned teams permit editing.")+
+ card("Assign or update program mentor",form)+card("Current mentor allocation",list||empty("No allocations","Assign a mentor above."))+
+ card("Reusable course catalog",newCourse)+
+ card("Existing course templates",(D.course_catalog||[]).map(c=>row("▦",c.title,c.slug)).join("")||empty("No course templates","Optional templates help with multiple batches of the same course."));
 }
 function adminScheduleV2(){
  const programs=D.programs||[],program=programs[0],mentors=program?v2ProgramMentors(program.id):[];
@@ -1300,6 +1319,13 @@ else if(a==="public-browse"){location.href="/programs"}else if(a==="hs-public-pa
  const win=window.open("","_blank"),r=await db.rpc("get_global_event_join_url",{_event_id:id});
  if(r.error||!r.data){if(win)win.close();notice("Join unavailable: "+(r.error?.message||"No link yet"),"error");return}
  if(win){win.opener=null;win.location.replace(r.data)}else notice("Allow popups to join.","error");
+}else if(a==="v2-remove-mentor"){
+ if(role!=="admin"||demo){notice("Admin only.");return}
+ const [programId,mentorId]=id.split("|");
+ if(!confirm("Remove this mentor from the program? Classes and internship groups need reassignment first."))return;
+ const r=await db.from("program_mentors").delete().eq("program_id",programId).eq("mentor_id",mentorId);
+ if(r.error)notice("Cannot remove this mentor while responsible for active work: "+r.error.message,"error");
+ else {await reload();render();notice("Mentor unassigned.","success")}
 }else if(a==="v2-generate-teams"){
  if(role!=="admin"||demo){notice("Admin production action only.","error");return}
  if(!confirm("Generate groups of five for this program after training has ended?"))return;
@@ -1372,9 +1398,16 @@ else if(type==="v2-global-event"){
  if(joinUrl){const j=await db.rpc("set_global_event_join_url",{_event_id:r.data.id,_url:joinUrl});if(j.error)notice("Event saved, but joining link was not saved: "+j.error.message,"error")}
  await reload();render();notice("Global session created.","success");
 }
+else if(type==="v2-course-catalog"){
+ if(role!=="admin")throw Error("Admin access required");
+ const obj={title:f.title,slug:f.slug.trim().toLowerCase(),description:f.description||"",is_published:false};
+ if(demo){D.course_catalog.push({id:"demo-course",...obj});render();return}
+ const r=await db.from("course_catalog").insert(obj);if(r.error)throw r.error;
+ await reload();render();notice("Reusable course saved.","success");
+}
 else if(type==="v2-assign-mentor"){
  if(role!=="admin")throw Error("Admin access required");
- f.max_internship_teams=Number(f.max_internship_teams);f.can_supervise_internship=true;
+ f.max_internship_teams=Number(f.max_internship_teams);f.can_supervise_internship=form.querySelector('[name="can_supervise_internship"]')?.checked===true;
  if(demo){D.program_mentors.push(f);render();return}
  const r=await db.from("program_mentors").upsert(f,{onConflict:"program_id,mentor_id"});if(r.error)throw r.error;
  await reload();render();notice("Mentor assigned to program.","success");
