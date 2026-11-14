@@ -16,8 +16,8 @@ const field=(name,id,type="text",val="",required=false)=>'<label class="field"><
 const choose=(name,id,values,selected=null)=>'<label class="field"><span>'+esc(name)+'</span><select name="'+id+'" class="input">'+values.map(v=>'<option value="'+esc(v[0])+'" '+(selected===v[0]?"selected":"")+' >'+esc(v[1])+"</option>").join("")+"</select></label>";
 const notes=(name,id,initial="")=>'<label class="field"><span>'+esc(name)+'</span><textarea class="input" name="'+id+'">'+esc(initial)+'</textarea></label>';
 const click=(name,action,id="",kind="btn-light")=>'<button class="btn btn-small '+kind+'" data-action="'+action+'" data-id="'+esc(id)+'">'+esc(name)+"</button>";
-const keys=["programs","enrollments","payment_claims","timeline_events","live_sessions","staff_roles","staff_invitations","program_staff","guide_allocations","submissions","evaluations","completion_recommendations","certificates","profiles","site_settings","program_guides","quizzes","quiz_questions","quiz_attempts"];
-let db=null,user=null,demo=false,role="student",page="overview",course=null,lesson=null,filter="All",search="",upi={},timelineOffset=0,paymentSection="pending";
+const keys=["lesson_resources","programs","enrollments","payment_claims","timeline_events","live_sessions","staff_roles","staff_invitations","program_staff","guide_allocations","submissions","evaluations","completion_recommendations","certificates","profiles","site_settings","program_guides","quizzes","quiz_questions","quiz_attempts"];
+let db=null,user=null,demo=false,role="student",page="overview",course=null,lesson=null,filter="All",search="",upi={},timelineOffset=0,paymentSection="pending",studentTab="overview",studentQuery="",studentEnrollmentChoice=null;
 let D={};const reset=()=>{D=Object.fromEntries(keys.map(k=>[k,[]]))};reset();
 const p=id=>D.programs.find(x=>x.id===id);
 const who=id=>{let x=D.profiles.find(x=>x.id===id);return x?.full_name||x?.email||String(id||"Student").slice(0,9)};
@@ -141,6 +141,185 @@ function overview(){
 }
 function xDate(s){return String(s.session_date||"")+"T"+String(s.start_time||"")}
 function courses(){let ps=selectedPrograms();return title("My learning programs","Select a program to open its classroom and daily curriculum.")+(ps.length?'<div class="grid">'+ps.map(x=>'<article class="course-card"><div class="course-art">▦</div><div class="course-body"><h3>'+esc(x.title)+'</h3><p>'+esc(x.description)+'</p><div class="course-meta">Day '+current(x)+" / "+total(x)+"</div><div class=\"course-footer\">"+(x.is_test?'<span class="pill orange">QA TEST</span>':tag(x.mode))+click("Open classroom","open-course",x.id,"btn-primary")+"</div></div></article>").join("")+"</div>":empty("No courses yet","Enroll in a published program or wait for your assignment."))}
+
+
+// Student experience: all visible lessons and materials are derived from signed-in records.
+const stIcon=(name,size=20)=>{
+ const paths={
+ home:'<path d="m3 10 9-7 9 7v10H3z"/><path d="M9 20v-7h6v7"/>',
+ book:'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/>',
+ compass:'<circle cx="12" cy="12" r="9"/><path d="m16.7 7.3-3 6.4-6.4 3 3-6.4z"/>',
+ calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18"/>',
+ user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+ arrow:'<path d="M5 12h14m-6-6 6 6-6 6"/>',
+ back:'<path d="m15 18-6-6 6-6"/>',
+ chevron:'<path d="m9 18 6-6-6-6"/>',
+ play:'<path d="m8 5 12 7-12 7z"/>',
+ lock:'<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
+ check:'<circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/>',
+ video:'<rect x="3" y="5" width="13" height="14" rx="2"/><path d="m16 10 5-3v10l-5-3"/>',
+ file:'<path d="M6 2h8l5 5v15H6zM14 2v6h5M9 13h7m-7 4h7"/>',
+ task:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 3.5h6M8 11l2 2 4-4M8 17h8"/>',
+ quiz:'<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 8h8M8 12h6M8 16h4"/>',
+ clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/>',
+ briefcase:'<rect x="3" y="7" width="18" height="14" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/>',
+ download:'<path d="M12 3v12m-4-4 4 4 4-4M5 17v3h14v-3"/>',
+ search:'<circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 5 5"/>',
+ layers:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/>',
+ external:'<path d="M13 4h7v7m0-7-9 9"/><path d="M20 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h6"/>'
+ };
+ return '<svg aria-hidden="true" width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+(paths[name]||paths.book)+'</svg>';
+};
+const stAction=(label,action,id="",secondary=false)=>'<button class="st-btn'+(secondary?' st-btn-outline':'')+'" type="button" data-action="'+esc(action)+'"'+(id?' data-id="'+esc(id)+'"':'')+'>'+esc(label)+stIcon('arrow',17)+'</button>';
+const stActualEvents=program=>D.timeline_events.filter(e=>e.program_id===program.id&&e.scheduled_date<=programToday(program)).sort((a,b)=>String(a.scheduled_date).localeCompare(String(b.scheduled_date))||String(a.created_at||'').localeCompare(String(b.created_at||'')));
+const stPublishedResources=eventId=>(D.lesson_resources||[]).filter(r=>r.event_id===eventId&&r.published);
+const stPageHeading=(name,desc,action="")=>'<header class="st-page-head"><div><h1>'+esc(name)+'</h1>'+(desc?'<p>'+esc(desc)+'</p>':'')+'</div>'+action+'</header>';
+const stProgramProgress=program=>{
+ const percentage=Math.round(current(program)/Math.max(1,total(program))*100);
+ return '<div class="st-progress"><span style="width:'+percentage+'%"></span></div>';
+};
+const stProgramCard=(program,compact=false)=>{
+ const published=stActualEvents(program).length;
+ return '<article class="st-course-card'+(compact?' st-card-compact':'')+'">'+
+  '<div class="st-course-cover"><span class="st-course-logo">'+stIcon('layers',29)+'</span><span class="st-course-cover-label">'+(program.is_test?'Test access':esc(program.mode))+'</span></div>'+
+  '<div class="st-course-body"><h3>'+esc(program.title)+'</h3><p>'+esc(program.description||'Training and project-based internship')+'</p>'+
+  '<div class="st-course-meta"><span>'+stIcon('calendar',15)+' Day '+current(program)+' of '+total(program)+'</span><span>'+stIcon('book',15)+' '+published+' released</span></div>'+
+  stProgramProgress(program)+'<div class="st-course-bottom"><span>'+Math.round(current(program)/Math.max(total(program),1)*100)+'% of calendar released</span>'+
+  '<button class="st-text-link" data-action="open-course" data-id="'+esc(program.id)+'">Continue '+stIcon('arrow',17)+'</button></div></div></article>';
+};
+function studentOverview(){
+ const assigned=selectedPrograms();
+ const first=assigned[0];
+ const displayName=(D.profiles.find(p=>p.id===user.id)?.full_name||user.user_metadata?.full_name||'Learner').trim().split(/\s+/)[0];
+ const actualToday=D.timeline_events.filter(e=>assigned.some(pr=>pr.id===e.program_id&&e.scheduled_date===programToday(pr))).slice(0,5);
+ const upcoming=D.live_sessions.filter(l=>assigned.some(pr=>pr.id===l.program_id)&&l.session_date>=today()).sort((a,b)=>String(a.session_date+a.start_time).localeCompare(String(b.session_date+b.start_time)))[0];
+ const courseContent=assigned.length?'<div class="st-courses-stack">'+assigned.slice(0,2).map(pr=>stProgramCard(pr,true)).join('')+'</div>':[
+ '<div class="st-empty"><div class="st-empty-icon">'+stIcon('book',27)+'</div><h3>Start learning something new</h3>',
+ '<p>Browse the available programs and choose the right next step.</p>',stAction('Explore programs','student-explore'),'</div>'
+ ].join('');
+ const lessons=actualToday.length?actualToday.map(ev=>'<button class="st-activity" data-action="student-open-lesson" data-id="'+esc(ev.id)+'"><span class="st-activity-icon">'+stIcon(ev.activity_type==='quiz'?'quiz':["assignment","project","milestone"].includes(ev.activity_type)?'task':'play',20)+'</span><span><b>'+esc(ev.title)+'</b><small>'+esc(p(ev.program_id)?.title||'Program')+' · '+esc(ev.activity_type)+'</small></span>'+stIcon('chevron',17)+'</button>').join(''):'<div class="st-empty-inline">No lessons scheduled for today.</div>';
+ const live=upcoming?'<div class="st-upcoming"><span class="st-upcoming-icon">'+stIcon('video',20)+'</span><div><b>'+esc(upcoming.title)+'</b><small>'+date(upcoming.session_date)+' · '+esc(String(upcoming.start_time||'').slice(0,5))+'</small></div><button class="st-text-link" data-action="navigate" data-view="sessions">View schedule '+stIcon('arrow',16)+'</button></div>':'<div class="st-empty-inline">No upcoming live classes.</div>';
+ return '<div class="st-view">'+stPageHeading('Hello, '+displayName,'Ready to learn something new today?')+
+ '<div class="st-overview-grid"><div class="st-overview-main"><div class="st-block"><div class="st-block-heading"><h2>Continue learning</h2><button class="st-text-link" data-action="navigate" data-view="courses">View all '+stIcon('arrow',15)+'</button></div>'+courseContent+'</div>'+
+ '<div class="st-block"><div class="st-block-heading"><h2>Today’s learning</h2></div><div class="st-white-panel">'+lessons+'</div></div></div>'+
+ '<aside class="st-overview-side"><div class="st-explore-spot"><div class="st-explore-art">'+stIcon('compass',35)+'</div><h2>Build your next skill</h2><p>Discover expert-led training and practical projects.</p>'+stAction('Explore programs','student-explore')+'</div>'+
+ '<div class="st-block"><div class="st-block-heading"><h2>Upcoming class</h2></div><div class="st-white-panel">'+live+'</div></div></aside></div></div>';
+}
+function studentCourses(){
+ const programs=selectedPrograms();
+ return '<div class="st-view">'+stPageHeading('My courses','Your enrolled learning programs.',stAction('Explore programs','student-explore',undefined,true))+
+ (programs.length?'<div class="st-course-grid">'+programs.map(program=>stProgramCard(program)).join('')+'</div>':
+ '<div class="st-white-panel">'+stAction('Find a program','student-explore')+'</div>')+'</div>';
+}
+const stPendingFor=programId=>D.payment_claims.some(c=>c.program_id===programId&&c.student_id===user.id&&c.status==='pending');
+const stCatalog=()=>{
+ const programs=D.programs.filter(pr=>['published','ongoing'].includes(pr.status)&&!pr.is_test&&(pr.title+' '+(pr.description||'')).toLowerCase().includes(studentQuery.toLowerCase()));
+ return programs.length?programs.map(pr=>{
+  const already=enrolled(pr);
+  return '<article class="st-discover-card"><div class="st-discover-art">'+stIcon('book',32)+'</div><div class="st-discover-body"><div class="st-discover-top">'+esc(pr.mode)+' · '+total(pr)+' days</div><h3>'+esc(pr.title)+'</h3><p>'+esc(pr.description||'Structured technical learning with projects')+'</p><div class="st-discover-meta">'+stIcon('calendar',16)+' Starts '+date(pr.start_date)+'</div>'+
+  '<div class="st-discover-footer"><strong>'+money(pr.fee_inr)+'</strong>'+(already?stAction('Continue','open-course',pr.id):stPendingFor(pr.id)?'<span class="st-pending">Verification pending</span>':stAction('View program','student-course-info',pr.id))+'</div></div></article>';
+ }).join(''):'<div class="st-white-panel">'+empty("No programs found","Try another search or check later for new batches.")+'</div>';
+};
+function studentExplore(){
+ return '<div class="st-view">'+stPageHeading('Explore programs','Find the right program for your next skill.')+
+ '<label class="st-search">'+stIcon('search',19)+'<input type="search" id="student-program-search" placeholder="Search available programs" value="'+esc(studentQuery)+'" autocomplete="off" aria-label="Search programs"></label>'+
+ '<div id="student-program-list" class="st-discover-grid">'+stCatalog()+'</div></div>';
+}
+function studentProgramInfo(){
+ const pr=p(course);
+ if(!pr||pr.is_test||!['published','ongoing'].includes(pr.status))return '<div class="st-view">'+stPageHeading('Program unavailable','This program is not currently accepting enrollment.')+'</div>';
+ const already=enrolled(pr),pending=stPendingFor(pr.id);
+ const enroll=already?stAction('Continue learning','open-course',pr.id):pending?'<span class="st-pending">Payment verification pending</span>':stAction('Enroll now','student-enroll',pr.id);
+ return '<div class="st-view"><button class="st-back" data-action="student-explore">'+stIcon('back',17)+' Explore programs</button>'+
+ '<div class="st-program-hero"><div><span class="st-program-kicker">'+esc(pr.mode)+' LEARNING</span><h1>'+esc(pr.title)+'</h1><p>'+esc(pr.description||'Trainer-led learning with practical project experience.')+'</p><div class="st-program-meta"><span>'+stIcon('calendar',18)+' Starts '+date(pr.start_date)+'</span><span>'+stIcon('clock',18)+' '+total(pr)+' days</span></div></div><div class="st-program-price"><span>Program fee</span><strong>'+money(pr.fee_inr)+'</strong>'+enroll+'</div></div>'+
+ '<div class="st-program-info-grid"><section class="st-white-panel"><h2>Program structure</h2><div class="st-phase-row"><span class="st-phase-symbol">'+stIcon('book',22)+'</span><span><b>Training</b><small>Day 1–'+pr.training_days+'</small></span><strong>'+pr.training_days+' days</strong></div>'+
+ '<div class="st-phase-row"><span class="st-phase-symbol">'+stIcon('briefcase',22)+'</span><span><b>Project internship</b><small>Day '+(pr.training_days+1)+'–'+total(pr)+'</small></span><strong>'+pr.internship_days+' days</strong></div></section>'+
+ '<section class="st-white-panel"><h2>Learning format</h2><p>Instructor-scheduled lessons, course materials, assignments and project milestones are released on their calendar dates. Exact class sessions and lesson resources are managed by the teaching team.</p></section></div></div>';
+}
+const stMediaFor=ev=>{
+ const resources=stPublishedResources(ev?.id);
+ let video=resources.find(r=>r.kind==='video');
+ if(video)return {kind:'resource',value:video.id,title:video.title};
+ if(ev?.resource_url?.startsWith('storage://hacksphere-course-files/')&&/\.(mp4|webm)(\?.*)?$/i.test(ev.resource_url))return{kind:'legacy',value:ev.id,title:ev.title};
+ if(/^https:\/\/[^ ]+\.(mp4|webm)(\?.*)?$/i.test(ev?.resource_url||''))return{kind:'external',value:ev.id,title:ev.title};
+ return null;
+};
+function studentClassroom(){
+ const program=p(course);
+ if(!program||!enrolled(program))return '<div class="st-view">'+stPageHeading('Course unavailable','Your enrollment must be active before accessing the classroom.')+stAction('My courses','navigate')+'</div>';
+ const events=stActualEvents(program);
+ const active=events.find(e=>e.id===lesson)||events[events.length-1];
+ lesson=active?.id||null;
+ const progress=Math.round(current(program)/Math.max(total(program),1)*100);
+ const dayNumber=active?Math.max(1,Math.round((new Date(active.scheduled_date)-new Date(program.start_date))/86400000)+1):null;
+ const playerMedia=stMediaFor(active);
+ const player=playerMedia?'<div class="st-player-empty" id="st-player-placeholder">'+
+  '<button type="button" class="st-player-play" data-action="student-play" data-id="'+esc(playerMedia.value)+'" data-source="'+esc(playerMedia.kind)+'" aria-label="Play recording">'+stIcon('play',29)+'</button>'+
+  '<strong>'+esc(playerMedia.title)+'</strong><span>Recording available</span></div>':
+ '<div class="st-player-empty"><span class="st-player-symbol">'+stIcon('video',38)+'</span><strong>No recording available</strong><span>Video appears here when published by your Trainer or Guide.</span></div>';
+ const lessonList=events.length?events.map(ev=>{
+  const itemDay=Math.max(1,Math.round((new Date(ev.scheduled_date)-new Date(program.start_date))/86400000)+1);
+  return '<button type="button" class="st-lesson'+(active?.id===ev.id?' active':'')+'" data-action="student-lesson" data-id="'+esc(ev.id)+'" aria-current="'+(active?.id===ev.id?'true':'false')+'"><span class="st-lesson-icon">'+stIcon(ev.activity_type==='quiz'?'quiz':['assignment','project','milestone'].includes(ev.activity_type)?'task':'play',18)+'</span>'+
+  '<span class="st-lesson-name"><b>'+esc(ev.title)+'</b><small>Day '+itemDay+' · '+esc(ev.activity_type)+'</small></span>'+stIcon('chevron',17)+'</button>'
+ }).join(''):'<div class="st-lesson-empty">No lessons released yet.</div>';
+ return '<div class="st-view st-classroom"><button class="st-back" data-action="navigate" data-view="courses">'+stIcon('back',17)+' My courses</button>'+
+ '<header class="st-classroom-head"><div><h1>'+esc(program.title)+'</h1><p>'+program.training_days+' days training · '+program.internship_days+' days internship'+(program.is_test?' · Test access':'')+'</p></div>'+
+ '<div class="st-day-count"><b>Day '+current(program)+' / '+total(program)+'</b><small>Calendar progress</small></div></header>'+
+ '<div class="st-classroom-progress">'+stProgramProgress(program)+'<span>'+progress+'%</span></div>'+
+ '<div class="st-classroom-grid"><main class="st-classroom-main"><div class="st-player" id="student-player">'+player+'</div>'+
+ '<div class="st-lesson-heading"><div><small>'+(active?'DAY '+dayNumber+' · '+(active.phase==='training'?'TRAINING':'INTERNSHIP'):'YOUR CLASSROOM')+'</small>'+
+ '<h2>'+esc(active?.title||'Your lessons will appear here')+'</h2></div></div>'+
+ '<section class="st-learning-details"><div class="st-tabs" role="tablist" aria-label="Lesson sections">'+
+ [['overview','Overview'],['notes','Notes'],['tasks','Tasks'],['quiz','Quiz']].map(([id,name])=>'<button type="button" class="st-tab'+(studentTab===id?' active':'')+'" role="tab" aria-selected="'+(studentTab===id)+'" data-action="student-tab" data-tab="'+id+'">'+name+'</button>').join('')+'</div>'+
+ '<div id="student-lesson-panel" class="st-tab-panel" role="tabpanel">'+studentTabHtml(program,active)+'</div></section></main>'+
+ '<aside class="st-curriculum"><div class="st-curriculum-top"><h2>Course content</h2><span>'+events.length+' available</span></div>'+
+ '<div class="st-curriculum-section"><div class="st-curriculum-label">'+stIcon('book',17)+' Training <span>Day 1–'+program.training_days+'</span></div>'+
+ '<div class="st-lesson-list">'+events.filter(e=>e.phase==='training').map(e=>lessonListFor(e,active,program)).join('')+'</div></div>'+
+ '<div class="st-curriculum-section"><div class="st-curriculum-label">'+stIcon('briefcase',17)+' Internship <span>Day '+(program.training_days+1)+'–'+total(program)+'</span></div>'+
+ '<div class="st-lesson-list">'+events.filter(e=>e.phase==='internship').map(e=>lessonListFor(e,active,program)).join('')+'</div></div>'+
+ (!events.length?'<div class="st-lesson-empty">No lessons have been released for this course.</div>':'')+
+ '<div class="st-future"><span>'+stIcon('lock',17)+'</span> Future lessons unlock on their scheduled dates.</div></aside></div></div>';
+}
+function lessonListFor(ev,active,program){
+ const d=Math.max(1,Math.round((new Date(ev.scheduled_date)-new Date(program.start_date))/86400000)+1);
+ return '<button class="st-lesson'+(ev.id===active?.id?' active':'')+'" data-action="student-lesson" data-id="'+esc(ev.id)+'" aria-current="'+(ev.id===active?.id?'true':'false')+'">'+
+ '<span class="st-lesson-icon">'+stIcon(ev.activity_type==='quiz'?'quiz':['assignment','project','milestone'].includes(ev.activity_type)?'task':'play',19)+'</span>'+
+ '<span class="st-lesson-name"><b>'+esc(ev.title)+'</b><small>Day '+d+' · '+esc(ev.activity_type)+'</small></span>'+stIcon('chevron',16)+'</button>';
+}
+function studentTabHtml(program,ev){
+ if(!ev)return '<div class="st-tab-empty">'+stIcon('book',27)+'<h3>No lesson available yet</h3><p>Your assigned teaching team publishes lessons according to the program schedule.</p></div>';
+ const resources=stPublishedResources(ev.id);
+ if(studentTab==='overview')return '<h3>'+esc(ev.title)+'</h3><p>'+esc(ev.description||'No lesson overview has been added yet.')+'</p>'+
+ '<div class="st-lesson-meta">'+stIcon('calendar',17)+' '+date(ev.scheduled_date)+' <span>·</span> '+esc(ev.phase==='training'?'Training':'Internship')+'</div>';
+ if(studentTab==='notes'){
+  const notesList=resources.filter(r=>['notes','file','link'].includes(r.kind));
+  let items=notesList.map(r=>'<article class="st-resource">'+
+   '<span class="st-resource-icon">'+stIcon('file',20)+'</span><div><b>'+esc(r.title)+'</b>'+(r.note_text?'<p>'+esc(r.note_text)+'</p>':'')+'</div>'+
+   ((r.storage_path||r.external_url)?'<button type="button" class="st-resource-open" data-action="student-resource" data-id="'+esc(r.id)+'" aria-label="Open '+esc(r.title)+'">'+stIcon('download',18)+'</button>':'')+'</article>').join('');
+  if(ev.resource_url&&!stMediaFor(ev)&&/^https:\/\//.test(ev.resource_url))items+='<article class="st-resource"><span class="st-resource-icon">'+stIcon('external',20)+'</span><div><b>Lesson resource</b></div><button class="st-resource-open" data-action="student-legacy-link" data-id="'+esc(ev.id)+'">'+stIcon('external',18)+'</button></article>';
+  return items||'<div class="st-tab-empty">'+stIcon('file',25)+'<h3>No notes published</h3><p>Notes and reference files will appear when your Trainer or Guide adds them.</p></div>';
+ }
+ if(studentTab==='tasks'){
+  if(!['assignment','project','milestone'].includes(ev.activity_type)){
+   const tasks=stActualEvents(program).filter(e=>['assignment','project','milestone'].includes(e.activity_type));
+   return tasks.length?'<h3>Available assignments</h3>'+tasks.map(e=>'<button class="st-related-lesson" data-action="student-lesson" data-id="'+esc(e.id)+'">'+stIcon('task',20)+'<span>'+esc(e.title)+'</span>'+stIcon('arrow',17)+'</button>').join(''):
+    '<div class="st-tab-empty">'+stIcon('task',25)+'<h3>No assignments released</h3><p>Tasks appear when added by your Trainer or Guide.</p></div>';
+  }
+  const previous=D.submissions.filter(x=>x.student_id===user.id&&x.event_id===ev.id).sort((a,b)=>String(b.submitted_at).localeCompare(String(a.submitted_at)))[0];
+  if(previous&&previous.status!=='changes_requested')return '<div class="st-task-status">'+stIcon('check',21)+'<div><h3>Assignment submitted</h3><p>'+esc(previous.status==='approved'?'Approved by reviewer':'Awaiting review')+'</p>'+
+   (previous.submission_url?'<a href="'+esc(previous.submission_url)+'" target="_blank" rel="noopener noreferrer">View submitted work ↗</a>':'')+'</div></div>';
+  return '<h3>'+esc(ev.title)+'</h3><p>'+esc(ev.description||'Submit your completed work for review.')+'</p>'+
+  (previous?'<div class="st-status-note">Changes requested — submit an updated version.</div>':'')+
+  '<form class="st-task-form" data-kind="submission" data-event="'+esc(ev.id)+'">'+
+  '<label>Project or GitHub URL<input name="submission_url" type="url" class="input" placeholder="https://github.com/..." required></label>'+
+  '<label>Submission notes<textarea name="content" class="input" rows="3" placeholder="What did you build?"></textarea></label>'+
+  '<button class="st-btn" type="submit">Submit assignment '+stIcon('arrow',17)+'</button></form>';
+ }
+ const qs=stActualEvents(program).filter(e=>e.activity_type==='quiz'&&D.quizzes.some(q=>q.timeline_event_id===e.id&&q.published));
+ if(ev.activity_type==='quiz')return quizPanel(ev);
+ return qs.length?'<h3>Available quizzes</h3>'+qs.map(e=>'<button class="st-related-lesson" data-action="student-lesson" data-id="'+esc(e.id)+'">'+stIcon('quiz',20)+'<span>'+esc(e.title)+'</span>'+stIcon('arrow',17)+'</button>').join(''):
+ '<div class="st-tab-empty">'+stIcon('quiz',25)+'<h3>No quizzes released</h3><p>Published quizzes will appear here on their scheduled dates.</p></div>';
+}
 
 function quizPanel(ev){
  if(ev?.activity_type!=="quiz")return "";
