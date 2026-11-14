@@ -12,8 +12,8 @@ const card=(h,b)=>'<section class="panel"><div class="panel-head"><h3>'+esc(h)+'
 const row=(icon,t,d,r="")=>'<div class="list-row"><span class="row-icon">'+icon+'</span><div class="row-body"><strong>'+esc(t)+'</strong><small>'+esc(d)+'</small></div>'+r+"</div>";
 const title=(h,d)=>'<div class="page-title"><div><span class="eyebrow">HACKSPHERE WORKSPACE</span><h1>'+esc(h)+'</h1><p>'+esc(d)+"</p></div></div>";
 const field=(name,id,type="text",val="",required=false)=>'<label class="field"><span>'+esc(name)+'</span><input class="input" name="'+id+'" type="'+type+'" value="'+esc(val)+'" '+(required?"required":"")+"></label>";
-const choose=(name,id,values)=>'<label class="field"><span>'+esc(name)+'</span><select name="'+id+'" class="input">'+values.map(v=>'<option value="'+esc(v[0])+'">'+esc(v[1])+"</option>").join("")+"</select></label>";
-const notes=(name,id)=>'<label class="field"><span>'+esc(name)+'</span><textarea class="input" name="'+id+'"></textarea></label>';
+const choose=(name,id,values,selected=null)=>'<label class="field"><span>'+esc(name)+'</span><select name="'+id+'" class="input">'+values.map(v=>'<option value="'+esc(v[0])+'" '+(selected===v[0]?"selected":"")+' >'+esc(v[1])+"</option>").join("")+"</select></label>";
+const notes=(name,id,initial="")=>'<label class="field"><span>'+esc(name)+'</span><textarea class="input" name="'+id+'"></textarea></label>';
 const click=(name,action,id="",kind="btn-light")=>'<button class="btn btn-small '+kind+'" data-action="'+action+'" data-id="'+esc(id)+'">'+esc(name)+"</button>";
 const keys=["programs","enrollments","payment_claims","timeline_events","live_sessions","staff_roles","staff_invitations","program_staff","guide_allocations","submissions","evaluations","completion_recommendations","certificates","profiles","site_settings"];
 let db=null,user=null,demo=false,role="student",page="overview",course=null,lesson=null,filter="All",search="",upi={},timelineOffset=0,paymentSection="pending";
@@ -217,14 +217,14 @@ function programEdit(){
  if(!x)return empty("Program not found","Select a program from the list.");
  const form='<form data-kind="program-edit" data-program="'+esc(x.id)+'">'+
  field("Program title","title","text",x.title,true)+
- notes("Description","description")+
+ notes("Description","description",x.description||"")+
  '<div class="form-grid">'+
  field("Start date","start_date","date",x.start_date,true)+
  field("Fee INR","fee_inr","number",x.fee_inr,true)+
  field("Training days","training_days","number",x.training_days,true)+
  field("Internship days","internship_days","number",x.internship_days,true)+
- choose("Delivery mode","mode",[["Hybrid","Hybrid"],["Live","Live"],["Recorded","Recorded"]])+
- choose("Visibility","status",[["draft","Draft"],["published","Published"],["ongoing","Ongoing"],["completed","Completed"],["archived","Archived"]])+
+ choose("Delivery mode","mode",[["Hybrid","Hybrid"],["Live","Live"],["Recorded","Recorded"]],x.mode)+
+ choose("Visibility","status",[["draft","Draft"],["published","Published"],["ongoing","Ongoing"],["completed","Completed"],["archived","Archived"]],x.status)+
  '</div><div class="alert warning">Changing program dates after content is scheduled can change what students see. Review the timeline and notify affected students before saving.</div>'+
  '<button class="btn btn-primary">Save program changes</button></form>';
  return title("Edit program","Make intentional changes to the selected batch.")+
@@ -508,6 +508,46 @@ async function showVerification(code){
  modal.innerHTML='<div class="modal" role="dialog" aria-modal="true"><button class="icon-button modal-close" data-action="close-verify">✕</button><div class="logo" style="margin:auto">ϟ</div><h2>'+heading+'</h2>'+body+'<button class="btn btn-outline" data-action="close-verify">Close</button></div>';
  document.body.append(modal);
 }
+function mySubmissions(){
+ let mine=D.submissions.filter(x=>x.student_id===user.id);
+ let unlocked=D.timeline_events.filter(x=>D.enrollments.some(e=>e.program_id===x.program_id&&e.student_id===user.id)&&
+ ["assignment","project","milestone"].includes(x.activity_type)&&x.scheduled_date<=today());
+ let pending=unlocked.filter(x=>!mine.some(sub=>sub.event_id===x.id));
+ let todo=pending.map(x=>'<article class="task-card"><span class="task-icon">▤</span><div><b>'+esc(x.title)+'</b><small>'+esc(p(x.program_id)?.title||"Program")+' • '+date(x.scheduled_date)+'</small></div>'+click("Open","open-course",x.program_id,"btn-primary")+'</article>').join("");
+ let done=mine.map(x=>{let t=D.timeline_events.find(y=>y.id===x.event_id);return row("✓",t?.title||"Assignment",x.status+' • '+date(x.submitted_at?.slice(0,10)),tag(x.status))}).join("");
+ return title("Assignments & submissions","A focused inbox for your project work and trainer feedback.")+
+ '<div class="stat-grid">'+
+ '<div class="stat"><span class="sicon">▥</span><b>'+pending.length+'</b><small>Available tasks</small></div>'+
+ '<div class="stat"><span class="sicon">✓</span><b>'+mine.length+'</b><small>Submitted work</small></div>'+
+ '<div class="stat"><span class="sicon">◎</span><b>'+D.evaluations.filter(x=>x.student_id===user.id).length+'</b><small>Reviews</small></div>'+
+ '<div class="stat"><span class="sicon">▦</span><b>'+selectedPrograms().length+'</b><small>My courses</small></div></div>'+
+ '<div class="two-col"><div>'+card("Ready for submission",todo||empty("All caught up","New activities appear according to your daily learning timetable."))+
+ '</div><div>'+card("Previous submissions",done||empty("Nothing submitted yet","Open a released assignment inside your classroom."))+'</div></div>';
+}
+function profilePage(){
+ let name=user.user_metadata?.full_name||D.profiles.find(x=>x.id===user.id)?.full_name||'HackSphere member';
+ let accountRoles=demo?["student","trainer","guide","admin"]:["student",...D.staff_roles.filter(x=>x.user_id===user.id).map(x=>x.role)];
+ return title("My Google account","Secure account details and your authorized HackSphere roles.")+
+ '<div class="profile-hero"><span class="profile-large-avatar">'+esc(name.slice(0,2).toUpperCase())+'</span><div><h2>'+esc(name)+'</h2><p>'+esc(user.email||"Connected with Google")+'</p><div class="form-actions">'+accountRoles.map(x=>'<span class="pill green">'+esc(x)+'</span>').join("")+'</div></div></div>'+
+ '<div class="equal-col"><div>'+card("Account security",
+ row("✓","Authentication provider","Google OAuth",tag("Connected"))+
+ row("♙","Email",user.email||"Not available")+
+ row("▦","Permissions","Only authorized Admin can change staff roles."))+'</div><div>'+
+ card("Public display name",'<form data-kind="profile">'+field("Name","full_name","text",name,true)+
+ '<div class="alert">This name is displayed in the LMS. Changing it cannot add staff or Admin access.</div>'+
+ '<button class="btn btn-primary">Update name</button></form>')+
+ '</div></div>';
+}
+function refreshProgramPreview(form){
+ let t=Number(form.querySelector('[name="training_days"]')?.value||0), i=Number(form.querySelector('[name="internship_days"]')?.value||0);
+ let start=form.querySelector('[name="start_date"]')?.value;
+ let set=(id,value)=>{let e=document.getElementById(id);if(e)e.textContent=value};
+ set("preview-training-days",t+" days");set("preview-intern-days",i+" days");
+ let track=document.getElementById("preview-training-bar");if(track)track.style.width=Math.round(t/Math.max(1,t+i)*100)+"%";
+ set("preview-start",start?date(start):"Choose a start date");
+ set("preview-intern-start",start&&t>0?date(day(start,t)):"Calculated automatically");
+}
+
 function settings(){return title("Website settings","Manage official UPI instructions and integration status.")+card("Payment configuration",upiForm())+card("Google OAuth & Meet","Google Cloud OAuth client credentials are required for sign-in and automated Google Meet creation.")}
 document.addEventListener("click",async e=>{let b=e.target.closest("[data-action]");if(!b)return;let a=b.dataset.action,id=b.dataset.id;if(a==="login")loginDialog();else if(a==="close-login")hideDialog();else if(a==="google-login")signIn();else if(a==="demo")demoOpen();else if(a==="toggle-public-menu")$("mobile-links").hidden=!$("mobile-links").hidden;else if(a==="open-drawer")$("app-shell").classList.add("drawer-open");else if(a==="close-drawer")$("app-shell").classList.remove("drawer-open");else if(a==="signout")signOut();else if(a==="home")publicPage();else if(a==="navigate"){navigateTo(b.dataset.view)}else if(a==="open-course"){navigateTo("courses",id)}else if(a==="close-course"){navigateTo("courses")}else if(a==="lesson"){lesson=id;render()}else if(a==="enroll-public"){if(!user)loginDialog();else{navigateTo("enrollment");open()}}else if(a==="timeline-prev"){timelineOffset=Math.max(0,timelineOffset-1);render()}else if(a==="timeline-next"){timelineOffset=(timelineOffset+1)%Math.ceil(total(p(course||selectedPrograms()[0]?.id))/14);render()}else if(a==="secure-resource"){let event=D.timeline_events.find(x=>x.id===id);if(!event?.resource_url)return;let path=event.resource_url.replace("storage://hacksphere-course-files/","");if(demo){notice("Preview only — no private recording file is stored.");return}let r=await db.storage.from("hacksphere-course-files").createSignedUrl(path,600);if(r.error){notice(r.error.message,"error");return}if(/\.(mp4|webm)$/i.test(path)){let player=$("course-player");player.innerHTML='<video controls autoplay playsinline src="'+esc(r.data.signedUrl)+'"></video>';}else window.open(r.data.signedUrl,"_blank","noopener,noreferrer")}else if(a==="program-new"){navigateTo("program-new")}
 else if(a==="program-detail"){navigateTo("program-detail",id)}else if(a==="program-edit"){navigateTo("program-edit",id)}
@@ -518,10 +558,12 @@ else if(a==="payment-settings"){navigateTo("payment-settings")}
 else if(a==="profile"){navigateTo("profile")}
 else if(a==="publish"){let x=p(id);await save("programs",{status:x.status==="draft"?"published":"draft"},id)}else if(a==="proof"){let claim=D.payment_claims.find(x=>x.id===id);if(!claim?.proof_path){notice("No screenshot attached.","error");return}if(demo){notice("Screenshot is not available in preview mode.");return}let r=await db.storage.from("hacksphere-payment-proofs").createSignedUrl(claim.proof_path,300);if(r.error)notice(r.error.message,"error");else window.open(r.data.signedUrl,"_blank","noopener,noreferrer")}else if(a==="approve-pay"||a==="reject-pay"){if(a==="approve-pay"&&!confirm("Have you personally verified the actual bank credit for this transaction?"))return;await save("payment_claims",{status:a==="approve-pay"?"approved":"rejected",reviewed_by:user.id,reviewed_at:new Date().toISOString()},id)}else if(a==="letter"){printCredential("offer_letter",id)}else if(a==="certificate-print"){printCredential("certificate",id)}else if(a==="check-code"){let code=prompt("Enter your HackSphere document ID");if(code)showVerification(code)}else if(a==="close-verify"){document.getElementById("verify-overlay")?.remove()}else if(a==="review-approve"||a==="review-changes"){await save("submissions",{status:a==="review-approve"?"approved":"changes_requested"},id)}else if(a==="certificate"){let x=D.completion_recommendations.find(x=>x.id===id);if(x&&x.recommendation==="recommended"&&confirm("Approve final certificate?"))await save("certificates",{student_id:x.student_id,program_id:x.program_id,approved_by:user.id})}else if(a==="join"){notice("Google Meet account authorization is pending.","error")}});
 document.addEventListener("change",e=>{if(e.target.id==="role-switch"){role=e.target.value;navigateTo("overview")}});
-document.addEventListener("input",e=>{if(e.target.id==="catalog-search"){search=e.target.value;drawCatalog()}});
+document.addEventListener("input",e=>{if(e.target.closest('form[data-kind="program"]'))refreshProgramPreview(e.target.closest('form[data-kind="program"]'));if(e.target.id==="catalog-search"){search=e.target.value;drawCatalog()}});
 document.addEventListener("click",e=>{let b=e.target.closest("[data-filter]");if(!b)return;filter=b.dataset.filter;document.querySelectorAll("[data-filter]").forEach(x=>x.classList.toggle("active",x.dataset.filter===filter));drawCatalog()});
 document.addEventListener("submit",async e=>{let form=e.target.closest("form[data-kind]");if(!form)return;e.preventDefault();let f=Object.fromEntries(new FormData(form).entries()),type=form.dataset.kind;
-if(type==="program"){f.training_days=+f.training_days;f.internship_days=+f.internship_days;f.fee_inr=+f.fee_inr;f.created_by=user.id;await save("programs",f)}
+if(type==="program"){f.training_days=+f.training_days;f.internship_days=+f.internship_days;f.fee_inr=+f.fee_inr;f.created_by=user.id;await save("programs",f);navigateTo("programs")}
+else if(type==="program-edit"){f.training_days=+f.training_days;f.internship_days=+f.internship_days;f.fee_inr=+f.fee_inr;let id=form.dataset.program;if(id){await save("programs",f,id);navigateTo("program-detail",id)}}
+else if(type==="profile"){await save("profiles",{full_name:f.full_name},user.id)}
 else if(type==="activity"){f.created_by=user.id;await save("timeline_events",f)}
 else if(type==="session"){f.duration_minutes=+f.duration_minutes;f.trainer_user_id=user.id;await save("live_sessions",f)}
 else if(type==="submission"){f.student_id=user.id;f.event_id=form.dataset.event;await save("submissions",f)}
