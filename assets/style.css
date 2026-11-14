@@ -1235,3 +1235,16 @@ body{font-size:14.5px;line-height:1.55}
  #marketing.hs-public-v5 .hs-catalog-title{gap:8px;align-items:flex-start}
  #marketing.hs-public-v5 .hs-catalog-title>span{font-size:11px;white-space:nowrap}
 }
+
+/* Keep existing information and merchant-policy pages aligned to the new purple brand. */
+#marketing.hs-public-v5 .legal-page{background:linear-gradient(180deg,#f5f1ff 0,#fafaff 260px)}
+#marketing.hs-public-v5 .legal-page .legal-hero .eyebrow{color:#7541cf}
+#marketing.hs-public-v5 .legal-page .legal-hero h1{color:#211535}
+#marketing.hs-public-v5 .legal-page .legal-hero p{color:#746b84}
+#marketing.hs-public-v5 .legal-page .legal-pill-nav a{border-color:#e4d9ef;color:#60516d;background:white}
+#marketing.hs-public-v5 .legal-page .legal-pill-nav a.active,
+#marketing.hs-public-v5 .legal-page .legal-pill-nav a:hover{border-color:#7C3AED;background:#7C3AED;color:#fff}
+#marketing.hs-public-v5 .legal-page .legal-article{border-color:#e7e1ed}
+#marketing.hs-public-v5 .legal-page .legal-article a{color:#7134cd}
+#marketing.hs-public-v5 .legal-page .legal-contact{background:#f7f2ff;border-color:#e9def8}
+#marketing.hs-public-v5 .legal-page .legal-contact a{color:#7234cd}
