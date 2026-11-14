@@ -495,6 +495,20 @@ async function studentPlayRecording(id,source){
  const video=document.createElement("video");video.controls=true;video.playsInline=true;
  video.preload="metadata";video.setAttribute("controlsList","nodownload");
  video.setAttribute("aria-label",selected.title+" recording");video.src=src;
+ if(source==="r2"){
+  let lastRenewal=Date.now(),refreshing=false;
+  video.addEventListener("timeupdate",async()=>{
+   if(refreshing||Date.now()-lastRenewal<12*60*1000||video.paused)return;
+   refreshing=true;lastRenewal=Date.now();
+   try{
+    const s=await db.auth.getSession(),token=s.data?.session?.access_token;
+    if(token)await fetch("/api/videos/"+encodeURIComponent(id)+"/session",{
+      method:"POST",headers:{authorization:"Bearer "+token},credentials:"same-origin"});
+   }catch(e){/* A failed renewal will be reported if a later video request fails. */}
+   refreshing=false;
+  });
+ }
+ video.addEventListener("error",()=>notice("Video playback failed. Check your enrollment, connection, or refresh the lesson.","error"),{once:true});
  holder.append(video);try{await video.play()}catch(e){}
 }
 async function studentOpenResource(id){
