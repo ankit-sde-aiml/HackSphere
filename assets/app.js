@@ -511,14 +511,7 @@ function classroom(){
    field("External HTTPS URL (instead of a file)","external_url","url"),
    notes("Written notes (for text-only notes)","note_text"),
    '<button class="btn btn-primary" type="submit">Publish resource</button></form>',
-   '<div class="form-section-label">Older single-resource upload</div>',
-   '<form data-kind="media-upload" data-event="'+esc(selected.id)+'" data-program="'+esc(program.id)+'">',
-   '<h3 style="font-size:15px">Replace legacy recording / material</h3>',
-   '<label class="field"><span>PDF, MP4, WebM or image (private storage)</span>',
-   '<input class="input" name="resource_file" type="file" accept=".pdf,.mp4,.webm,.png,.jpg,.jpeg" required></label>',
-   '<button class="btn btn-primary">Upload and publish resource</button>',
-   '<p style="font-size:11px;color:var(--muted)">Uploaded files remain private. Storage and per-file size limits depend on your free Supabase plan.</p>',
-   '</form>'
+
   ].join(""));
  }
  let lessons=events.length?events.map(x=>[
@@ -1183,7 +1176,7 @@ else if(type==="lesson-resource"){
  const obj={event_id:eventId,kind:f.kind,title:name,published:true,created_by:user.id};
  if(file){
   if(!allowed[file.type]||file.size>52428800){notice("Upload MP4, WebM, PDF or image below 50 MB.","error");return}
-  if(f.kind==="video"&&!file.type.startsWith("video/")||f.kind==="link"){notice("Selected type does not match the uploaded file.","error");return}
+  if((f.kind==="video"&&!file.type.startsWith("video/"))||(f.kind==="notes"&&file.type.startsWith("video/"))||f.kind==="link"){notice("Selected type does not match the uploaded file.","error");return}
   const path=programId+"/"+eventId+"/"+crypto.randomUUID()+"."+allowed[file.type];
   if(demo){obj.storage_path=path}
   else{
@@ -1193,6 +1186,7 @@ else if(type==="lesson-resource"){
   }
  }else if(f.external_url?.trim()){
   if(!/^https:\/\/[^ ]+$/.test(f.external_url.trim())){notice("Enter a secure HTTPS link.","error");return}
+  if(f.kind==="video"&&!/\.(mp4|webm)(\?.*)?$/i.test(f.external_url.trim())){notice("Video URLs must link directly to MP4 or WebM.","error");return}
   obj.external_url=f.external_url.trim();
  }else if(f.kind==="notes"&&f.note_text?.trim()){
   obj.note_text=f.note_text.trim();
