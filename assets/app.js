@@ -811,49 +811,28 @@ function programAdmin(){
  '<div class="help-hint">Create program with Trainer & Guide → Add or import dated lessons → Publish → Verify payment → Allocate student Guide at internship start.</div>'
 }
 function programNew(){
- if(role!=="admin")return empty("Access denied","Administrator role required.");
- const form=[
- '<form data-kind="program" class="editor-form">',
- '<div class="form-section-label"><span>01</span><div><b>Program identity</b><small>What students will see in the catalog</small></div></div>',
- field("Program title","title","text","",true),
- notes("Description and learning outcomes","description"),
- '<div class="form-section-label"><span>02</span><div><b>Timeline & batch setup</b><small>Content unlocks based on calendar date</small></div></div>',
- '<div class="form-grid">',
- field("Program start date","start_date","date","",true),
- choose("Class format","mode",[["Hybrid","Hybrid — Live + Recorded"],["Live","Live classes"],["Recorded","Recorded lessons"]]),
- choose("Program timezone","timezone",[["Asia/Kolkata","India • IST (Asia/Kolkata)"],["Etc/UTC","UTC"],["Asia/Dubai","UAE (Dubai)"],["Europe/London","UK (London)"],["America/New_York","US (New York)"]]),
- field("Training days","training_days","number","60",true),
- field("Internship days","internship_days","number","30",true),
- '</div>',
- '<div class="form-section-label"><span>03</span><div><b>Enrollment</b><small>Fee is verified manually via official UPI</small></div></div>',
- '<div class="form-grid">',
- field("Fee in INR","fee_inr","number","0",true),
- choose("Initial visibility","status",[["draft","Save as draft"],["published","Publish immediately"]]),
- '</div>',
- '<div class="form-section-label"><span>04</span><div><b>Teaching team</b><small>Select both staff at program creation</small></div></div>',
- '<div class="form-grid">',
- choose("Program Trainer","trainer_id",D.staff_roles.filter(x=>x.role==="trainer").map(x=>[x.user_id,who(x.user_id)])),
- choose("Designated Internship Guide","guide_id",D.staff_roles.filter(x=>x.role==="guide").map(x=>[x.user_id,who(x.user_id)])),
- '</div>',
- '<div class="alert">Trainer and Guide are designated now; student-specific Guide allocation happens only when the internship starts.</div>',
- '<div class="form-actions" style="margin-top:20px">',
- '<button class="btn btn-primary">Save program →</button>',
- '<button class="btn btn-outline" type="button" data-action="navigate" data-view="programs">Cancel</button>',
- '</div></form>'
- ].join("");
- const preview=[
- '<div class="editor-preview"><span class="eyebrow">SCHEDULE PREVIEW</span><h3>Your program journey</h3>',
- '<div class="preview-schedule"><div class="preview-phase"><span>Training phase</span><strong id="preview-training-days">60 days</strong></div>',
- '<div class="preview-bar"><span id="preview-training-bar"></span><i></i></div>',
- '<div class="preview-phase"><span>Project internship</span><strong id="preview-intern-days">30 days</strong></div>',
- '<p class="preview-start">Starts: <b id="preview-start">Choose a start date</b></p>',
- '<p class="preview-start">Internship begins: <b id="preview-intern-start">Calculated automatically</b></p></div>',
- '<div class="alert warning">This sets program duration, not prewritten content. Trainer/Guide add dated activities after saving.</div>',
- '</div>'
- ].join("");
- return title("Create new program","A focused setup flow for one independently managed training and internship batch.")+
- '<div class="editor-breadcrumb"><button data-action="navigate" data-view="programs">All programs</button><span>/</span><b>New program</b></div>'+
- '<div class="editor-layout"><div>'+card("New program details",form)+'</div><aside>'+preview+'</aside></div>';
+ if(role!=="admin")return empty("Admin only","Administrator privileges required.");
+ const catalog=[["","Standalone program"],...(D.course_catalog||[]).map(c=>[c.id,c.title])];
+ const form='<form data-kind="program-v2" class="editor-form">'+
+ '<div class="form-section-label"><span>01</span><div><b>Course & batch</b><small>One reusable course can serve many independent batches.</small></div></div>'+
+ choose("Existing course (optional)","course_catalog_id",catalog,"")+
+ field("Program title","title","text","",true)+field("Batch name","batch_name","text","Batch 01",true)+
+ notes("Description and learning outcomes","description")+
+ '<div class="form-section-label"><span>02</span><div><b>Timeline and fees</b><small>Set your own training-to-internship ratio.</small></div></div>'+
+ '<div class="form-grid">'+
+ field("Start date","start_date","date","",true)+
+ field("Training days","training_days","number",60,true)+
+ field("Internship days","internship_days","number",40,true)+
+ field("Fee in INR","fee_inr","number",0,true)+
+ field("Maximum enrollments","enrollment_capacity","number",50,true)+
+ choose("Class mode","mode",[["Hybrid","Live + Recording"],["Live","Live"],["Recorded","Recorded"]],"Hybrid")+
+ choose("Timezone","timezone",[["Asia/Kolkata","India (IST)"],["Etc/UTC","UTC"]],"Asia/Kolkata")+'</div>'+
+ '<div class="alert">Created as Draft. Admin can assign any number of program mentors and schedule the exact classes each will teach.</div>'+
+ '<div class="form-actions"><button class="btn btn-primary" type="submit">Create draft program</button>'+
+ '<button type="button" class="btn btn-outline" data-action="navigate" data-view="programs">Cancel</button></div></form>';
+ return title("Create Program & Batch","Set duration, capacity and fees first. Assign class owners separately.")+
+ '<div class="editor-layout"><div>'+card("Program Builder",form)+'</div><aside>'+
+ card("Next steps",'<div class="process-list"><p><b>01.</b> Create this draft</p><p><b>02.</b> Assign invited mentors</p><p><b>03.</b> Build the full teaching calendar</p><p><b>04.</b> Publish enrollment when ready</p><p><b>05.</b> Generate internship groups after training</p></div>')+'</aside></div>';
 }
 function programDetail(){
  let x=p(course);
@@ -1418,7 +1397,19 @@ const submitButton=form.querySelector('[type="submit"]')||form.querySelector('bu
 const savedButton=submitButton?.innerHTML;if(submitButton){submitButton.disabled=true;submitButton.textContent="Saving…"}
 let f=Object.fromEntries(new FormData(form).entries()),type=form.dataset.kind;
 try{
-if(type==="v2-global-event"){
+if(type==="program-v2"){
+ if(role!=="admin")throw Error("Administrator role required");
+ const args={_title:f.title,_description:f.description||"",_start_date:f.start_date,
+ _training_days:Number(f.training_days),_internship_days:Number(f.internship_days),
+ _fee_inr:Number(f.fee_inr),_mode:f.mode,_timezone:f.timezone||"Asia/Kolkata",
+ _batch_name:f.batch_name||null,_enrollment_capacity:f.enrollment_capacity?Number(f.enrollment_capacity):null,
+ _course_catalog_id:f.course_catalog_id||null};
+ if(demo){const id="demo-batch-v2";D.programs.push({id,...f,training_days:args._training_days,internship_days:args._internship_days,fee_inr:args._fee_inr,status:"draft"});navigateTo("program-detail",id);return}
+ const r=await db.rpc("create_program_v2",args);
+ if(r.error)throw r.error;
+ await reload();navigateTo("program-detail",r.data);notice("Draft created. Assign mentors, then build schedule.","success");
+}
+else if(type==="v2-global-event"){
  if(role!=="admin")throw Error("Admin access required");
  const joinUrl=String(f.join_url||"").trim();delete f.join_url;
  f.starts_at=new Date(f.starts_at).toISOString();f.duration_minutes=Number(f.duration_minutes);f.created_by=user.id;
