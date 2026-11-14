@@ -835,44 +835,29 @@ function programNew(){
  card("Next steps",'<div class="process-list"><p><b>01.</b> Create this draft</p><p><b>02.</b> Assign invited mentors</p><p><b>03.</b> Build the full teaching calendar</p><p><b>04.</b> Publish enrollment when ready</p><p><b>05.</b> Generate internship groups after training</p></div>')+'</aside></div>';
 }
 function programDetail(){
- let x=p(course);
- if(role!=="admin")return empty("Administrator access required","This program-management screen is reserved for Admin.");if(!x)return title("Program workspace","Manage one batch at a time.")+empty("Program not found","Go back to the program list.");
- let en=D.enrollments.filter(e=>e.program_id===x.id),ts=D.program_staff.filter(e=>e.program_id===x.id),ga=D.guide_allocations.filter(e=>e.program_id===x.id),ev=D.timeline_events.filter(e=>e.program_id===x.id);
- const openIn=day(x.start_date,x.training_days),ended=day(x.start_date,total(x)-1);
- const isTestBanner=x.is_test?'<div class="alert warning"><b>QA test cohort</b> — this batch is hidden from the public catalog. Student access is an authorized test seat; no actual UPI payment has been approved.</div>':"";
- const actions='<div class="form-actions">'+click("Edit details","program-edit",x.id,"btn-outline")+click("Manage timeline","program-timeline",x.id,"btn-primary")+'</div>';
- const cover=[
- '<div class="program-cover"><div class="program-cover-icon">⌘</div>',
- '<div><div class="eyebrow">HACKSPHERE PROGRAM WORKSPACE</div><h2>'+esc(x.title)+'</h2><p>'+esc(x.description||"Training and project-based internship program")+'</p>',
- '<div class="program-badges">'+tag(x.mode)+tag(x.status)+(current(x)>x.training_days?'<span class="pill green">Internship phase</span>':'<span class="pill">Training phase</span>')+'</div></div>',
- '</div>'
- ].join("");
- const statSet='<div class="stat-grid">'+[
- ['◷',total(x),'Total calendar days'],['♙',en.length,'Enrolled students'],['▤',ev.length,'Scheduled activities'],['◇',ga.length,'Guide allocations']
- ].map(([a,n,l])=>'<div class="stat"><span class="sicon">'+a+'</span><b>'+n+'</b><small>'+l+'</small></div>').join("")+'</div>';
- const manage=[
- '<div class="program-phase-track"><div><b>Training</b><span>'+x.training_days+' days · '+date(x.start_date)+'</span></div><div><b>Internship</b><span>'+x.internship_days+' days · '+date(openIn)+'</span></div></div>',
- '<div class="program-bar"><span style="width:'+Math.round(x.training_days/total(x)*100)+'%"></span></div>',
- '<div class="detail-facts"><div><span>Program fee</span><b>'+money(x.fee_inr)+'</b></div><div><span>End date</span><b>'+date(ended)+'</b></div><div><span>Program start</span><b>'+date(x.start_date)+'</b></div><div><span>Internship starts</span><b>'+date(openIn)+'</b></div></div>'
- ].join("");
- const students=en.length?en.map(e=>row('♙',who(e.student_id),e.status+(e.is_test?" · QA TEST ACCESS (no payment)":" · Offer letter: "+(e.offer_letter_code||"Pending")))).join(""):empty("No enrolled students","Only verified UPI payments activate enrollment.");
- const trainers=ts.length?ts.map(t=>row("♙",who(t.user_id),"Assigned training instructor")).join(""):empty("Trainer not assigned","Assign a trainer from the Staff directory.");
- const designated=D.program_guides.filter(g=>g.program_id===x.id).map(g=>row("◇",who(g.user_id),"Nominated at program creation")).join("")||empty("Guide designation missing","Assign a Guide in the program team.");
- const guides=ga.length?ga.map(a=>row("◇",who(a.student_id),who(a.guide_user_id)+" · Assigned Guide")).join(""):empty("No Guide yet","Admin allocates Guides only after "+date(openIn)+".");
- return title(x.title,"Manage timeline, enrollment, Trainers and Guides for this batch.",actions)+
- '<div class="editor-breadcrumb"><button data-action="navigate" data-view="programs">All programs</button><span>/</span><b>'+esc(x.title)+'</b></div>'+
- cover+isTestBanner+statSet+'<div class="two-col"><div>'+card("Program structure",manage)+card("Enrolled students",students)+'</div><div>'+
- card("Training team",trainers+click("Assign a Trainer","navigate","","btn-light").replace('data-action="navigate"','data-action="navigate" data-view="staff"'))+
- card("Designated Internship Guide",designated)+card("Student Guide allocations",guides)+
- card("Operations",'<div class="quick-links">'+click("Timeline","program-timeline",x.id)+click("Payment approvals","navigate","","btn-outline").replace('data-action="navigate"','data-action="navigate" data-view="payments"')+'</div>')+
- card("Import CSV learning schedule",
- '<form data-kind="csv-schedule" data-program="'+esc(x.id)+'">'+
- '<label class="field"><span>CSV file (day, phase, activity_type, title, description, live, start_time, duration_minutes)</span>'+
- '<input class="input" type="file" name="schedule_file" accept=".csv,text/csv" required></label>'+
- '<p style="font-size:12px;color:var(--muted)">One row per day or additional activity. Duplicate dated titles will be skipped. Live sessions are scheduled; Meet links need trainer OAuth.</p>'+
- '<div class="form-actions"><button class="btn btn-primary">Import schedule</button>'+
- '<a class="btn btn-outline" target="_blank" rel="noopener noreferrer" href="https://github.com/ankit-sde-aiml/HackSphere/blob/main/examples/python_90_day_schedule.csv">View sample CSV ↗</a></div></form>')+
- '</div></div>';
+ const x=p(course);
+ if(role!=="admin")return empty("Admin only","Sign in as Administrator to manage the program.");
+ if(!x)return empty("Program missing","Go back to the program directory.");
+ const en=D.enrollments.filter(e=>e.program_id===x.id);
+ const mentors=v2ProgramMentors(x.id),lessons=D.timeline_events.filter(e=>e.program_id===x.id&&e.phase==="training");
+ const teams=D.internship_teams.filter(t=>t.program_id===x.id);
+ const actions='<div class="form-actions">'+click("Edit details","program-edit",x.id,"btn-outline")+
+ '<button class="btn btn-small btn-outline" data-action="navigate" data-view="mentor-assignments">Assign mentors</button>'+
+ '<button class="btn btn-small btn-primary" data-action="navigate" data-view="schedule-v2">Schedule classes</button></div>';
+ const facts='<div class="detail-facts"><div><span>Batch</span><b>'+esc(x.batch_name||"Default")+'</b></div>'+
+ '<div><span>Fee</span><b>'+money(x.fee_inr)+'</b></div>'+
+ '<div><span>Start date</span><b>'+date(x.start_date)+'</b></div>'+
+ '<div><span>Training</span><b>'+x.training_days+' days</b></div>'+
+ '<div><span>Internship</span><b>'+x.internship_days+' days</b></div></div>';
+ const stats='<div class="stat-grid">'+[["Enrolled",en.length],["Mentors",mentors.length],["Training lessons",lessons.length],["Project teams",teams.length]].map(q=>'<div class="stat"><b>'+q[1]+'</b><small>'+esc(q[0])+'</small></div>').join("")+'</div>';
+ return title(x.title,"Structured learning, assigned mentors and in-house projects for this batch.",actions)+
+ (x.is_test?'<div class="alert warning">Internal QA test program — not counted as real paid enrollments.</div>':"")+stats+
+ '<div class="two-col"><div>'+card("Program settings",facts)+
+ card("Shared mentors",mentors.map(m=>row("♙",who(m.mentor_id),"Internship capacity: "+m.max_internship_teams+" teams")).join("")||empty("No mentors","Invite mentors, then assign them to this program."))+
+ card("Scheduled training",lessons.slice(0,30).map(e=>row("▤",e.title,date(e.scheduled_date)+" · "+(e.responsible_mentor_id?who(e.responsible_mentor_id):"Unassigned"))).join("")||empty("No classes scheduled","Admin assigns each teaching session."))+
+ '</div><div>'+card("Students",en.map(e=>row("♙",who(e.student_id),e.is_test?"QA test account":e.status)).join("")||empty("No enrolled students","Active enrollments appear here."))+
+ card("In-house internship teams",teams.map(t=>row("◇","Team "+t.team_number,who(t.mentor_id)+" · "+(D.internship_team_members||[]).filter(m=>m.team_id===t.id).length+" students")).join("")||empty("No teams","Groups form after the training period."))+
+ card("Tools",'<button class="btn btn-primary" data-action="navigate" data-view="teams-overview">Manage internship allocation</button>')+'</div></div>';
 }
 function programEdit(){
  let x=p(course);
