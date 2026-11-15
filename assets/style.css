@@ -1529,3 +1529,17 @@ button,a,input,select,textarea{-webkit-tap-highlight-color:transparent}
  #login-modal .modal{padding:24px 19px!important;margin:10px;border-radius:17px}
  #login-modal .modal h2{font-size:23px!important}
 }
+
+/* 5.2 mobile audit refinement: avoid repeated hero proof and footer links */
+@media(max-width:700px){
+ #marketing.hs-public-v5 .hs-hero-proof{display:none!important}
+ #marketing.hs-public-v5 .hero .hs-hero-layout{padding-bottom:22px!important}
+ #marketing.hs-public-v5 .hs-footer-columns{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:23px 15px!important}
+ #marketing.hs-public-v5 .hs-footer-brand{grid-column:1/-1}
+ #marketing.hs-public-v5 .hs-footer-brand>p{display:none}
+ #marketing.hs-public-v5 .hs-footer-col[aria-label="Quick links"]{display:none!important}
+ #marketing.hs-public-v5 .hs-footer-col{min-width:0}
+ #marketing.hs-public-v5 .hs-footer-col a{font-size:12px;line-height:1.8}
+ #marketing.hs-public-v5 .footer{padding-top:32px;padding-bottom:20px}
+ #marketing.hs-public-v5 .hs-footer-bottom{margin-top:8px}
+}
