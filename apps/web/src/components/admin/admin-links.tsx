@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CalendarDays, GraduationCap, Mic2, Users, UsersRound } from "lucide-react";
 const links=[
+ {href:"/workspace/admin/courses",name:"Course catalog",icon:GraduationCap},
  {href:"/workspace/admin/programs",name:"Create program",icon:GraduationCap},
  {href:"/workspace/admin/mentors",name:"Assign mentors",icon:Users},
  {href:"/workspace/admin/schedule",name:"Schedule learning",icon:CalendarDays},
