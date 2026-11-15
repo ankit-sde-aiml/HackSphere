@@ -1,0 +1,34 @@
+name: HackSphere Next.js Build
+on:
+  push:
+    branches: [feature/mentor-led-platform-v2]
+    paths:
+      - "apps/web/**"
+      - ".github/workflows/hacksphere-next-build.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+permissions:
+  contents: read
+jobs:
+  typecheck-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Next.js dependencies
+        run: npm install --no-audit --no-fund
+      - name: TypeScript verification
+        run: npm run typecheck
+      - name: Production build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://wvipkluopmptwuvihecz.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder-not-a-secret
+        run: npm run build
