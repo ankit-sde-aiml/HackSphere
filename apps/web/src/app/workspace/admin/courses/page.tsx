@@ -13,3 +13,4 @@ export default async function CourseCatalog(){
     <p className="mt-1 text-sm text-slate-500">{x.slug} · {x.is_published?"Published":"Draft"}</p>
    </div>):<p className="text-sm text-slate-500">No course templates yet. Existing program batches are preserved.</p>}</div></section>
  </main>;
+}
