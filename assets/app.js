@@ -1775,7 +1775,19 @@ else if(type==="quiz-attempt"){
 else if(type==="merchant"){await save("site_settings",{key:"legal_business",value:f,updated_by:user.id})}
 else if(type==="score"){f.score=+f.score;f.max_score=+f.max_score;f.evaluator_id=user.id;await save("evaluations",f)}
 else if(type==="payment"){const file=form.querySelector('input[name="proof_file"]')?.files?.[0];if(!file||!["image/png","image/jpeg","image/webp"].includes(file.type)||file.size>5242880){notice("Upload a valid screenshot under 5 MB.","error");return}delete f.proof_file;f.student_id=user.id;f.amount_inr=p(f.program_id).fee_inr;if(demo){f.proof_path="demo-student/preview.png";await save("payment_claims",f)}else{const ext=file.type==="image/png"?"png":file.type==="image/webp"?"webp":"jpg";const path=user.id+"/"+crypto.randomUUID()+"."+ext;let uploaded=await db.storage.from("hacksphere-payment-proofs").upload(path,file,{contentType:file.type,upsert:false});if(uploaded.error){notice(uploaded.error.message,"error");return}f.proof_path=path;await save("payment_claims",f)}}
-else if(type==="upi"){upi=f;await save("site_settings",{key:"payments_upi",value:f,updated_by:user.id})}
+else if(type==="upi"){
+ if(role!=="admin")throw Error("Admin account required");
+ const value={upi_id:String(f.upi_id||"").trim(),payee:String(f.payee||"").trim(),
+ qr_url:String(f.qr_url||"").trim(),instructions:String(f.instructions||"").trim()};
+ if(!value.upi_id||!value.payee)throw Error("Official UPI ID and payee are required");
+ if(value.qr_url&&!/^https:\/\/[^\s]+$/i.test(value.qr_url))throw Error("QR URL must use HTTPS");
+ if(demo){upi=value;notice("Preview UPI settings updated.","success");render()}
+ else{
+  const r=await db.from("site_settings").upsert({key:"payments_upi",value,updated_by:user.id},{onConflict:"key"});
+  if(r.error)throw r.error;
+  upi=value;await reload();render();notice("Official UPI settings saved. Students now see the UPI method.","success");
+ }
+}
 else if(type==="invite"){const email=String(f.email||"").trim().toLowerCase();if(!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email))throw Error("Valid verified Google email required");await save("staff_invitations",{email,role:"mentor",created_by:user.id})}
 else if(type==="trainer"){f.role="trainer";f.assigned_by=user.id;await save("program_staff",f)}
 else if(type==="guide"){f.allocated_by=user.id;await save("guide_allocations",f)}
