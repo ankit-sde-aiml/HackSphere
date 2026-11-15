@@ -13,6 +13,10 @@ export default async function Mentor(){
  ]);
  return <main className="hs-container py-14"><span className="hs-eyebrow">Mentor workspace</span><h1 className="mt-3 text-4xl font-black">My Assigned Work</h1>
  <p className="mt-4 text-slate-600">Everyone assigned to a program has its common overview. Only work owned by you appears here.</p>
+ <div className="mt-8 flex flex-wrap gap-3">
+  <Link href="/workspace/mentor/classes" className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white">Manage my classes, notes and quizzes</Link>
+  <Link href="/workspace/mentor/teams" className="rounded-xl border border-indigo-200 bg-white px-5 py-3 text-sm font-semibold text-indigo-700">Manage my internship teams</Link>
+ </div>
  <div className="mt-9 grid gap-6 md:grid-cols-2">
  <section className="hs-card"><h2 className="text-xl font-bold">My classes & weekly activities</h2>
  <div className="mt-5 space-y-4">{sessions.data?.length?sessions.data.map(s=><div key={s.id} className="rounded-xl bg-slate-50 p-4"><b>{s.title}</b><p className="mt-1 text-xs text-slate-500">{s.scheduled_date} · {s.activity_type}</p></div>):<p className="text-sm text-slate-500">No teaching activities assigned yet.</p>}</div>
