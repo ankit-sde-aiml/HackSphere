@@ -346,7 +346,7 @@ const hs3TrainingTasks=()=>{
  const result=[];
  for(const program of selectedPrograms().filter(pr=>enrolled(pr))){
   const events=stActualEvents(program);
-  for(const ev of events.filter(e=>["assignment","project","milestone"].includes(e.activity_type))){
+  for(const ev of events.filter(e=>e.phase==="training"&&["assignment","project","milestone"].includes(e.activity_type))){
    const subs=(D.submissions||[]).filter(x=>x.student_id===user.id&&x.event_id===ev.id).sort((a,b)=>String(b.submitted_at).localeCompare(String(a.submitted_at)));
    const latest=subs[0];let status=latest?.status==="approved"?"completed":latest?.status==="changes_requested"?"changes_requested":latest?"review":"todo";
    result.push({id:ev.id,program,title:ev.title,type:"training",label:ev.activity_type==="project"?"Mini project":"Assignment",status,sortDate:ev.scheduled_date,detail:"Released "+date(ev.scheduled_date)});
@@ -666,10 +666,28 @@ function studentOverview(){
  '<button data-action="navigate" data-view="my-internship">'+stIcon("briefcase",18)+' Internship '+stIcon("chevron",15)+'</button></div></div>';
 }
 function studentCourses(){
- const programs=selectedPrograms();
- return '<div class="st-view">'+stPageHeading('My courses','Your enrolled learning programs.',stAction('Explore programs','student-explore',undefined,true))+
- (programs.length?'<div class="st-course-grid">'+programs.map(program=>stProgramCard(program)).join('')+'</div>':
- '<div class="st-white-panel">'+stAction('Find a program','student-explore')+'</div>')+'</div>';
+ const programs=selectedPrograms().filter(enrolled);
+ if(!programs.length)return '<div class="st-view hs3-student-page">'+stPageHeading("My learning","")+
+ '<div class="hs3-empty">'+stIcon("book",30)+'<strong>No active courses yet</strong><span>Explore programs to start training and practical projects.</span>'+
+ '<button class="hs3-primary-button" data-action="student-explore">Explore programs '+stIcon("arrow",16)+'</button></div></div>';
+ const items=programs.map(pr=>{
+  const currentDay=current(pr),duration=total(pr);
+  const progress=Math.min(100,Math.round(currentDay/Math.max(1,duration)*100));
+  const released=stActualEvents(pr);
+  const quizzes=(D.quizzes||[]).filter(q=>q.published&&released.some(e=>e.id===q.timeline_event_id));
+  const attempts=(D.quiz_attempts||[]).filter(a=>a.student_id===user.id&&quizzes.some(q=>q.id===a.quiz_id)).length;
+  const projects=(D.submissions||[]).filter(sub=>sub.student_id===user.id&&sub.status==="approved"&&released.some(ev=>ev.id===sub.event_id));
+  const phase=currentDay>pr.training_days?"Internship phase":"Training phase";
+  return '<article class="hs3-learn-card"><div class="hs3-learn-cover"><span class="hs3-learn-symbol">'+stIcon("layers",24)+'</span><span class="hs3-learn-phase">'+esc(phase)+'</span></div>'+
+  '<div class="hs3-learn-body"><h2>'+esc(pr.title)+'</h2>'+
+  '<div class="hs3-learn-meta"><span>'+stIcon("calendar",15)+' Day '+currentDay+' of '+duration+'</span><span>'+pr.training_days+' training + '+pr.internship_days+' internship days</span></div>'+
+  '<div class="hs3-learn-timeline"><div><span>Program timeline</span><strong>'+progress+'%</strong></div><div class="hs3-learn-track"><span style="width:'+progress+'%"></span></div></div>'+
+  '<div class="hs3-learn-stats"><div><strong>'+released.length+'</strong><span>Released topics</span></div><div><strong>'+attempts+'</strong><span>Quiz attempts</span></div><div><strong>'+projects.length+'</strong><span>Approved work</span></div></div>'+
+  '<button class="hs3-primary-button" data-action="open-course" data-id="'+esc(pr.id)+'">Open classroom '+stIcon("arrow",16)+'</button></div></article>';
+ }).join("");
+ return '<div class="st-view hs3-student-page">'+stPageHeading("My learning","")+
+ '<div class="hs3-learn-grid">'+items+'</div>'+
+ '<button class="hs3-learn-secondary" data-action="navigate" data-view="timeline">'+stIcon("calendar",18)+' Full schedule '+stIcon("chevron",17)+'</button></div>';
 }
 const stPendingFor=programId=>D.payment_claims.some(c=>c.program_id===programId&&c.student_id===user.id&&c.status==='pending');
 const stCatalog=()=>{
