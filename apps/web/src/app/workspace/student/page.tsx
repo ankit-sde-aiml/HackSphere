@@ -13,6 +13,7 @@ export default async function Student(){
  const ids=(enrollments.data||[]).filter(x=>["active","completed"].includes(x.status)).map(x=>x.program_id);
  const {data:programs}=ids.length?await db.from("programs").select("id,title,training_days,internship_days,start_date").in("id",ids):{data:[]};
  return <main className="hs-container py-14"><span className="hs-eyebrow">Student dashboard</span><h1 className="mt-3 text-4xl font-black">My Learning Journey</h1>
+ <Link href="/workspace/student/learning" className="mt-7 inline-flex rounded-xl bg-indigo-600 px-6 py-3 font-semibold text-white hover:bg-indigo-700">Open My Learning, Quizzes & Internship</Link>
  <div className="mt-9 grid gap-5 md:grid-cols-2"><section className="hs-card"><h2 className="text-xl font-bold">My programs</h2><div className="mt-5 space-y-3">
  {programs?.length?programs.map(p=><div key={p.id} className="rounded-xl bg-indigo-50 p-4"><b>{p.title}</b><p className="mt-2 text-sm text-slate-600">{p.training_days} days training · {p.internship_days} days project internship</p></div>):<p className="text-sm text-slate-500">You do not have an active program yet. <Link href="/programs" className="font-semibold text-indigo-600">Browse programs</Link>.</p>}
  </div><p className="mt-6 text-sm text-slate-500">Assigned internship teams: {teamMembership.data?.length||0}</p></section>
