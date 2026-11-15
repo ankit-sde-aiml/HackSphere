@@ -1543,3 +1543,17 @@ button,a,input,select,textarea{-webkit-tap-highlight-color:transparent}
  #marketing.hs-public-v5 .footer{padding-top:32px;padding-bottom:20px}
  #marketing.hs-public-v5 .hs-footer-bottom{margin-top:8px}
 }
+
+/* Compact payment queue — no duplicate banners or dashboard counters */
+#app-shell .hs-queue-status{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 10px;padding:13px 16px;background:#fff;border:1px solid var(--hs-border);border-radius:12px;flex-wrap:wrap}
+#app-shell .hs-queue-status strong{font-size:13px;color:#31244e}
+#app-shell .hs-queue-status span{font-size:12px;color:#766e84}
+#app-shell .hs-queue-caution{font-size:12px;line-height:1.5;margin:0 0 14px;color:#865620;background:#fff9eb;border:1px solid #f7e9c6;border-radius:9px;padding:9px 12px}
+#app-shell .manage-program-list{display:grid;gap:12px}
+#app-shell .manage-program-card{margin:0!important;border-radius:14px!important;border-color:var(--hs-border)!important;box-shadow:none!important;background:#fff}
+@media(max-width:700px){
+ #app-shell .manage-program-list{gap:10px}
+ #app-shell .manage-program-card{padding:14px!important}
+ #app-shell .mp-meta{line-height:1.6}
+ #app-shell .hs-queue-status{padding:11px 13px}
+}
