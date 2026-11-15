@@ -32,4 +32,4 @@ export function CertificateApproval({rows}:{rows:Row[]}){
  </article>)}
  {!rows.length&&<p className="text-sm text-slate-500">No completion recommendations have been approved by mentors yet.</p>}
  </div><p role="status" className="mt-5 text-sm text-slate-600">{message}</p></div>;
-}}
+}

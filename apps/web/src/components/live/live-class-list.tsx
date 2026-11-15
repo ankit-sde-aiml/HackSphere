@@ -25,4 +25,4 @@ export function LiveClassList({sessions}:{sessions:Session[]}){
   {!sessions.length&&<p className="text-sm text-slate-500">No classes scheduled for your programs.</p>}
   </div><p role="status" className="mt-4 text-sm text-slate-600">{message}</p>
  </div>;
-}}
+}

@@ -16,4 +16,4 @@ export default async function StudentLive(){
   <p className="mt-3 text-slate-600">See scheduled classes across your enrolled programs. Joining link is released near scheduled class time.</p>
   <section className="hs-card mt-8"><LiveClassList sessions={sessions||[]}/></section>
  </main>;
-}}
+}

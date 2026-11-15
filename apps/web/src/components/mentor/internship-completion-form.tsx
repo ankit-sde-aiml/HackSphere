@@ -67,4 +67,4 @@ export function InternshipCompletionForm({members,existing}:{members:Member[];ex
   </>}
   <p role="status" className="text-sm text-slate-600">{message}</p>
  </div>;
-}}
+}

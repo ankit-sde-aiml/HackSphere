@@ -36,4 +36,4 @@ export function MeetLinkForm({sessions}:{sessions:Session[]}){
    <span className={s.meet_status==="ready"?"text-emerald-700":"text-amber-700"}>{s.meet_status}</span>
   </div>)}</div>
  </section></div>;
-}}
+}

@@ -29,4 +29,4 @@ export function VerificationForm({initialCode}:{initialCode:string}){
   </div>}
   <p role="status" className="text-sm text-slate-600">{message}</p>
  </form>;
-}}
+}
