@@ -25,3 +25,4 @@ export function CourseCatalogForm(){
   <label className="sm:col-span-2 text-sm font-semibold">Description<textarea name="description" className={input+" min-h-24"}/></label>
   <div className="sm:col-span-2"><Button disabled={saving}>{saving?"Saving...":"Create course template"}</Button><p role="status" className="mt-3 text-sm text-slate-600">{message}</p></div>
  </form>;
+}
