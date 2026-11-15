@@ -58,3 +58,35 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: https://wvipkluopmptwuvihecz.supabase.co
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder-not-a-secret
         run: npm run build:vinext
+
+  browser-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Build server under test
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://wvipkluopmptwuvihecz.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder-not-a-secret
+        run: npm run build
+      - name: Public and protected-route browser smoke tests
+        run: npm run test:e2e
+      - name: Upload browser traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hacksphere-playwright-report
+          path: |
+            apps/web/playwright-report/
+            apps/web/test-results/
+          retention-days: 7
