@@ -234,8 +234,8 @@ export default {
    if(path==="/favicon.ico")return Response.redirect(url.origin+"/favicon.svg",302);
    if(path==="/robots.txt")return respond("User-agent: *\nAllow: /\nDisallow: /preview/\nDisallow: /workspace/\nSitemap: "+url.origin+"/sitemap.xml\n","text/plain; charset=utf-8","public, max-age=3600");
    if(path==="/sitemap.xml"){const paths=["/","/programs","/about","/contact","/pricing","/terms","/privacy","/refunds","/delivery"];return respond('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+paths.map(p=>'<url><loc>'+url.origin+p+'</loc></url>').join('')+'</urlset>',"application/xml; charset=utf-8","public, max-age=3600");}
-   if(path==="/assets/style.css")return respond(CSS,"text/css; charset=utf-8","public, max-age=300");
-   if(path==="/assets/app.js")return respond(APP,"application/javascript; charset=utf-8","public, max-age=300");
+   if(path==="/assets/style.css")return respond(CSS,"text/css; charset=utf-8","public, max-age=60, must-revalidate");
+   if(path==="/assets/app.js")return respond(APP,"application/javascript; charset=utf-8","public, max-age=60, must-revalidate");
    if(path==="/api/meet/create") {
      if(request.method!=="POST")return Response.json({error:"POST required"},{status:405});
      if(!env.SUPABASE_URL||!env.SUPABASE_PUBLISHABLE_KEY)return Response.json({error:"Authentication unavailable"},{status:503});

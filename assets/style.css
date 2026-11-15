@@ -1888,7 +1888,7 @@ button,a,input,select,textarea{-webkit-tap-highlight-color:transparent}
 /* Phone browsers in "desktop site" portrait mode can expose a 980px layout
    viewport even with a valid viewport meta tag. Keep core mobile navigation,
    touch targets, and section layout readable on a portrait touch viewport. */
-@media(min-width:701px) and (max-width:1100px) and (orientation:portrait) and (pointer:coarse){
+@media(min-width:701px) and (max-width:1100px) and (orientation:portrait) and (any-pointer:coarse){
  #app-shell .app-side,#app-shell .sidebar-shade,#app-shell .mobile-menu{display:none!important}
  #app-shell .app-main{margin-left:0!important;width:100%!important}
  #app-shell .app-top{height:81px!important;min-height:81px!important;padding:0 27px!important}
@@ -1939,4 +1939,21 @@ button,a,input,select,textarea{-webkit-tap-highlight-color:transparent}
  #app-shell .two-col,#app-shell .equal-col,#app-shell .editor-layout,
  #app-shell .form-grid{grid-template-columns:minmax(0,1fr)!important}
  #app-shell .stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+/* 5.3.4 — reliable mobile More page and touch layout, including Samsung Desktop Site */
+@media(max-width:700px){
+ #app-shell .hs-more-page{max-width:none!important;width:100%!important;min-width:0}
+ #app-shell .hs-more-page-head h1{font-size:27px!important}
+ #app-shell .hs-more-items{grid-template-columns:minmax(0,1fr)!important;gap:10px!important}
+ #app-shell .hs-more-item{min-height:66px!important;padding:13px 15px!important;gap:13px!important;border-radius:14px!important}
+ #app-shell .hs-more-item-text{font-size:14px!important;line-height:1.5!important}
+ #app-shell .hs-more-item-icon{width:41px!important;height:41px!important;flex:none!important}
+ #app-shell .hs-more-page-signout{min-height:46px!important}
+}
+@media(min-width:701px) and (max-width:1100px) and (orientation:portrait) and (any-pointer:coarse){
+ #app-shell .hs-more-items{grid-template-columns:minmax(0,1fr)!important}
+ #app-shell .hs-more-item{min-height:96px!important}
+ #app-shell .hs-more-item-text{font-size:24px!important}
+ #app-shell .hs-more-page-head h1{font-size:42px!important}
 }
