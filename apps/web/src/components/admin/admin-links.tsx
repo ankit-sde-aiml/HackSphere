@@ -5,6 +5,7 @@ const links=[
  {href:"/workspace/admin/programs",name:"Create program",icon:GraduationCap},
  {href:"/workspace/admin/mentors",name:"Assign mentors",icon:Users},
  {href:"/workspace/admin/schedule",name:"Schedule learning",icon:CalendarDays},
+ {href:"/workspace/admin/meet",name:"Google Meet links",icon:CalendarDays},
  {href:"/workspace/admin/teams",name:"Internship teams",icon:UsersRound},
  {href:"/workspace/admin/events",name:"Global guest sessions",icon:Mic2},
  {href:"/workspace/admin/payments",name:"Payment approvals",icon:GraduationCap},
