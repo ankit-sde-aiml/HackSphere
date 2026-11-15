@@ -16,7 +16,7 @@ const field=(name,id,type="text",val="",required=false)=>'<label class="field"><
 const choose=(name,id,values,selected=null)=>'<label class="field"><span>'+esc(name)+'</span><select name="'+id+'" class="input">'+values.map(v=>'<option value="'+esc(v[0])+'" '+(selected===v[0]?"selected":"")+' >'+esc(v[1])+"</option>").join("")+"</select></label>";
 const notes=(name,id,initial="")=>'<label class="field"><span>'+esc(name)+'</span><textarea class="input" name="'+id+'">'+esc(initial)+'</textarea></label>';
 const click=(name,action,id="",kind="btn-light")=>'<button class="btn btn-small '+kind+'" data-action="'+action+'" data-id="'+esc(id)+'">'+esc(name)+"</button>";
-const keys=["course_catalog","program_mentors","global_events","internship_teams","internship_team_members","internship_tasks","courses","purchases","videos","lesson_resources","programs","enrollments","payment_claims","timeline_events","live_sessions","staff_roles","staff_invitations","program_staff","guide_allocations","submissions","evaluations","completion_recommendations","certificates","profiles","site_settings","program_guides","quizzes","quiz_questions","quiz_attempts"];
+const keys=["notifications","course_catalog","program_mentors","global_events","internship_teams","internship_team_members","internship_tasks","courses","purchases","videos","lesson_resources","programs","enrollments","payment_claims","timeline_events","live_sessions","staff_roles","staff_invitations","program_staff","guide_allocations","submissions","evaluations","completion_recommendations","certificates","profiles","site_settings","program_guides","quizzes","quiz_questions","quiz_attempts"];
 let videoStorageReady=false;let db=null,user=null,demo=false,role="student",page="overview",course=null,lesson=null,filter="All",search="",upi={},timelineOffset=0,paymentSection="pending",studentTab="overview",studentQuery="",studentEnrollmentChoice=null,studentCalendarChoice=null;
 let D={};const reset=()=>{D=Object.fromEntries(keys.map(k=>[k,[]]))};reset();
 const p=id=>D.programs.find(x=>x.id===id);
@@ -27,7 +27,7 @@ const enrolled=x=>demo||D.enrollments.some(y=>y.program_id===x.id&&y.student_id=
 const selectedPrograms=()=>demo||role==="admin"?D.programs:role==="mentor"?D.programs.filter(x=>(D.program_mentors||[]).some(m=>m.program_id===x.id&&m.mentor_id===user.id)):role==="trainer"?D.programs.filter(x=>D.program_staff.some(y=>y.program_id===x.id&&y.user_id===user.id)):role==="guide"?D.programs.filter(x=>D.program_guides.some(y=>y.program_id===x.id&&y.user_id===user.id)||D.guide_allocations.some(y=>y.program_id===x.id&&y.guide_user_id===user.id)):D.programs.filter(enrolled);
 const options=arr=>arr.map(x=>[x.id,x.title]);
 const menu={student:[["overview","◈","Overview"],["courses","▦","My courses"],["explore","◉","Explore programs"],["timeline","▤","Daily timeline"],["sessions","▷","Live classes"],["submissions","▥","Assignments"],["enrollment","◫","Enrollment"],["performance","◎","My performance"],["documents","✧","Certificates & letters"],["profile","♧","My profile"]],trainer:[["overview","◈","Overview"],["courses","▦","My programs"],["timeline","▤","Training lessons"],["sessions","▷","Live classes"],["reviews","▥","Review submissions"],["performance","◎","Student scores"],["profile","♧","My profile"]],guide:[["overview","◈","Overview"],["courses","▦","My programs"],["timeline","▤","Internship timeline"],["reviews","▥","Project reviews"],["performance","◎","Internship scores"],["complete","✧","Completion reviews"],["profile","♧","My profile"]],admin:[["overview","◈","Overview"],["programs","▦","Programs"],["students","♧","Students"],["timeline","▤","Timeline manager"],["sessions","▷","Live classes"],["reviews","▥","Submissions"],["payments","◫","Payment approvals"],["staff","♙","Staff & roles"],["guides","◇","Guide allocation"],["performance","◎","Scores"],["complete","✧","Certificates"],["settings","⚙","Settings"],["profile","♧","My profile"]]};
-menu.student.push(["global-events","✦","Industry Connect"],["my-internship","◇","My Internship"]);
+menu.student.push(["global-events","✦","Industry Connect"],["my-internship","◇","My Internship"],["notifications","✉","Notifications"]);
 menu.admin.push(["global-events","✦","Global Sessions"],["mentor-assignments","♙","Program Mentors"],["schedule-v2","▤","Schedule Builder"],["teams-overview","◇","Internship Teams"]);
 menu.mentor=[["overview","◈","Overview"],["courses","▦","Program Overview"],["mentor-classes","▤","My Classes & Uploads"],["mentor-teams","◇","My Internship Teams"],["reviews","▥","Mini Project Reviews"],["sessions","▷","Live Classes"],["global-events","✦","Industry Connect"],["performance","◎","Student Progress"],["profile","♧","My Profile"]];
 function seed(){let a=day(today(),-27),b=day(today(),-69);D.programs=[{id:"demo-stack",title:"Full Stack Development",description:"Learn to build practical applications.",start_date:a,training_days:60,internship_days:30,fee_inr:2999,mode:"Hybrid",status:"ongoing"},{id:"demo-design",title:"UI/UX Design",description:"Product thinking and portfolio projects.",start_date:b,training_days:45,internship_days:30,fee_inr:1999,mode:"Hybrid",status:"ongoing"}];D.profiles=[{id:"demo-student",full_name:"Preview Learner",email:"student@example.com"},{id:"demo-trainer",full_name:"Sample Trainer",email:"trainer@example.com"},{id:"demo-guide",full_name:"Sample Guide",email:"guide@example.com"}];D.enrollments=[{id:"demo-enroll",program_id:"demo-stack",student_id:"demo-student",status:"active",offer_letter_code:"HS-OL-PREVIEW"},{id:"demo-enroll2",program_id:"demo-design",student_id:"demo-student",status:"active"}];D.program_staff=[{program_id:"demo-stack",user_id:"demo-trainer"}];D.staff_roles=[{user_id:"demo-trainer",role:"trainer"},{user_id:"demo-guide",role:"guide"}];D.guide_allocations=[{id:"demo-guide-link",program_id:"demo-design",student_id:"demo-student",guide_user_id:"demo-guide"}];for(let i=0;i<90;i+=3)D.timeline_events.push({id:"d"+i,program_id:"demo-stack",phase:i<60?"training":"internship",activity_type:i<60?"lecture":"project",scheduled_date:day(a,i),title:i<60?["HTML & CSS foundations","JavaScript essentials","React components","Developer workflow"][i/3%4]:"Internship project milestone "+(i-59),description:"Practice and submit your scheduled activity.",published_to_students:true});D.live_sessions=[{id:"demo-live",program_id:"demo-stack",title:"JavaScript Functions & Scope",session_date:today(),start_time:"19:00",status:"scheduled"}];D.payment_claims=[{id:"demo-pay",program_id:"demo-stack",student_id:"demo-student",amount_inr:2999,status:"approved",utr:"PREVIEW00001"}];D.evaluations=[{id:"demo-score",program_id:"demo-stack",student_id:"demo-student",phase:"training",activity_title:"HTML assignment",score:8,max_score:10,feedback:"Great progress!"}];upi={upi_id:"preview@upi",payee:"Preview only — do not pay"}}
@@ -138,7 +138,7 @@ async function hsPublicRoute(){
 function render(){if(!user)return;$("app-shell").classList.toggle("hs-student",role==="student");let roles=demo?["student","mentor","admin"]:["student",...(D.staff_roles.some(x=>x.user_id===user.id&&x.role==="admin")?["admin"]:[]),...(D.program_mentors.some(x=>x.mentor_id===user.id)||D.staff_roles.some(x=>x.user_id===user.id&&["mentor","trainer","guide"].includes(x.role))?["mentor"]:[])];if(!roles.includes(role))role=roles.includes("admin")?"admin":roles.includes("mentor")?"mentor":"student";let allowedExtra=role==="admin"?["program-new","program-detail","program-edit","staff-invite","payment-history","payment-settings","profile"]:role==="student"?["profile","submissions","course-info"]:["profile"];if(!menu[role].some(x=>x[0]===page)&&!allowedExtra.includes(page))page="overview";$("role-switch").hidden=(role==="student"&&roles.length===1);$("role-switch").innerHTML=roles.map(x=>'<option '+(role===x?"selected":"")+' value="'+x+'">'+({student:"Student",trainer:"Trainer",guide:"Internship Guide",mentor:"Mentor",admin:"Administrator"})[x]+"</option>").join("");const navGroups={
  mentor:[["Program",["overview","courses","global-events","performance"]],["My Assigned Work",["mentor-classes","mentor-teams","reviews","sessions"]],["Account",["profile"]]],
  admin:[["Workspace",["overview","programs","students"]],["Learning operations",["timeline","sessions","reviews","performance"]],["Finance & certification",["payments","complete"]],["Team & settings",["staff","guides","mentor-assignments","settings","profile"]],["Platform Events",["global-events"]],["Program Setup",["schedule-v2","teams-overview"]]],
- student:[["My learning",["overview","courses","explore","timeline","sessions","submissions"]],["Account & outcomes",["enrollment","my-internship","global-events","performance","documents","profile"]]],
+ student:[["My learning",["overview","courses","explore","timeline","sessions","submissions"]],["Account & outcomes",["enrollment","my-internship","global-events","notifications","performance","documents","profile"]]],
  trainer:[["Teaching",["overview","courses","timeline","sessions","reviews"]],["Outcomes & account",["performance","profile"]]],
  guide:[["Internship workspace",["overview","courses","timeline","reviews"]],["Evaluation & account",["performance","complete","profile"]]]
 };
@@ -150,7 +150,7 @@ if(role==="student"){
  const choices=[["overview","home","Home"],["courses","book","Courses"],["explore","compass","Explore"],["timeline","calendar","Calendar"],["profile","user","Profile"]];
  mobile.innerHTML=choices.map(([key,ico,label])=>'<button class="'+((page===key)||(key==="explore"&&page==="course-info")?'active':'')+'" data-action="navigate" data-view="'+key+'" aria-label="'+label+'">'+stIcon(ico,21)+'<span>'+label+'</span></button>').join("");
 }
-const view={"mentor-classes":mentorClassesV2,"mentor-teams":mentorTeamsV2,"global-events":globalEventsV2,"my-internship":studentInternshipV2,"mentor-assignments":adminMentorsV2,"schedule-v2":adminScheduleV2,"teams-overview":adminTeamsV2,overview:overview,courses:courses,programs:programAdmin,"program-new":programNew,"program-detail":programDetail,"program-edit":programEdit,timeline:timeline,sessions:sessions,reviews:reviews,students:students,payments:payments,"payment-history":paymentHistory,"payment-settings":paymentSettings,staff:staff,"staff-invite":staffInvite,guides:guides,performance:performance,complete:complete,documents:documents,enrollment:enrollment,settings:settings,profile:profilePage,submissions:mySubmissions};
+const view={"notifications":studentNotificationsV2,"mentor-classes":mentorClassesV2,"mentor-teams":mentorTeamsV2,"global-events":globalEventsV2,"my-internship":studentInternshipV2,"mentor-assignments":adminMentorsV2,"schedule-v2":adminScheduleV2,"teams-overview":adminTeamsV2,overview:overview,courses:courses,programs:programAdmin,"program-new":programNew,"program-detail":programDetail,"program-edit":programEdit,timeline:timeline,sessions:sessions,reviews:reviews,students:students,payments:payments,"payment-history":paymentHistory,"payment-settings":paymentSettings,staff:staff,"staff-invite":staffInvite,guides:guides,performance:performance,complete:complete,documents:documents,enrollment:enrollment,settings:settings,profile:profilePage,submissions:mySubmissions};
 const studentViews={overview:studentOverview,courses:studentCourses,explore:studentExplore,"course-info":studentProgramInfo,timeline:studentCalendar,enrollment:studentEnrollmentPage,sessions:studentSessions,submissions:studentAssignments,performance:studentPerformance,documents:studentDocuments,profile:studentProfile};
 $("app-page").innerHTML=course&&page==="courses"?(role==="student"?studentClassroom():classroom()):
 (role==="student"&&studentViews[page]?studentViews[page]():((view[page]||overview)()));
@@ -163,6 +163,16 @@ if(role==="student"&&page==="enrollment"&&studentEnrollmentChoice){
 /* HackSphere v2 workspaces: course-wide visibility with owner-only teaching/internship actions. */
 const v2ProgramMentors=pid=>(D.program_mentors||[]).filter(x=>x.program_id===pid);
 const v2DateTime=x=>{try{return new Date(x).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short",timeZone:"Asia/Kolkata"})}catch{return String(x||"")}};
+function studentNotificationsV2(){
+ const all=(D.notifications||[]).filter(x=>x.recipient_id===user.id)
+   .sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+ const unread=all.filter(x=>!x.read_at).length;
+ const items=all.map(n=>row(n.read_at?"✓":"✦",n.title,
+  (n.body||"")+" · "+v2DateTime(n.created_at),
+  n.read_at?tag("Read"):click("Mark read","v2-read-notification",n.id,"btn-outline"))).join("");
+ return title("Notifications",unread+" unread — classes, internships and all-program guest sessions.")+
+ card("Your updates",items||empty("No notifications","Your platform updates will appear here."));
+}
 function globalEventsV2(){
  const admin=role==="admin";
  const events=(D.global_events||[]).filter(e=>admin||["published","completed"].includes(e.status))
@@ -1428,7 +1438,12 @@ else if(a==="student-tab"){
 else if(a==="student-resource"){await studentOpenResource(id)}
 else if(a==="student-legacy-file"){const ev=D.timeline_events.find(x=>x.id===id&&x.program_id===course);if(!ev?.resource_url?.startsWith("storage://hacksphere-course-files/"))return;const win=window.open("","_blank");const signed=await studentSignedUrl(ev.resource_url.replace("storage://hacksphere-course-files/",""));if(!signed){if(win)win.close();return}if(win){win.opener=null;win.location.replace(signed)}else notice("Allow popups to open the attachment.","error")}
 else if(a==="student-legacy-link"){const ev=D.timeline_events.find(x=>x.id===id);if(ev?.resource_url&&/^https:\/\//.test(ev.resource_url))window.open(ev.resource_url,"_blank","noopener,noreferrer")}
-else if(a==="public-browse"){location.href="/programs"}else if(a==="hs-public-page"){hsPage=Number(id)||0;drawCatalog();$("hs-programs-page")?.scrollIntoView({behavior:"smooth",block:"start"})}else if(a==="login")loginDialog();else if(a==="close-login")hideDialog();else if(a==="google-login")signIn();else if(a==="demo")demoOpen();else if(a==="toggle-public-menu"){const menu=$("mobile-links");menu.hidden=!menu.hidden;b.setAttribute("aria-expanded",String(!menu.hidden));b.setAttribute("aria-label",menu.hidden?"Open menu":"Close menu")}else if(a==="open-drawer")$("app-shell").classList.add("drawer-open");else if(a==="close-drawer")$("app-shell").classList.remove("drawer-open");else if(a==="signout")signOut();else if(a==="home")publicPage();else if(a==="navigate"){navigateTo(b.dataset.view)}else if(a==="open-course"){studentTab="overview";navigateTo("courses",id)}else if(a==="close-course"){navigateTo("courses")}else if(a==="lesson"){lesson=id;render()}else if(a==="enroll-public"){if(!user){sessionStorage.setItem("hs_requested_program",id);loginDialog()}else{studentEnrollmentChoice=id;await reload();role="student";navigateTo("enrollment");open()}}else if(a==="timeline-prev"){timelineOffset=Math.max(0,timelineOffset-1);render()}else if(a==="timeline-next"){timelineOffset=(timelineOffset+1)%Math.ceil(total(p(course||selectedPrograms()[0]?.id))/14);render()}else if(a==="secure-resource"){let event=D.timeline_events.find(x=>x.id===id);if(!event?.resource_url)return;let path=event.resource_url.replace("storage://hacksphere-course-files/","");if(demo){notice("Preview only — no private recording file is stored.");return}let r=await db.storage.from("hacksphere-course-files").createSignedUrl(path,600);if(r.error){notice(r.error.message,"error");return}if(/\.(mp4|webm)$/i.test(path)){let player=$("course-player");player.innerHTML='<video controls autoplay playsinline src="'+esc(r.data.signedUrl)+'"></video>';}else window.open(r.data.signedUrl,"_blank","noopener,noreferrer")}else if(a==="v2-mentor-task-review"||a==="v2-mentor-task-complete"){
+else if(a==="public-browse"){location.href="/programs"}else if(a==="hs-public-page"){hsPage=Number(id)||0;drawCatalog();$("hs-programs-page")?.scrollIntoView({behavior:"smooth",block:"start"})}else if(a==="login")loginDialog();else if(a==="close-login")hideDialog();else if(a==="google-login")signIn();else if(a==="demo")demoOpen();else if(a==="toggle-public-menu"){const menu=$("mobile-links");menu.hidden=!menu.hidden;b.setAttribute("aria-expanded",String(!menu.hidden));b.setAttribute("aria-label",menu.hidden?"Open menu":"Close menu")}else if(a==="open-drawer")$("app-shell").classList.add("drawer-open");else if(a==="close-drawer")$("app-shell").classList.remove("drawer-open");else if(a==="signout")signOut();else if(a==="home")publicPage();else if(a==="navigate"){navigateTo(b.dataset.view)}else if(a==="open-course"){studentTab="overview";navigateTo("courses",id)}else if(a==="close-course"){navigateTo("courses")}else if(a==="lesson"){lesson=id;render()}else if(a==="enroll-public"){if(!user){sessionStorage.setItem("hs_requested_program",id);loginDialog()}else{studentEnrollmentChoice=id;await reload();role="student";navigateTo("enrollment");open()}}else if(a==="timeline-prev"){timelineOffset=Math.max(0,timelineOffset-1);render()}else if(a==="timeline-next"){timelineOffset=(timelineOffset+1)%Math.ceil(total(p(course||selectedPrograms()[0]?.id))/14);render()}else if(a==="secure-resource"){let event=D.timeline_events.find(x=>x.id===id);if(!event?.resource_url)return;let path=event.resource_url.replace("storage://hacksphere-course-files/","");if(demo){notice("Preview only — no private recording file is stored.");return}let r=await db.storage.from("hacksphere-course-files").createSignedUrl(path,600);if(r.error){notice(r.error.message,"error");return}if(/\.(mp4|webm)$/i.test(path)){let player=$("course-player");player.innerHTML='<video controls autoplay playsinline src="'+esc(r.data.signedUrl)+'"></video>';}else window.open(r.data.signedUrl,"_blank","noopener,noreferrer")}else if(a==="v2-read-notification"){
+ if(demo){let n=D.notifications.find(x=>x.id===id);if(n)n.read_at=new Date().toISOString();render();return}
+ const result=await db.from("notifications").update({read_at:new Date().toISOString()}).eq("id",id);
+ if(result.error){notice(result.error.message,"error");return}
+ await reload();render();notice("Notification marked read.","success");
+}else if(a==="v2-mentor-task-review"||a==="v2-mentor-task-complete"){
  if(role!=="mentor"&&role!=="admin")return;
  const status=a==="v2-mentor-task-complete"?"completed":"review";
  await save("internship_tasks",{status},id);
@@ -1562,34 +1577,29 @@ else if(type==="v2-edit-class"){
  const ev=D.timeline_events.find(e=>e.id===eventId);if(!ev)throw Error("Class not found");
  const update={title:f.title,scheduled_date:f.scheduled_date,responsible_mentor_id:f.responsible_mentor_id};
  if(demo){Object.assign(ev,update);render();return}
- const r=await db.from("timeline_events").update(update).eq("id",eventId);
+ const r=await db.rpc("update_scheduled_lesson_v2",{
+ _event_id:eventId,_title:f.title,_scheduled_date:f.scheduled_date,
+ _responsible_mentor_id:f.responsible_mentor_id,
+ _start_time:f.start_time||null,_duration_minutes:Number(f.duration_minutes)
+ });
  if(r.error)throw r.error;
- const live=D.live_sessions.find(l=>l.timeline_event_id===eventId);
- if(live){
-  const q=await db.from("live_sessions").update({
-   title:f.title,session_date:f.scheduled_date,start_time:f.start_time,
-   duration_minutes:Number(f.duration_minutes),trainer_user_id:f.responsible_mentor_id,
-   meet_status:"pending_authorization",meet_error:null
-  }).eq("id",live.id);
-  if(q.error){notice("Topic saved, live session update failed: "+q.error.message,"error")}
- }
- await reload();render();notice("Class schedule updated.","success");
+ await reload();render();notice("Schedule and live-class details updated together.","success");
 }
 else if(type==="v2-scheduled-class"){
  if(role!=="admin")throw Error("Admin access required");
- const session={session_date:f.scheduled_date,start_time:f.start_time,duration_minutes:Number(f.duration_minutes)};
  const obj={program_id:f.program_id,title:f.title,description:f.description||"",
  scheduled_date:f.scheduled_date,responsible_mentor_id:f.responsible_mentor_id,
- phase:"training",activity_type:f.activity_type,created_by:user.id,published_to_students:true};
+ activity_type:f.activity_type,created_by:user.id,published_to_students:true};
  if(demo){D.timeline_events.push({id:"demo-session",...obj});render();return}
- const r=await db.from("timeline_events").insert(obj).select("id").single();if(r.error)throw r.error;
- if(f.activity_type==="lecture"){
-  const live=await db.from("live_sessions").insert({...session,program_id:f.program_id,
-   timeline_event_id:r.data.id,title:f.title,trainer_user_id:f.responsible_mentor_id,
-   status:"scheduled",meet_status:"pending_authorization"});
-  if(live.error)notice("Activity saved, but live class setup failed: "+live.error.message,"error");
- }
- await reload();render();notice("Program activity scheduled.","success");
+ const r=await db.rpc("create_scheduled_lesson_v2",{
+ _program_id:f.program_id,_title:f.title,_description:f.description||"",
+ _scheduled_date:f.scheduled_date,_activity_type:f.activity_type,
+ _responsible_mentor_id:f.responsible_mentor_id,
+ _start_time:f.activity_type==="lecture"?f.start_time:null,
+ _duration_minutes:Number(f.duration_minutes),_published:true
+ });
+ if(r.error)throw r.error;
+ await reload();render();notice("Program activity saved atomically.","success");
 }
 else if(type==="v2-team-project"){
  const obj={project_title:f.project_title||null,project_brief:f.project_brief||null,
