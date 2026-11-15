@@ -6,4 +6,4 @@ export default async function VerifyPage({searchParams}:{searchParams:Promise<{c
  <p className="mt-3 max-w-2xl text-slate-600">Check authenticity of a program offer letter or internship completion certificate using its unique code.</p>
  <section className="hs-card mt-9 max-w-xl"><VerificationForm initialCode={code||""}/></section>
  </main>;
-}}
+}

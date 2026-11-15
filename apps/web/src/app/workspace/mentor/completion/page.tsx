@@ -18,4 +18,4 @@ export default async function MentorCompletion(){
  <p className="mt-3 max-w-3xl text-slate-600">Review each student's contribution, code, project work and presentation. Certificate recommendations are accepted only at the end of the internship period.</p>
  <section className="hs-card mt-8"><InternshipCompletionForm members={all} existing={existing.data||[]}/></section>
  </main>;
-}}
+}

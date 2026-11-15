@@ -37,4 +37,4 @@ export default async function ProgramOverview(){
    </section>;
   })}</div>
  </main>;
-}}
+}

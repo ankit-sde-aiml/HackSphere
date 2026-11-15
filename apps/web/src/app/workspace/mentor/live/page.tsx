@@ -13,4 +13,4 @@ export default async function MentorLive(){
   <p className="mt-3 text-slate-600">All program mentors share the calendar; Admin controls class ownership. Join available scheduled meetings below.</p>
   <section className="hs-card mt-8"><LiveClassList sessions={sessions||[]}/></section>
  </main>;
-}}
+}

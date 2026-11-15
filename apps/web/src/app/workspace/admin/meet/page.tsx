@@ -11,4 +11,4 @@ export default async function AdminMeet(){
   <p className="mt-3 max-w-3xl text-slate-600">Admin creates the class timetable first, then attaches the restricted Google Meet link for each class. Students receive the link only near the class time after enrollment checks.</p>
   <section className="hs-card mt-8"><MeetLinkForm sessions={sessions||[]}/></section>
  </main>;
-}}
+}

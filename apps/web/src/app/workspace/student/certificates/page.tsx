@@ -27,4 +27,4 @@ export default async function MyCertificates(){
     <Link href={"/verify?code="+encodeURIComponent(e.offer_letter_code)} className="mt-2 inline-flex text-sm font-semibold text-indigo-700">Verify enrollment document</Link>
   </article>)}</div></section>
  </main>;
-}}
+}
