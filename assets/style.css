@@ -1557,3 +1557,262 @@ button,a,input,select,textarea{-webkit-tap-highlight-color:transparent}
  #app-shell .mp-meta{line-height:1.6}
  #app-shell .hs-queue-status{padding:11px 13px}
 }
+
+
+/* =============================================================
+   HackSphere Student Experience v5.3
+   Mobile-first: Home, Learn, My Tasks, Internship, Reviews.
+   Strictly UI; shared Admin/Mentor navigation remains unchanged.
+   ============================================================= */
+#app-shell.hs-student .hs3-student-page{width:100%;max-width:1040px;margin:0 auto;min-width:0}
+#app-shell.hs-student .hs3-student-page .st-page-head{margin-bottom:20px!important}
+#app-shell.hs-student .hs3-student-page .st-page-head h1{font-size:clamp(25px,3.2vw,32px)!important;letter-spacing:-.05em}
+#app-shell .hs3-kicker{font-size:10px;font-weight:850;letter-spacing:.14em;color:#7759be}
+#app-shell .hs3-home-hero,
+#app-shell .hs3-intern-hero{position:relative;isolation:isolate;overflow:hidden;background:linear-gradient(125deg,#1f163b 0%,#2c2051 58%,#433079 100%);border-radius:22px;color:#fff;box-shadow:0 16px 38px #34205b22}
+#app-shell .hs3-home-hero:before,
+#app-shell .hs3-intern-hero:before{content:"";position:absolute;pointer-events:none;z-index:-1;width:270px;height:270px;border:50px solid #a98aff12;right:-130px;top:-160px;border-radius:50%}
+#app-shell .hs3-home-hero:after,
+#app-shell .hs3-intern-hero:after{content:"";position:absolute;pointer-events:none;z-index:-1;width:210px;height:210px;border:1px solid #baa5fa23;right:-110px;bottom:-120px;border-radius:50%;box-shadow:0 0 0 28px #baa5fa0c,0 0 0 62px #baa5fa07}
+#app-shell .hs3-home-hero{padding:27px 30px;margin:0 0 23px}
+#app-shell .hs3-home-overline,#app-shell .hs3-hero-top{display:flex;align-items:center;justify-content:space-between;gap:12px;font-weight:800;font-size:10px;letter-spacing:.115em;color:#c4b6f0}
+#app-shell .hs3-home-overline>span:first-child{display:flex;align-items:center;gap:7px}
+#app-shell .hs3-home-hero h2{max-width:630px;font-weight:850;font-size:clamp(25px,3.3vw,35px);letter-spacing:-.045em;line-height:1.2;color:#fff;margin:23px 0 8px}
+#app-shell .hs3-home-hero p{color:#c7bfde;font-size:13px;line-height:1.7;max-width:510px;margin:0 0 25px}
+#app-shell .hs3-home-progress>div:first-child,
+#app-shell .hs3-hero-progress>div:first-child{display:flex;justify-content:space-between;align-items:center;gap:10px;color:#dad2ee;font-size:12px}
+#app-shell .hs3-home-progress strong,
+#app-shell .hs3-hero-progress strong{color:#fff;font-size:13px;font-weight:830;font-variant-numeric:tabular-nums}
+#app-shell .hs3-progress-track{background:#ffffff25;border-radius:99px;height:8px;overflow:hidden;position:relative;margin-top:10px}
+#app-shell .hs3-progress-track>span{display:block;height:100%;background:linear-gradient(90deg,#a786ff,#d6c2ff);border-radius:inherit;transition:width .25s}
+#app-shell .hs3-home-primary{border:0;border-radius:11px;background:#fff;color:#322354;font-family:inherit;font-size:13px;font-weight:830;margin-top:22px;padding:12px 18px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:11px;cursor:pointer}
+#app-shell .hs3-home-primary:hover{background:#eee7ff}
+#app-shell .hs3-home-empty .hs3-home-primary{margin-top:2px}
+#app-shell .hs3-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 13px}
+#app-shell .hs3-section-head h3{font-size:17px;font-weight:850;letter-spacing:-.035em;color:#251c3c;margin:0}
+#app-shell .hs3-section-head>span{font-size:11px;color:#868092;max-width:52%;text-align:right}
+#app-shell .hs3-section-head>button{display:flex;align-items:center;gap:5px;border:0;background:transparent;color:#6d43cf;font-weight:800;font-size:12px;cursor:pointer;min-height:40px}
+#app-shell .hs3-next-task{width:100%;display:flex;align-items:center;gap:13px;border:1px solid #e7e1f2;border-radius:16px;background:#fff;cursor:pointer;text-align:left;padding:18px 17px;margin:0 0 20px;box-shadow:0 4px 22px #1d103509;min-width:0}
+#app-shell .hs3-next-task:hover{border-color:#cab8f6}
+#app-shell .hs3-task-symbol{display:grid;place-items:center;flex:none;width:43px;height:43px;background:#f1ebff;color:#7046dc;border-radius:13px}
+#app-shell .hs3-next-task-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+#app-shell .hs3-next-task-text>small{font-size:9px;font-weight:850;letter-spacing:.1em;color:#8058d0}
+#app-shell .hs3-next-task-text>strong{font-size:15px;font-weight:830;letter-spacing:-.02em;color:#29213e;overflow-wrap:anywhere}
+#app-shell .hs3-next-task-text>span{font-size:11px;color:#81798b}
+#app-shell .hs3-next-chevron{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#eee8ff;color:#6343c2;flex:none}
+#app-shell .hs3-next-pending{cursor:default}
+#app-shell .hs3-home-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 25px}
+#app-shell .hs3-home-metrics>div{min-width:0;background:#fff;border:1px solid #ebe6f3;border-radius:15px;padding:19px 16px}
+#app-shell .hs3-home-metrics strong{font-size:28px;font-weight:880;letter-spacing:-.055em;line-height:1.1;color:#32224e;display:block}
+#app-shell .hs3-home-metrics span{font-size:11px;font-weight:650;color:#868092;display:block;margin-top:9px}
+#app-shell .hs3-home-class{width:100%;display:flex;align-items:center;text-align:left;gap:12px;padding:15px 18px;border:1px solid #e9e5f1;border-radius:15px;background:#fff;cursor:pointer;margin-bottom:16px}
+#app-shell .hs3-home-class>span:nth-child(2){display:flex;flex-direction:column;gap:5px;flex:1;min-width:0}
+#app-shell .hs3-home-class strong{font-size:14px;color:#2e2545}
+#app-shell .hs3-home-class small{font-size:11px;color:#837b90}
+#app-shell .hs3-home-shortcuts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#app-shell .hs3-home-shortcuts button{border:1px solid #e9e4f0;border-radius:12px;background:#fff;display:flex;align-items:center;gap:10px;padding:14px;text-align:left;font-size:12px;font-weight:800;color:#43385b;cursor:pointer}
+#app-shell .hs3-home-shortcuts button>svg:first-child{color:#7545d7;flex:none}
+#app-shell .hs3-home-shortcuts button>svg:last-child{margin-left:auto;color:#ada4bd}
+#app-shell .hs3-tasks-intro{background:#f1eaff;border:1px solid #e5d9ff;border-radius:15px;display:flex;align-items:center;gap:14px;padding:17px;margin-bottom:19px}
+#app-shell .hs3-tasks-intro-icon{width:43px;height:43px;display:grid;place-items:center;background:#fff;border-radius:12px;color:#7042d5;flex:none}
+#app-shell .hs3-tasks-intro>div:last-child{display:flex;flex-direction:column;gap:4px;min-width:0}
+#app-shell .hs3-tasks-intro strong{color:#382757;font-size:13px}
+#app-shell .hs3-tasks-intro span{color:#78668f;font-size:11px}
+#app-shell .hs3-filters{display:flex;gap:7px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;margin:0 0 14px}
+#app-shell .hs3-filters::-webkit-scrollbar{display:none}
+#app-shell .hs3-filters button{border:1px solid #e8e2f1;background:#fff;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:8px;white-space:nowrap;min-height:42px;color:#756e85;font-size:12px;font-weight:760;cursor:pointer}
+#app-shell .hs3-filters button.active{background:#6e43db;color:#fff;border-color:#6e43db}
+#app-shell .hs3-filters button span{font-variant-numeric:tabular-nums;min-width:21px;padding:3px 5px;border-radius:7px;background:#f1edfa;color:#6b4cbd;font-size:10px;font-weight:830;text-align:center}
+#app-shell .hs3-filters button.active span{background:#ffffff2b;color:#fff}
+#app-shell .hs3-task-list{display:flex;flex-direction:column;gap:9px}
+#app-shell .hs3-task-item{width:100%;display:flex;align-items:center;text-align:left;gap:13px;border:1px solid #ebe6f2;border-radius:14px;background:#fff;min-width:0;padding:13px 16px;cursor:pointer;box-shadow:0 2px 13px #1f0f3607}
+#app-shell .hs3-task-item:hover{border-color:#cbbbf1;background:#fdfaff}
+#app-shell .hs3-task-content{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+#app-shell .hs3-task-content>strong{font-size:13px;color:#312745;font-weight:830;overflow-wrap:anywhere}
+#app-shell .hs3-task-content>small{font-size:11px;color:#8b8295;line-height:1.4}
+#app-shell .hs3-task-item>svg:last-child{color:#a29aaf;flex:none}
+#app-shell .hs3-badge{display:inline-flex;align-items:center;justify-content:center;border-radius:99px;font-size:10px;font-weight:830;line-height:1.25;padding:5px 9px;white-space:nowrap;border:1px solid transparent;flex:none}
+#app-shell .hs3-todo{color:#665b79;background:#f1eef6}
+#app-shell .hs3-in_progress{color:#2c64b9;background:#eaf1ff}
+#app-shell .hs3-review{color:#936019;background:#fff2d6}
+#app-shell .hs3-changes_requested{color:#b44b35;background:#fff0e9}
+#app-shell .hs3-completed{color:#147c59;background:#e1f8ed}
+#app-shell .hs3-empty{display:flex;flex-direction:column;align-items:center;gap:10px;padding:40px 20px;justify-content:center;min-height:190px;text-align:center;background:#fff;border:1px solid #ebe6f3;border-radius:15px;color:#867a99}
+#app-shell .hs3-empty>svg{color:#a389d3}
+#app-shell .hs3-empty strong{font-size:15px;color:#3d3250}
+#app-shell .hs3-empty>span{font-size:12px;line-height:1.6;max-width:290px}
+#app-shell .hs3-waiting{max-width:740px;margin:0 auto;padding:58px 30px;border:1px solid #e9e1f4;background:linear-gradient(135deg,#fff,#f5efff);border-radius:22px;display:flex;flex-direction:column;align-items:center;text-align:center}
+#app-shell .hs3-wait-icon{display:grid;place-items:center;width:76px;height:76px;border-radius:23px;background:#e9dbff;color:#7044d4;margin-bottom:23px}
+#app-shell .hs3-waiting h2{font-weight:860;letter-spacing:-.035em;color:#282040;font-size:24px;max-width:480px;margin:10px 0}
+#app-shell .hs3-waiting>p{color:#7a7189;line-height:1.7;max-width:450px;font-size:13px;margin:0 0 21px}
+#app-shell .hs3-wait-count{display:flex;align-items:center;gap:8px;border-radius:10px;padding:11px 14px;background:#fff;color:#6f51ad;font-size:12px;font-weight:750}
+#app-shell .hs3-waiting .hs3-primary-button{max-width:260px}
+#app-shell .hs3-intern-hero{padding:27px 30px 24px;margin-bottom:22px}
+#app-shell .hs3-hero-top{padding-right:50px}
+#app-shell .hs3-live-dot{display:inline-flex;align-items:center;gap:6px;font-size:10px;color:#c0f5db;font-weight:800;text-transform:uppercase;letter-spacing:.02em;white-space:nowrap}
+#app-shell .hs3-live-dot:before{content:"";width:7px;height:7px;background:#37dda7;box-shadow:0 0 0 3px #37dda71f;border-radius:50%}
+#app-shell .hs3-hero-graphic{position:absolute;right:25px;top:58px;color:#b9a0fd;background:#ffffff0e;border:1px solid #ffffff24;border-radius:17px;width:62px;height:62px;display:grid;place-items:center}
+#app-shell .hs3-intern-hero h2{font-size:clamp(24px,3vw,34px);color:#fff;line-height:1.17;letter-spacing:-.04em;font-weight:850;max-width:610px;margin:26px 60px 9px 0;overflow-wrap:anywhere}
+#app-shell .hs3-intern-hero>p{color:#cac1df;font-size:13px;line-height:1.68;max-width:640px;margin:0 0 23px;overflow-wrap:anywhere}
+#app-shell .hs3-hero-progress{margin:0 0 20px}
+#app-shell .hs3-hero-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+#app-shell .hs3-hero-stats>div{background:#ffffff12;border:1px solid #ffffff09;display:flex;flex-direction:column;align-items:center;gap:6px;border-radius:12px;padding:13px 8px}
+#app-shell .hs3-hero-stats strong{font-size:19px;color:#fff;line-height:1;font-weight:850;font-variant-numeric:tabular-nums}
+#app-shell .hs3-hero-stats span{color:#c4b7da;font-size:10px;font-weight:650}
+#app-shell .hs3-continue{margin:0 0 20px}
+#app-shell .hs3-continue-card{width:100%;display:flex;align-items:center;gap:13px;padding:14px 16px;min-height:80px;background:#fff;border:1px solid #e9e3f1;border-radius:15px;cursor:pointer;text-align:left}
+#app-shell .hs3-continue-card>span:nth-child(2){flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+#app-shell .hs3-continue-card strong{font-size:13px;font-weight:850;color:#322947}
+#app-shell .hs3-continue-card small{font-size:11px;color:#887e95}
+#app-shell .hs3-continue-card>svg{color:#7044db;flex:none}
+#app-shell .hs3-intern-tabs{display:flex;align-items:stretch;gap:5px;padding:5px;background:#ede8f6;border-radius:13px;margin:0 0 17px;overflow-x:auto;scrollbar-width:none}
+#app-shell .hs3-intern-tabs::-webkit-scrollbar{display:none}
+#app-shell .hs3-intern-tabs button{flex:1;min-width:89px;min-height:42px;border:0;background:transparent;color:#776a8d;border-radius:10px;font-family:inherit;font-size:12px;font-weight:780;white-space:nowrap;cursor:pointer}
+#app-shell .hs3-intern-tabs button.active{background:#fff;color:#5d37bf;box-shadow:0 2px 8px #2d165017}
+#app-shell .hs3-tab-panel{min-height:150px;display:block}
+#app-shell .hs3-tab-panel>.hs3-section-head{margin:0 0 14px}
+#app-shell .hs3-team-switch{display:flex;align-items:center;gap:12px;font-size:12px;color:#746b83;margin-bottom:15px;font-weight:700}
+#app-shell .hs3-team-switch .input{min-height:38px;max-width:300px;margin-left:auto}
+#app-shell .hs3-mentor-card{display:flex;align-items:center;gap:13px;background:#f0eaff;border-radius:14px;padding:15px 17px;margin-bottom:11px}
+#app-shell .hs3-mentor-card>div:nth-child(2){flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+#app-shell .hs3-mentor-card small{font-size:9px;font-weight:850;letter-spacing:.09em;color:#8b6dcb}
+#app-shell .hs3-mentor-card strong{color:#322452;font-size:15px}
+#app-shell .hs3-mentor-card>svg{color:#7041cc}
+#app-shell .hs3-avatar{width:42px;height:42px;border-radius:50%;background:#efe8fc;color:#6c49bb;flex:none;display:grid;place-items:center;font-size:12px;font-weight:850}
+#app-shell .hs3-mentor-avatar{background:#e0d3fc;border-radius:13px}
+#app-shell .hs3-member-list{display:grid;gap:9px}
+#app-shell .hs3-member{background:#fff;border:1px solid #eee9f4;border-radius:13px;padding:13px 16px;display:flex;gap:12px;align-items:center}
+#app-shell .hs3-member>span:last-child{display:flex;flex-direction:column;gap:5px;min-width:0}
+#app-shell .hs3-member strong{color:#332a44;font-size:13px}
+#app-shell .hs3-member small{font-size:11px;color:#87808d}
+#app-shell .hs3-member em{font-size:9px;font-weight:800;font-style:normal;color:#754ace;background:#efe9ff;border-radius:7px;padding:3px 7px;margin-left:6px}
+#app-shell .hs3-roadmap{background:#fff;border:1px solid #ebe6f2;border-radius:16px;padding:20px 21px 20px 26px;display:grid;gap:0;margin-bottom:15px}
+#app-shell .hs3-roadstep{display:flex;gap:16px;min-height:78px;position:relative}
+#app-shell .hs3-roadstep:not(:last-child):before{content:"";position:absolute;left:15px;top:35px;height:calc(100% - 24px);border-left:2px dashed #e5dbf2}
+#app-shell .hs3-road-dot{width:32px;height:32px;display:grid;place-items:center;flex:none;border-radius:50%;background:#f2eef8;color:#8f84a4;font-size:12px;font-weight:850;position:relative;z-index:1}
+#app-shell .hs3-roadstep.past .hs3-road-dot{background:#e2f7ec;color:#15966a}
+#app-shell .hs3-roadstep.current .hs3-road-dot{background:#6f47dc;color:#fff;box-shadow:0 0 0 5px #efe8ff}
+#app-shell .hs3-roadstep>div{display:flex;flex-direction:column;gap:6px;padding-top:5px;min-width:0}
+#app-shell .hs3-roadstep strong{font-size:13px;color:#342a49}
+#app-shell .hs3-roadstep small{font-size:11px;color:#898092}
+#app-shell .hs3-project-detail{border:1px solid #ebe6f2;border-radius:15px;background:#fff;padding:20px}
+#app-shell .hs3-project-detail h3{font-size:16px;font-weight:850;letter-spacing:-.025em;margin:0 0 11px;color:#2d2541}
+#app-shell .hs3-project-detail p{color:#726b7b;font-size:13px;line-height:1.75;margin:0 0 17px;white-space:pre-wrap;overflow-wrap:anywhere}
+#app-shell .hs3-project-meta{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:14px 0;border-top:1px solid #f0ebf6;font-size:12px}
+#app-shell .hs3-project-meta span{display:flex;align-items:center;gap:7px;color:#847b92}
+#app-shell .hs3-project-meta strong{color:#332949}
+#app-shell .hs3-project-repo{border-top:1px solid #f0ebf6;padding-top:15px}
+#app-shell .hs3-link{display:inline-flex;align-items:center;gap:7px;min-height:35px;color:#6740cb;font-size:12px;font-weight:780;overflow-wrap:anywhere}
+#app-shell .hs3-review-entry{background:#fff;border:1px solid #ebe6f1;border-radius:14px;padding:17px;margin-bottom:10px}
+#app-shell .hs3-review-entry>div{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:9px}
+#app-shell .hs3-review-entry strong{font-size:13px;color:#302641}
+#app-shell .hs3-review-entry p{margin:10px 0;font-size:12px;line-height:1.7;color:#6e657c}
+#app-shell .hs3-review-entry small{font-size:10px;color:#90869c}
+#app-shell .hs3-evaluation{background:#fff;border:1px solid #ebe6f1;border-radius:14px;padding:17px;margin-top:17px}
+#app-shell .hs3-eval-line{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-top:1px solid #f0ebf4;font-size:12px;color:#80778a}
+#app-shell .hs3-eval-line strong{font-size:12px;color:#382d4a}
+#app-shell .hs3-task-detail{background:#fff;border:1px solid #e9e3f0;border-radius:18px;padding:20px}
+#app-shell .hs3-back{border:0;background:transparent;color:#6844cc;font-size:12px;font-weight:830;display:flex;align-items:center;gap:5px;padding:7px 0;cursor:pointer;margin-bottom:17px}
+#app-shell .hs3-detail-heading h2{font-size:21px;font-weight:860;letter-spacing:-.04em;color:#2b2241;margin:12px 0 9px}
+#app-shell .hs3-detail-heading p{font-size:12px;line-height:1.8;color:#776d84;margin:0 0 20px;overflow-wrap:anywhere;white-space:pre-wrap}
+#app-shell .hs3-detail-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin-bottom:16px}
+#app-shell .hs3-detail-facts>div{display:flex;flex-direction:column;gap:5px;background:#f8f6fb;border-radius:12px;padding:13px}
+#app-shell .hs3-detail-facts span{font-size:10px;color:#93899d}
+#app-shell .hs3-detail-facts strong{font-size:12px;color:#433653;overflow-wrap:anywhere}
+#app-shell .hs3-proof{border:1px solid #e7e2ef;border-radius:12px;padding:13px;margin-bottom:15px}
+#app-shell .hs3-proof p{font-size:12px;color:#766c82;line-height:1.7;margin:8px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+#app-shell .hs3-feedback{background:#fff7ec;border:1px solid #ffe5bf;padding:15px;border-radius:12px;margin:0 0 17px}
+#app-shell .hs3-feedback-head{display:flex;align-items:center;gap:9px;font-size:12px;color:#6d512d}
+#app-shell .hs3-feedback-head>strong{flex:1}
+#app-shell .hs3-feedback p{font-size:12px;line-height:1.75;color:#735f4a;margin:10px 0 0;overflow-wrap:anywhere}
+#app-shell .hs3-work-form{display:flex;flex-direction:column;gap:14px;margin-top:18px}
+#app-shell .hs3-work-form label,
+#app-shell .hs3-mentor-review-form label{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:780;color:#4a3c5a}
+#app-shell .hs3-work-form .input,
+#app-shell .hs3-mentor-review-form .input{width:100%;font-size:13px;border-radius:10px;min-height:44px;max-width:100%;resize:vertical;padding:11px 13px}
+#app-shell .hs3-primary-button{border:0;border-radius:11px;background:#7047e8;color:#fff;font-size:13px;font-weight:800;min-height:46px;padding:12px 17px;display:inline-flex;justify-content:center;align-items:center;gap:8px;cursor:pointer;width:fit-content}
+#app-shell .hs3-primary-button:hover{background:#5a32c9}
+#app-shell .hs3-secondary-button{border:1px solid #d9cafa;border-radius:11px;background:#f6f1ff;color:#6541c6;display:inline-flex;align-items:center;gap:7px;padding:11px 15px;min-height:44px;font-size:12px;font-weight:800;cursor:pointer}
+#app-shell .hs3-inline-state{margin:16px 0;display:flex;align-items:center;gap:9px;background:#fff6e7;border:1px solid #f8e5c8;border-radius:12px;padding:14px;font-size:12px;color:#835d24}
+#app-shell .hs3-inline-success{background:#eaf9ef;border-color:#cbecd7;color:#177e55}
+#app-shell .hs3-review-history{border-top:1px solid #ede7f4;padding-top:18px;margin-top:21px}
+#app-shell .hs3-review-history h3{font-size:14px;margin:0 0 13px}
+#app-shell .hs3-review-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:11px 0;border-bottom:1px solid #f2eef7}
+#app-shell .hs3-review-row small{margin-left:auto;color:#898092;font-size:10px}
+#app-shell .hs3-review-row p{width:100%;font-size:12px;color:#746b7e;line-height:1.6;margin:0}
+#app-shell .hs3-mentor-summary{font-size:12px;color:#857b92;margin-bottom:17px}
+#app-shell .hs3-mentor-task{border:1px solid #eee9f4;border-radius:13px;padding:15px;margin:0 0 10px;background:#fff}
+#app-shell .hs3-mentor-task-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin:0 0 7px}
+#app-shell .hs3-mentor-task-head strong{font-size:13px;color:#332848}
+#app-shell .hs3-mentor-task>small{font-size:11px;color:#877e90}
+#app-shell .hs3-mentor-task>p{font-size:12px;color:#71667e;line-height:1.6;margin:10px 0}
+#app-shell .hs3-mentor-link{margin-top:9px}
+#app-shell .hs3-mentor-prev-feedback{background:#fff9ee;padding:9px;border-radius:8px}
+#app-shell .hs3-mentor-review-form{margin-top:12px;display:flex;flex-direction:column;gap:11px}
+#app-shell .hs3-mentor-review-form .form-actions{display:flex;justify-content:flex-end;gap:9px;flex-wrap:wrap}
+@media(min-width:800px){
+ #app-shell .hs3-student-page.hs3-internship-page{max-width:830px}
+ #app-shell .hs3-student-page.hs3-home{max-width:880px}
+ #app-shell .hs3-student-page .hs3-task-list{max-width:920px}
+}
+@media(max-width:700px){
+ #app-shell.hs-student .hs3-student-page .st-page-head{margin:2px 0 19px!important}
+ #app-shell.hs-student .hs3-student-page .st-page-head h1{font-size:26px!important}
+ #app-shell .hs3-home-hero{padding:21px 20px;border-radius:19px;margin-bottom:19px}
+ #app-shell .hs3-home-overline,#app-shell .hs3-hero-top{font-size:9px;gap:7px;letter-spacing:.06em}
+ #app-shell .hs3-home-hero h2{font-size:26px;margin:21px 0 8px}
+ #app-shell .hs3-home-hero p{font-size:12px;margin-bottom:21px}
+ #app-shell .hs3-home-primary{width:100%;margin-top:20px}
+ #app-shell .hs3-next-task{padding:13px 12px;gap:10px;border-radius:13px;margin-bottom:16px}
+ #app-shell .hs3-task-symbol{width:37px;height:37px;border-radius:11px}
+ #app-shell .hs3-next-task-text>strong{font-size:13px}
+ #app-shell .hs3-next-task-text>span{font-size:10px}
+ #app-shell .hs3-home-metrics{gap:8px;margin-bottom:22px}
+ #app-shell .hs3-home-metrics>div{padding:14px 10px;border-radius:12px}
+ #app-shell .hs3-home-metrics strong{font-size:23px}
+ #app-shell .hs3-home-metrics span{font-size:10px;line-height:1.35;margin-top:8px}
+ #app-shell .hs3-home-class{padding:12px 13px}
+ #app-shell .hs3-home-shortcuts{gap:9px}
+ #app-shell .hs3-home-shortcuts button{padding:13px 10px;gap:7px;font-size:11px}
+ #app-shell .hs3-tasks-intro{padding:14px}
+ #app-shell .hs3-task-item{gap:9px;padding:12px 10px;border-radius:12px}
+ #app-shell .hs3-task-content>strong{font-size:12px}
+ #app-shell .hs3-task-content>small{font-size:10px}
+ #app-shell .hs3-badge{font-size:9px;padding:5px 7px}
+ #app-shell .hs3-task-item>svg:last-child{width:14px;height:14px}
+ #app-shell .hs3-intern-hero{padding:21px 18px 18px;border-radius:19px;margin-bottom:17px}
+ #app-shell .hs3-hero-graphic{right:18px;top:67px;width:40px;height:40px;border-radius:11px}
+ #app-shell .hs3-hero-graphic svg{width:21px;height:21px}
+ #app-shell .hs3-intern-hero h2{font-size:25px;margin:26px 40px 8px 0}
+ #app-shell .hs3-intern-hero>p{font-size:11.5px;margin-bottom:19px}
+ #app-shell .hs3-hero-stats>div{padding:12px 4px}
+ #app-shell .hs3-hero-stats strong{font-size:17px}
+ #app-shell .hs3-hero-stats span{font-size:9px}
+ #app-shell .hs3-intern-tabs{gap:3px;padding:4px;border-radius:11px}
+ #app-shell .hs3-intern-tabs button{font-size:11px;min-height:41px;min-width:0;padding:0 6px}
+ #app-shell .hs3-section-head h3{font-size:16px}
+ #app-shell .hs3-section-head>span{font-size:10px}
+ #app-shell .hs3-continue-card{min-height:72px;padding:12px}
+ #app-shell .hs3-team-switch{align-items:flex-start;flex-direction:column;gap:8px}
+ #app-shell .hs3-team-switch .input{margin:0;width:100%;max-width:none}
+ #app-shell .hs3-mentor-card{padding:13px}
+ #app-shell .hs3-member{padding:11px 12px}
+ #app-shell .hs3-roadmap{padding:18px 15px 17px 17px}
+ #app-shell .hs3-project-detail{padding:15px}
+ #app-shell .hs3-task-detail{padding:14px}
+ #app-shell .hs3-detail-heading h2{font-size:20px}
+ #app-shell .hs3-detail-facts{gap:8px}
+ #app-shell .hs3-detail-facts>div{padding:11px}
+ #app-shell .hs3-work-form .hs3-primary-button{width:100%}
+ #app-shell .hs3-waiting{padding:35px 19px;border-radius:16px}
+ #app-shell .hs3-waiting h2{font-size:21px}
+ #app-shell .hs3-wait-icon{width:66px;height:66px}
+}
+@media(max-width:350px){
+ #app-shell .hs3-home-overline,#app-shell .hs3-hero-top{font-size:8px}
+ #app-shell .hs3-intern-tabs button{font-size:10px;padding:0 3px}
+ #app-shell .hs3-task-item .hs3-task-symbol{width:32px;height:32px}
+ #app-shell .hs3-task-item .hs3-badge{font-size:8px;padding:4px 5px}
+ #app-shell .hs3-task-item{gap:7px}
+ #app-shell .hs3-home-metrics span{font-size:9px}
+}
