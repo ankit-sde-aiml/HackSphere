@@ -110,15 +110,25 @@ function hsBuildNavigation(){
  let el=document.getElementById("hs-primary-nav");
  if(!el){el=document.createElement("nav");el.id="hs-primary-nav";el.className="hs-primary-nav";el.setAttribute("aria-label","Workspace navigation");document.querySelector("#app-shell .app-main").insertBefore(el,$("app-page"))}
  el.innerHTML=primary.map(([key,ico,label])=>'<button type="button" class="'+(root===key?"active":"")+'" data-action="navigate" data-view="'+key+'" aria-label="'+esc(label)+'" aria-current="'+(root===key?"page":"false")+'">'+stIcon(ico,20)+'<span>'+esc(label)+'</span></button>').join("")+
- '<button type="button" class="hs-more-trigger '+(primary.some(x=>x[0]===root)?"":"active")+'" data-action="open-more" aria-label="More sections">'+
+ '<button type="button" class="hs-more-trigger '+(root==="more"||!primary.some(x=>x[0]===root)?"active":"")+'" data-action="navigate" data-view="more" aria-label="More sections" aria-current="'+(root==="more"?"page":"false")+'">'+
  '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg><span>More</span></button>';
- let dialog=document.getElementById("hs-more-dialog");
- if(!dialog){dialog=document.createElement("dialog");dialog.id="hs-more-dialog";dialog.className="hs-more-dialog";dialog.setAttribute("aria-label","All workspace sections");document.querySelector("#app-shell").append(dialog)}
- const labels=menu[role].filter(item=>!primary.some(x=>x[0]===item[0])&&!(role==="admin"&&["timeline","guides"].includes(item[0])));
- dialog.innerHTML='<div class="hs-more-head"><h2>All sections</h2><button type="button" data-action="close-more" aria-label="Close menu">'+
- '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 5l14 14M19 5 5 19"/></svg></button></div>'+
- '<div class="hs-more-grid">'+labels.map(([key,ico,label])=>'<button type="button" class="'+(root===key?"active":"")+'" data-action="navigate" data-view="'+key+'"><span class="hs-more-symbol">'+esc(ico)+'</span><span>'+esc(label)+'</span>'+stIcon("chevron",16)+'</button>').join("")+'</div>'+
- '<div class="hs-more-footer"><button data-action="signout" class="hs-signout-button">Sign out</button></div>';
+ // All secondary sections now open as a regular page; no modal/backdrop.
+ const oldDialog=document.getElementById("hs-more-dialog");if(oldDialog){if(oldDialog.open)oldDialog.close();oldDialog.remove()}
+}
+function hsMorePage(){
+ const primary=hsNavConfig[role]||hsNavConfig.student;
+ const items=menu[role].filter(item=>!primary.some(x=>x[0]===item[0])&&!(role==="admin"&&["timeline","guides"].includes(item[0])));
+ const icons={explore:"compass",timeline:"calendar",sessions:"video",enrollment:"file",performance:"quiz",
+ documents:"file",profile:"user",notifications:"file","global-events":"calendar",
+ submissions:"task",students:"user",reviews:"task",staff:"user","mentor-assignments":"user",
+ "teams-overview":"briefcase","schedule-v2":"calendar",settings:"file",complete:"check",
+ "payment-history":"file","payment-settings":"file",guides:"user"};
+ return '<section class="hs-more-page"><header class="hs-more-page-head"><h1>More</h1></header>'+
+ '<div class="hs-more-items">'+items.map(([key,ico,label])=>'<button type="button" class="hs-more-item" data-action="navigate" data-view="'+esc(key)+'">'+
+ '<span class="hs-more-item-icon">'+stIcon(icons[key]||"file",21)+'</span>'+
+ '<span class="hs-more-item-text">'+esc(label)+'</span>'+
+ '<span class="hs-more-item-arrow">'+stIcon("chevron",19)+'</span></button>').join("")+'</div>'+
+ '<button type="button" data-action="signout" class="hs-more-page-signout">'+stIcon("back",19)+' Sign out</button></section>';
 }
 let previousFocus=null;
 function loginDialog(){previousFocus=document.activeElement;$("login-modal").hidden=false;document.body.style.overflow="hidden";document.querySelector('#login-modal [data-action="google-login"]')?.focus()}
@@ -211,7 +221,7 @@ async function hsPublicRoute(){
  return true;
 }
 
-function render(){if(!user)return;$("app-shell").classList.toggle("hs-student",role==="student");let roles=demo?["student","mentor","admin"]:["student",...(D.staff_roles.some(x=>x.user_id===user.id&&x.role==="admin")?["admin"]:[]),...(D.program_mentors.some(x=>x.mentor_id===user.id)||D.staff_roles.some(x=>x.user_id===user.id&&["mentor","trainer","guide"].includes(x.role))?["mentor"]:[])];if(!roles.includes(role))role=roles.includes("admin")?"admin":roles.includes("mentor")?"mentor":"student";let allowedExtra=role==="admin"?["program-new","program-detail","program-edit","staff-invite","payment-history","payment-settings","profile"]:role==="student"?["profile","submissions","course-info"]:["profile"];if(!menu[role].some(x=>x[0]===page)&&!allowedExtra.includes(page))page="overview";$("role-switch").hidden=(role==="student"&&roles.length===1);$("role-switch").innerHTML=roles.map(x=>'<option '+(role===x?"selected":"")+' value="'+x+'">'+({student:"Student",trainer:"Trainer",guide:"Internship Guide",mentor:"Mentor",admin:"Admin"})[x]+"</option>").join("");const navGroups={
+function render(){if(!user)return;$("app-shell").classList.toggle("hs-student",role==="student");let roles=demo?["student","mentor","admin"]:["student",...(D.staff_roles.some(x=>x.user_id===user.id&&x.role==="admin")?["admin"]:[]),...(D.program_mentors.some(x=>x.mentor_id===user.id)||D.staff_roles.some(x=>x.user_id===user.id&&["mentor","trainer","guide"].includes(x.role))?["mentor"]:[])];if(!roles.includes(role))role=roles.includes("admin")?"admin":roles.includes("mentor")?"mentor":"student";let allowedExtra=role==="admin"?["program-new","program-detail","program-edit","staff-invite","payment-history","payment-settings","profile","more"]:role==="student"?["profile","submissions","course-info","more"]:["profile","more"];if(!menu[role].some(x=>x[0]===page)&&!allowedExtra.includes(page))page="overview";$("role-switch").hidden=(role==="student"&&roles.length===1);$("role-switch").innerHTML=roles.map(x=>'<option '+(role===x?"selected":"")+' value="'+x+'">'+({student:"Student",trainer:"Trainer",guide:"Internship Guide",mentor:"Mentor",admin:"Admin"})[x]+"</option>").join("");const navGroups={
  mentor:[["Program",["overview","courses","global-events","performance"]],["My Assigned Work",["mentor-classes","mentor-teams","reviews","sessions"]],["Account",["profile"]]],
  admin:[["Workspace",["overview","programs","students"]],["Learning operations",["timeline","sessions","reviews","performance"]],["Finance & certification",["payments","complete"]],["Team & settings",["staff","guides","mentor-assignments","settings","profile"]],["Platform Events",["global-events"]],["Program Setup",["schedule-v2","teams-overview"]]],
  student:[["My learning",["overview","courses","tasks","explore","timeline","sessions","submissions"]],["Account & outcomes",["enrollment","my-internship","global-events","notifications","performance","documents","profile"]]],
@@ -220,7 +230,7 @@ function render(){if(!user)return;$("app-shell").classList.toggle("hs-student",r
 };
 $("side-nav").innerHTML=navGroups[role].map(([group,ids])=>'<div class="nav-group"><div class="nav-group-label">'+esc(group)+'</div>'+ids.map(id=>{let item=menu[role].find(x=>x[0]===id);if(!item)return "";let [v,i,l]=item;let active=page===v||(page==="course-info"&&v==="explore")||(page==="program-detail"&&v==="programs")||(page==="program-edit"&&v==="programs")||(page==="program-new"&&v==="programs")||(page==="payment-history"&&v==="payments")||(page==="payment-settings"&&v==="payments")||(page==="staff-invite"&&v==="staff");return '<button class="'+(active?"active":"")+'" data-action="navigate" data-view="'+v+'" aria-current="'+(active?"page":"false")+'"><span class="nav-icon">'+i+'</span><span>'+esc(l)+'</span></button>'}).join("")+'</div>').join("");$("side-role").textContent=({student:"Student portal",trainer:"Trainer workspace",guide:"Internship guide",mentor:"Mentor workspace",admin:"Administration"})[role];let label=menu[role].find(x=>x[0]===page)?.[2]||({"program-new":"Create Program","program-detail":"Program Workspace","program-edit":"Edit Program","staff-invite":"Invite Staff","payment-history":"Payment History","payment-settings":"Payment Settings",profile:"My Profile",submissions:"Submissions"})[page]||"Workspace";$("section-label").textContent=label;$("crumb").textContent=label.toUpperCase();let name=D.profiles.find(x=>x.id===user.id)?.full_name||user.user_metadata?.full_name||user.email?.split("@")[0]||"Learner";$("user-display").textContent=name;$("user-avatar").textContent=name.slice(0,2).toUpperCase();$("demo-pill").hidden=!demo;
 hsBuildNavigation();
-const view={"notifications":studentNotificationsV2,"mentor-classes":mentorClassesV2,"mentor-teams":mentorTeamsV2,"global-events":globalEventsV2,"my-internship":studentInternshipV2,"mentor-assignments":adminMentorsV2,"schedule-v2":adminScheduleV2,"teams-overview":adminTeamsV2,overview:overview,courses:courses,programs:programAdmin,"program-new":programNew,"program-detail":programDetail,"program-edit":programEdit,timeline:timeline,sessions:sessions,reviews:reviews,students:students,payments:payments,"payment-history":paymentHistory,"payment-settings":paymentSettings,staff:staff,"staff-invite":staffInvite,guides:guides,performance:performance,complete:complete,documents:documents,enrollment:enrollment,settings:settings,profile:profilePage,submissions:mySubmissions};
+const view={"more":hsMorePage,"notifications":studentNotificationsV2,"mentor-classes":mentorClassesV2,"mentor-teams":mentorTeamsV2,"global-events":globalEventsV2,"my-internship":studentInternshipV2,"mentor-assignments":adminMentorsV2,"schedule-v2":adminScheduleV2,"teams-overview":adminTeamsV2,overview:overview,courses:courses,programs:programAdmin,"program-new":programNew,"program-detail":programDetail,"program-edit":programEdit,timeline:timeline,sessions:sessions,reviews:reviews,students:students,payments:payments,"payment-history":paymentHistory,"payment-settings":paymentSettings,staff:staff,"staff-invite":staffInvite,guides:guides,performance:performance,complete:complete,documents:documents,enrollment:enrollment,settings:settings,profile:profilePage,submissions:mySubmissions};
 const studentViews={overview:studentOverview,courses:studentCourses,tasks:hs3StudentTasks,explore:studentExplore,"course-info":studentProgramInfo,timeline:studentCalendar,enrollment:studentEnrollmentPage,sessions:studentSessions,submissions:studentAssignments,performance:studentPerformance,documents:studentDocuments,profile:studentProfile};
 $("app-page").innerHTML=course&&page==="courses"?(role==="student"?studentClassroom():classroom()):
 (role==="student"&&studentViews[page]?studentViews[page]():((view[page]||overview)()));
@@ -1627,7 +1637,7 @@ async function importCsvSchedule(form){
  notice(result.data.inserted+" activities imported; "+result.data.duplicates_skipped+" duplicates skipped; "+result.data.live_classes_scheduled+" Meet authorizations pending.","success");
 }
 
-document.addEventListener("click",async e=>{let b=e.target.closest("[data-action]");if(!b)return;e.preventDefault();let a=b.dataset.action,id=b.dataset.id;if(a==="open-more"){const dialog=$("hs-more-dialog");if(dialog&&!dialog.open){dialog.showModal();dialog.querySelector('[data-action="close-more"]')?.focus()}return}
+document.addEventListener("click",async e=>{let b=e.target.closest("[data-action]");if(!b)return;e.preventDefault();let a=b.dataset.action,id=b.dataset.id;if(a==="open-more"){navigateTo("more");return}
 else if(a==="close-more"){hsCloseMore();return}
 else if(a==="student-explore"){studentQuery="";navigateTo("explore")}
 else if(a==="student-course-info"){navigateTo("course-info",id)}
