@@ -128,7 +128,16 @@ function demoOpen(){demo=true;reset();seed();user={id:"demo-student",email:"stud
 function open(){hideDialog();$("marketing").hidden=true;$("app-shell").hidden=false;$("skip-link").setAttribute("href","#app-page");window.scrollTo(0,0);if(!readRoute())navigateTo("overview",null,true);else render()}
 async function signIn(){if(!db){$("login-notice").hidden=false;$("login-notice").textContent="Google sign-in is temporarily unavailable. Please try again later.";return}let r=await db.auth.signInWithOAuth({provider:"google",options:{redirectTo:location.origin+"/",queryParams:{prompt:"select_account"}}});if(r.error)notice(r.error.message,"error")}
 async function signOut(){hsCloseMore();hs3InternshipTask=null;hs3InternshipChoice=null;if(db&&!demo)await db.auth.signOut();user=null;demo=false;reset();publicPage();catalog()}
-async function reload(){if(!db||!user||demo)return;try{const status=await fetch('/api/videos/status',{cache:'no-store'});videoStorageReady=!!(await status.json()).r2Connected}catch(e){videoStorageReady=false}await Promise.all(keys.map(async k=>{try{let r=await db.from(k).select("*").limit(900);D[k]=r.error?[]:r.data||[]}catch(e){D[k]=[]}}));try{await db.rpc("accept_my_staff_invitation");let r=await db.from("staff_roles").select("*");if(!r.error)D.staff_roles=r.data||[]}catch(e){}try{let r=await db.rpc("get_payment_instructions");if(!r.error)upi=r.data||{}}catch(e){}}
+async function reload(){if(!db||!user||demo)return;try{const status=await fetch('/api/videos/status',{cache:'no-store'});videoStorageReady=!!(await status.json()).r2Connected}catch(e){videoStorageReady=false}await Promise.all(keys.map(async k=>{try{let r=await db.from(k).select("*").limit(900);D[k]=r.error?[]:r.data||[]}catch(e){D[k]=[]}}));
+try{
+ const roster=await db.rpc("get_my_internship_roster");
+ if(!roster.error&&Array.isArray(roster.data))for(const member of roster.data){
+  const found=D.profiles.find(x=>x.id===member.id);
+  if(found){if(!found.full_name)found.full_name=member.full_name}
+  else D.profiles.push({id:member.id,full_name:member.full_name});
+ }
+}catch(e){}
+try{await db.rpc("accept_my_staff_invitation");let r=await db.from("staff_roles").select("*");if(!r.error)D.staff_roles=r.data||[]}catch(e){}try{let r=await db.rpc("get_payment_instructions");if(!r.error)upi=r.data||{}}catch(e){}}
 async function save(t,obj,id){if(demo){if(id)D[t]=D[t].map(x=>x.id===id?{...x,...obj}:x);else D[t].unshift({id:"preview-"+Math.random().toString(36).slice(2),...obj});notice("Preview mode only — nothing saved to the live database.","success");render();return true}if(!db||!user){notice("Sign in first.","error");return false}try{let r=id?await db.from(t).update(obj).eq("id",id):t==="site_settings"?await db.from(t).upsert(obj,{onConflict:"key"}):await db.from(t).insert(obj);if(r.error)throw r.error;notice("Saved successfully.","success");await reload();render();return true}catch(e){notice("Save failed: "+e.message,"error");return false}}
 
 let hsPage=0,hsSort="newest";
