@@ -875,36 +875,20 @@ function classroom(){
  ].join("");
 }
 function programAdmin(){
- let items=D.programs.slice().sort((a,b)=>String(b.created_at||b.start_date).localeCompare(String(a.created_at||a.start_date)));
+ const items=D.programs.slice().sort((a,b)=>String(b.created_at||b.start_date).localeCompare(String(a.created_at||a.start_date)));
  const action='<button class="btn btn-primary" data-action="program-new">+ Create program</button>';
- const feature=[
- '<div class="workspace-banner">',
- '<div class="banner-icon">▦</div>',
- '<div><span class="eyebrow">PROGRAM OPERATIONS</span><h2>Build a program. Own the full journey.</h2>',
- '<p>Set independent training dates, curriculum, live lessons and internship milestones. Allocate Guides only when internships start.</p></div>',
- '<button class="btn btn-white" data-action="program-new">Create a program ↗</button>',
- '</div>'
- ].join("");
- let counts=[
- '<div class="stat-grid">',
- '<div class="stat"><span class="sicon">▦</span><b>'+items.length+'</b><small>Total programs</small></div>',
- '<div class="stat"><span class="sicon">◉</span><b>'+items.filter(x=>x.status==="published"||x.status==="ongoing").length+'</b><small>Live programs</small></div>',
- '<div class="stat"><span class="sicon">▤</span><b>'+items.filter(x=>x.status==="draft").length+'</b><small>Unpublished drafts</small></div>',
- '<div class="stat"><span class="sicon">♙</span><b>'+D.enrollments.length+'</b><small>Approved enrollments</small></div>',
- '</div>'
- ].join("");
- let rows=items.map(x=>{
- const students=D.enrollments.filter(e=>e.program_id===x.id).length;
- return '<article class="manage-program-card">'+
- '<div class="mp-icon">⌘</div><div class="mp-body">'+
- '<div class="mp-title">'+esc(x.title)+' '+(x.status==="published"||x.status==="ongoing"?'<span class="pill green">Live</span>':tag(x.status))+'</div>'+
- '<div class="mp-meta">◷ '+total(x)+' days &nbsp; · &nbsp; '+x.training_days+' training + '+x.internship_days+' internship &nbsp; · &nbsp; '+students+' students</div>'+
- '<div class="mp-meta">Starts '+date(x.start_date)+' &nbsp; · &nbsp; '+esc(x.mode)+' &nbsp; · &nbsp; '+money(x.fee_inr)+'</div></div>'+
- '<div class="mp-actions">'+click("Manage program →","program-detail",x.id,"btn-primary")+click(x.status==="draft"?"Publish":"Unpublish","publish",x.id,"btn-outline")+'</div></article>';
+ const rows=items.map(x=>{
+  const students=D.enrollments.filter(e=>e.program_id===x.id).length;
+  return '<article class="manage-program-card"><div class="mp-icon">⌘</div><div class="mp-body">'+
+   '<div class="mp-title">'+esc(x.title)+' '+(x.status==="published"||x.status==="ongoing"?'<span class="pill green">Live</span>':tag(x.status))+'</div>'+
+   '<div class="mp-meta">◷ '+total(x)+' days · '+x.training_days+' training + '+x.internship_days+' internship · '+students+' students</div>'+
+   '<div class="mp-meta">Starts '+date(x.start_date)+' · '+esc(x.mode)+' · '+money(x.fee_inr)+'</div></div>'+
+   '<div class="mp-actions">'+click("Manage program","program-detail",x.id,"btn-primary")+
+   click(x.status==="draft"?"Publish":"Unpublish","publish",x.id,"btn-outline")+'</div></article>';
  }).join("");
- return title("Programs & batches","Create and manage independent training and internship cohorts.",action)+
- counts+card("All programs",items.length?'<div class="manage-program-list">'+rows+'</div>':empty("No programs yet","Create your first batch. You can prepare the schedule while it remains a private draft."))+
- '<div class="help-hint">Create program with Trainer & Guide → Add or import dated lessons → Publish → Verify payment → Allocate student Guide at internship start.</div>'
+ return title("Programs & batches","",action)+
+ (items.length?'<div class="manage-program-list">'+rows+'</div>':
+ empty("No programs yet","Create a program to prepare a new batch."));
 }
 function programNew(){
  if(role!=="admin")return empty("Admin only","Administrator privileges required.");
@@ -926,9 +910,8 @@ function programNew(){
  '<div class="alert">Created as Draft. Admin can assign any number of program mentors and schedule the exact classes each will teach.</div>'+
  '<div class="form-actions"><button class="btn btn-primary" type="submit">Create draft program</button>'+
  '<button type="button" class="btn btn-outline" data-action="navigate" data-view="programs">Cancel</button></div></form>';
- return title("Create Program & Batch","Set duration, capacity and fees first. Assign class owners separately.")+
- '<div class="editor-layout"><div>'+card("Program Builder",form)+'</div><aside>'+
- card("Next steps",'<div class="process-list"><p><b>01.</b> Create this draft</p><p><b>02.</b> Assign invited mentors</p><p><b>03.</b> Build the full teaching calendar</p><p><b>04.</b> Publish enrollment when ready</p><p><b>05.</b> Generate internship groups after training</p></div>')+'</aside></div>';
+ return title("Create Program & Batch","")+
+ card("Program details",form);
 }
 function programDetail(){
  const x=p(course);
@@ -1114,29 +1097,22 @@ function paymentInstructions(){return upi.upi_id?'<div class="alert success"><b>
 function enrollment(){let ps=D.programs.filter(x=>["published","ongoing"].includes(x.status)&&!x.is_test),mine=D.enrollments.filter(x=>x.student_id===user.id);return title("My enrollments","Enrollment activates after manual verification of actual bank credit.")+'<div class="two-col"><div>'+card("UPI enrollment",paymentMethodsNotice()+paymentInstructions()+(upi.upi_id?'<form data-kind="payment">'+choose("Program","program_id",options(ps))+field("Transaction UTR","utr","text","",true)+'<label class="field"><span>Payment screenshot (PNG / JPG / WebP, max 5 MB)</span><input class="input" type="file" name="proof_file" accept="image/png,image/jpeg,image/webp" required></label><div class="alert warning">Your UTR and screenshot are submitted for verification. Only a matching actual bank credit activates enrollment.</div><button class="btn btn-primary">Submit for bank verification</button></form>':""))+'</div><div>'+card("Enrolled programs",mine.length?mine.map(x=>row("▦",p(x.program_id)?.title||"Program",x.is_test?"QA TEST ACCESS — NO PAYMENT":x.offer_letter_code||"Offer letter pending",tag(x.is_test?"Test only":x.status))).join(""):empty("No enrollments","Purchase verification is required."))+"</div></div>"}
 function upiForm(){return '<form data-kind="upi">'+field("Official UPI ID","upi_id","text",upi.upi_id||"",true)+field("Payee","payee","text",upi.payee||"",true)+field("QR image HTTPS URL","qr_url","url",upi.qr_url||"")+notes("Student instructions","instructions")+'<button class="btn btn-primary">Save payment settings</button></form>'}
 function payments(){
- let pending=D.payment_claims.filter(x=>x.status==="pending").slice().sort((a,b)=>String(a.created_at).localeCompare(String(b.created_at)));
- let outstanding=pending.reduce((sum,x)=>sum+Number(x.amount_inr||0),0);
- let intro=[
- '<div class="workspace-banner payment-banner"><div class="banner-icon">◫</div>',
- '<div><span class="eyebrow">FINANCE OPERATIONS</span><h2>Verify payments before unlocking access.</h2><p>Check every UPI transfer in your actual bank statement. A screenshot or transaction reference is evidence, not confirmation.</p></div>',
- '<button class="btn btn-white" data-action="payment-history">View history ↗</button></div>'
- ].join("");
+ const pending=D.payment_claims.filter(x=>x.status==="pending").slice().sort((a,b)=>String(a.created_at).localeCompare(String(b.created_at)));
+ const outstanding=pending.reduce((sum,x)=>sum+Number(x.amount_inr||0),0);
  const actions='<div class="form-actions">'+click("Payment history","payment-history","","btn-outline")+click("UPI settings","payment-settings","","btn-light")+'</div>';
- let pendingCards=pending.length?pending.map(x=>{
- let student=who(x.student_id),prog=p(x.program_id);
- return '<article class="payment-review-card"><div class="payment-avatar">₹</div>'+
- '<div class="payment-review-body"><div class="payment-person">'+esc(student)+' <span class="pill orange">Needs verification</span></div>'+
- '<p>'+esc(prog?.title||"Program")+' · '+money(x.amount_inr)+'</p>'+
- '<div class="payment-reference">UTR: <b>'+esc(x.utr)+'</b></div></div>'+
- '<div class="payment-action-column">'+click("View proof","proof",x.id,"btn-outline")+click("Approve","approve-pay",x.id,"btn-primary")+click("Reject","reject-pay",x.id,"btn-danger")+'</div></article>';
- }).join(""):empty("No payments waiting","Every submitted UPI claim will appear here for your verification.");
- return title("UPI payment approvals","Control student enrollment using real bank-credit verification.",actions)+intro+paymentMethodsNotice()+
- '<div class="stat-grid">'+
- '<div class="stat"><span class="sicon">◫</span><b>'+pending.length+'</b><small>Awaiting approval</small></div>'+
- '<div class="stat"><span class="sicon">₹</span><b>'+money(outstanding)+'</b><small>Claims to verify</small></div>'+
- '<div class="stat"><span class="sicon">✓</span><b>'+D.payment_claims.filter(x=>x.status==="approved").length+'</b><small>Approved claims</small></div>'+
- '<div class="stat"><span class="sicon">✕</span><b>'+D.payment_claims.filter(x=>x.status==="rejected").length+'</b><small>Rejected claims</small></div>'+
- '</div>'+card("Payment verification queue",pendingCards);
+ const cards=pending.length?pending.map(x=>{
+  const student=who(x.student_id),prog=p(x.program_id);
+  return '<article class="payment-review-card"><div class="payment-avatar">₹</div>'+
+   '<div class="payment-review-body"><div class="payment-person">'+esc(student)+' <span class="pill orange">Pending</span></div>'+
+   '<p>'+esc(prog?.title||"Program")+' · '+money(x.amount_inr)+'</p>'+
+   '<div class="payment-reference">UTR: <b>'+esc(x.utr)+'</b></div></div>'+
+   '<div class="payment-action-column">'+click("View proof","proof",x.id,"btn-outline")+
+   click("Approve","approve-pay",x.id,"btn-primary")+click("Reject","reject-pay",x.id,"btn-danger")+'</div></article>';
+ }).join(""):empty("No pending payments","Submitted UPI claims appear here.");
+ return title("UPI payment approvals","",actions)+
+ '<div class="hs-queue-status"><strong>'+pending.length+' pending</strong><span>'+money(outstanding)+' to verify</span></div>'+
+ '<p class="hs-queue-caution">Approve only after confirming the actual bank credit.</p>'+
+ card("Pending verification",cards);
 }
 function paymentHistory(){
  const records=D.payment_claims.filter(x=>x.status!=="pending");
