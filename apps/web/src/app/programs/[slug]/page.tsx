@@ -5,7 +5,9 @@ export const dynamic="force-dynamic";
 export default async function ProgramDetails({params}:{params:Promise<{slug:string}>}){
  const {slug}=await params;
  const supabase=await createClient();
- const r=await supabase.from("programs").select("id,slug,title,description,start_date,training_days,internship_days,fee_inr,mode,status").or("slug.eq."+slug+",id.eq."+slug).eq("is_test",false).in("status",["published","ongoing"]).maybeSingle();
+ const isUuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
+ const r=await supabase.from("programs").select("id,slug,title,description,start_date,training_days,internship_days,fee_inr,mode,status")
+ .eq(isUuid?"id":"slug",slug).eq("is_test",false).in("status",["published","ongoing"]).maybeSingle();
  if(r.error||!r.data)notFound();
  const p=r.data;
  return <main className="hs-container grid gap-10 py-16 lg:grid-cols-[1fr_360px]">
