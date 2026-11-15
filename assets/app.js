@@ -127,7 +127,7 @@ function publicPage(){ $("marketing").hidden=false;$("app-shell").hidden=true;$(
 function demoOpen(){demo=true;reset();seed();user={id:"demo-student",email:"student@example.com",user_metadata:{full_name:"Preview Learner"}};role="student";page="overview";course=null;hideDialog();navigateTo("overview",null);open();notice("Preview mode: all example data is isolated from live records.","success")}
 function open(){hideDialog();$("marketing").hidden=true;$("app-shell").hidden=false;$("skip-link").setAttribute("href","#app-page");window.scrollTo(0,0);if(!readRoute())navigateTo("overview",null,true);else render()}
 async function signIn(){if(!db){$("login-notice").hidden=false;$("login-notice").textContent="Google sign-in is temporarily unavailable. Please try again later.";return}let r=await db.auth.signInWithOAuth({provider:"google",options:{redirectTo:location.origin+"/",queryParams:{prompt:"select_account"}}});if(r.error)notice(r.error.message,"error")}
-async function signOut(){hsCloseMore();if(db&&!demo)await db.auth.signOut();user=null;demo=false;reset();publicPage();catalog()}
+async function signOut(){hsCloseMore();hs3InternshipTask=null;hs3InternshipChoice=null;if(db&&!demo)await db.auth.signOut();user=null;demo=false;reset();publicPage();catalog()}
 async function reload(){if(!db||!user||demo)return;try{const status=await fetch('/api/videos/status',{cache:'no-store'});videoStorageReady=!!(await status.json()).r2Connected}catch(e){videoStorageReady=false}await Promise.all(keys.map(async k=>{try{let r=await db.from(k).select("*").limit(900);D[k]=r.error?[]:r.data||[]}catch(e){D[k]=[]}}));try{await db.rpc("accept_my_staff_invitation");let r=await db.from("staff_roles").select("*");if(!r.error)D.staff_roles=r.data||[]}catch(e){}try{let r=await db.rpc("get_payment_instructions");if(!r.error)upi=r.data||{}}catch(e){}}
 async function save(t,obj,id){if(demo){if(id)D[t]=D[t].map(x=>x.id===id?{...x,...obj}:x);else D[t].unshift({id:"preview-"+Math.random().toString(36).slice(2),...obj});notice("Preview mode only — nothing saved to the live database.","success");render();return true}if(!db||!user){notice("Sign in first.","error");return false}try{let r=id?await db.from(t).update(obj).eq("id",id):t==="site_settings"?await db.from(t).upsert(obj,{onConflict:"key"}):await db.from(t).insert(obj);if(r.error)throw r.error;notice("Saved successfully.","success");await reload();render();return true}catch(e){notice("Save failed: "+e.message,"error");return false}}
 
@@ -1621,16 +1621,29 @@ else if(a==="public-browse"){location.href="/programs"}else if(a==="hs-public-pa
  const result=await db.from("notifications").update({read_at:new Date().toISOString()}).eq("id",id);
  if(result.error){notice(result.error.message,"error");return}
  await reload();render();notice("Notification marked read.","success");
-}else if(a==="v2-mentor-task-review"||a==="v2-mentor-task-complete"){
- if(role!=="mentor"&&role!=="admin")return;
- const status=a==="v2-mentor-task-complete"?"completed":"review";
- await save("internship_tasks",{status},id);
-}else if(a==="v2-student-task-progress"||a==="v2-student-task-review"){
- if(demo){notice("Preview only.");return}
- const status=a==="v2-student-task-review"?"review":"in_progress";
- const r=await db.rpc("update_my_internship_task",{_task_id:id,_status:status});
+}else if(a==="hs3-task-filter"){
+ hs3TaskFilter=b.dataset.tab||"todo";render();
+}else if(a==="hs3-open-learning-task"){
+ const ev=(D.timeline_events||[]).find(x=>x.id===id);
+ if(!ev)return;
+ navigateTo("courses",ev.program_id);
+ lesson=id;studentTab=b.dataset.type==="quiz"?"quiz":"tasks";render();
+}else if(a==="hs3-open-internship-task"){
+ const t=(D.internship_tasks||[]).find(x=>x.id===id);
+ if(!t||!hs3MyTeams().some(team=>team.id===t.team_id))return;
+ hs3InternshipChoice=t.team_id;hs3InternshipTab="tasks";hs3InternshipTask=id;
+ navigateTo("my-internship");
+}else if(a==="hs3-back-internship"){
+ hs3InternshipTask=null;render();
+}else if(a==="hs3-internship-tab"){
+ hs3InternshipTab=b.dataset.tab||"tasks";hs3InternshipTask=null;render();
+}else if(a==="hs3-start-task"){
+ const task=D.internship_tasks.find(t=>t.id===id);
+ if(!task||task.status!=="todo")return;
+ if(demo){task.status="in_progress";render();notice("Preview: task started.");return}
+ const r=await db.rpc("save_my_internship_work",{_task_id:id,_status:"in_progress",_work_url:null,_student_note:null});
  if(r.error){notice(r.error.message,"error");return}
- await reload();render();notice("Task status updated.","success");
+ await reload();render();notice("Task started.","success");
 }else if(a==="v2-join-event"){
  if(demo){notice("Demo event; no live meeting link.");return}
  const win=window.open("","_blank"),r=await db.rpc("get_global_event_join_url",{_event_id:id});
@@ -1678,6 +1691,7 @@ document.addEventListener("change",e=>{
  return;
 }
 if(e.target.id==="role-switch"){role=e.target.value;navigateTo("overview");return}
+ if(e.target.id==="hs3-internship-choice"){hs3InternshipChoice=e.target.value;hs3InternshipTab="tasks";hs3InternshipTask=null;render();return}
  if(e.target.id==="student-calendar-select"){studentCalendarChoice=e.target.value;timelineOffset=0;render();return}
  if(e.target.id==="student-enroll-program"){studentEnrollmentChoice=e.target.value;render();return}
  const f=e.target.closest("form[data-kind]");
@@ -1699,7 +1713,37 @@ const submitButton=form.querySelector('[type="submit"]')||form.querySelector('bu
 const savedButton=submitButton?.innerHTML;if(submitButton){submitButton.disabled=true;submitButton.textContent="Saving…"}
 let f=Object.fromEntries(new FormData(form).entries()),type=form.dataset.kind;
 try{
-if(type==="program-v2"){
+if(type==="hs3-save-internship-work"){
+ if(role!=="student")throw Error("Student access required");
+ const taskId=form.dataset.task;
+ const task=(D.internship_tasks||[]).find(t=>t.id===taskId);
+ if(!task)throw Error("Task not found");
+ const link=String(f.work_url||"").trim(),note=String(f.student_note||"").trim();
+ if(!hs3SafeUrl(link))throw Error("Add a valid HTTPS GitHub or work link");
+ if(demo){Object.assign(task,{work_url:link,student_note:note,status:"review",submitted_at:new Date().toISOString()});notice("Preview: work submitted for review.","success");render();return}
+ const r=await db.rpc("save_my_internship_work",{_task_id:taskId,_status:"review",_work_url:link,_student_note:note});
+ if(r.error)throw r.error;
+ await reload();render();notice("Work submitted to your mentor.","success");
+}
+else if(type==="hs3-review-internship-work"){
+ if(role!=="mentor"&&role!=="admin")throw Error("Mentor access required");
+ const taskId=form.dataset.task;
+ const decision=e.submitter?.value;
+ if(!["approved","changes_requested"].includes(decision))throw Error("Choose a review decision");
+ const feedback=String(f.feedback||"").trim();
+ if(decision==="changes_requested"&&feedback.length<3)throw Error("Explain the requested changes");
+ if(demo){
+  const t=D.internship_tasks.find(x=>x.id===taskId);
+  if(t){Object.assign(t,{status:decision==="approved"?"completed":"changes_requested",reviewed_at:new Date().toISOString(),reviewed_by:user.id,mentor_feedback:feedback});
+   D.internship_task_reviews.unshift({id:"preview-review-"+Date.now(),task_id:taskId,reviewer_id:user.id,result:decision,feedback,created_at:new Date().toISOString()});
+  }
+  render();notice("Preview review recorded.","success");return;
+ }
+ const r=await db.rpc("review_internship_work",{_task_id:taskId,_decision:decision,_feedback:feedback});
+ if(r.error)throw r.error;
+ await reload();render();notice(decision==="approved"?"Work approved.":"Changes requested.","success");
+}
+else if(type==="program-v2"){
  if(role!=="admin")throw Error("Administrator role required");
  const args={_title:f.title,_description:f.description||"",_start_date:f.start_date,
  _training_days:Number(f.training_days),_internship_days:Number(f.internship_days),
