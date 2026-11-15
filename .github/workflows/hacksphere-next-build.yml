@@ -32,3 +32,26 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: https://wvipkluopmptwuvihecz.supabase.co
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder-not-a-secret
         run: npm run build
+
+  cloudflare-vinext-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Next.js dependencies
+        run: npm install --no-audit --no-fund
+      - name: Vinext API compatibility scan
+        run: npx --yes vinext check
+      - name: Initialize temporary Cloudflare preview build config
+        run: npx --yes vinext init --platform=cloudflare --name hacksphere-next-preview --cdn-cache=none --data-cache=none --image-optimization=none --no-prerender
+      - name: Build for Cloudflare Workers
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://wvipkluopmptwuvihecz.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder-not-a-secret
+        run: npm run build:vinext
