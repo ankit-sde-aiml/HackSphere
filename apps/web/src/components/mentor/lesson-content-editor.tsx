@@ -18,14 +18,28 @@ export function LessonContentEditor({events,resources,quizzes}:{events:Session[]
   e.preventDefault();if(!selected)return;
   const form=new FormData(e.currentTarget),title=String(form.get("title")||"").trim();
   const note=String(form.get("note")||"").trim(),url=String(form.get("url")||"").trim();
+  const file=form.get("file");
   await execute(async()=>{
    const db=createClient(),{data:{user}}=await db.auth.getUser();
    if(!user)throw new Error("Sign in required");
-   if(!note&&!url)throw new Error("Enter text notes or an HTTPS link");
-   if(url&&!url.startsWith("https://"))throw new Error("Use an HTTPS resource link");
+   const selectedFile=file instanceof File&&file.size>0?file:null;
+   if(!note&&!url&&!selectedFile)throw new Error("Add notes, a PDF/image or an HTTPS link");
+   if(url&&!/^https:\/\/[^ ]+$/.test(url))throw new Error("Use an HTTPS resource link");
+   if(url&&selectedFile)throw new Error("Choose a file or external link, not both");
+   let storagePath:string|null=null;
+   if(selectedFile){
+    const types:Record<string,string>={"application/pdf":"pdf","image/png":"png","image/jpeg":"jpg"};
+    if(!types[selectedFile.type]||selectedFile.size>50*1024*1024)throw new Error("Only PDF/JPG/PNG files under 50 MB are supported.");
+    storagePath=selected.program_id+"/"+selected.id+"/"+crypto.randomUUID()+"."+types[selectedFile.type];
+    const uploaded=await db.storage.from("hacksphere-course-files").upload(storagePath,selectedFile,{
+     contentType:selectedFile.type,upsert:false,cacheControl:"private, max-age=0"
+    });
+    if(uploaded.error)throw uploaded.error;
+   }
    const {error}=await db.from("lesson_resources").insert({
-    event_id:selected.id,kind:url?"link":"notes",title,created_by:user.id,published:true,
-    external_url:url||null,note_text:note||null
+    event_id:selected.id,kind:selectedFile?"file":url?"link":"notes",
+    title,created_by:user.id,published:true,external_url:url||null,
+    storage_path:storagePath,note_text:note||null
    });
    if(error)throw error;
   });
@@ -67,6 +81,7 @@ export function LessonContentEditor({events,resources,quizzes}:{events:Session[]
     <label className="text-sm font-semibold">Title<input name="title" className={field} minLength={2} required placeholder="Class notes"/></label>
     <label className="text-sm font-semibold">Text notes<textarea name="note" className={field+" min-h-24"}/></label>
     <label className="text-sm font-semibold">Optional HTTPS resource URL<input name="url" type="url" className={field} placeholder="https://..."/></label>
+    <label className="text-sm font-semibold">Optional PDF or image (max 50 MB)<input name="file" type="file" accept="application/pdf,image/png,image/jpeg" className={field}/></label>
     <Button disabled={busy}>Publish resource</Button></form>
    <p className="mt-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-800">Cloudflare R2/Stream recorded video uploading is disabled until the service is enabled on the account. Existing Supabase secure study-material storage remains independent.</p>
   </div>
