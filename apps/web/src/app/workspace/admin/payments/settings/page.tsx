@@ -10,3 +10,4 @@ export default async function PaymentSettings(){
   <p className="mt-3 max-w-3xl text-slate-600">These exact details will appear to students during enrollment. Verify the payee, UPI ID and QR image before publishing.</p>
   <section className="hs-card mt-8 max-w-3xl"><UpiSettings settings={data||{}}/></section>
  </main>;
+}

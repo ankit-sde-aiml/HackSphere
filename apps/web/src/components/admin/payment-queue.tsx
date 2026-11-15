@@ -49,3 +49,4 @@ export function PaymentQueue({claims}:{claims:Claim[]}){
  </article>)}
  {!claims.length&&<p className="text-sm text-slate-500">No payment claims awaiting review.</p>}
  </div><p role="status" className="mt-4 text-sm text-slate-600">{message}</p></div>;
+}

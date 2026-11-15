@@ -61,3 +61,4 @@ export function EnrollForm({programs,claims,enrollments,settings,userId}:{progra
  <p className="mt-5 text-slate-600">Official UPI payment details have not been published.</p>}
  <p className="mt-8 border-t border-slate-200 pt-4 text-xs text-slate-500">Never pay using unverified details received in private chat.</p></aside>
  </div>;
+}

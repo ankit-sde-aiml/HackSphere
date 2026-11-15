@@ -33,3 +33,4 @@ export function UpiSettings({settings}:{settings:Settings}){
   <div className="sm:col-span-2"><Button disabled={busy}>{busy?"Saving...":"Save official UPI details"}</Button>
    <p role="status" className="mt-3 text-sm text-slate-600">{message}</p></div>
  </form>;
+}

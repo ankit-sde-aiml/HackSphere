@@ -19,3 +19,4 @@ export default async function Enroll(){
  programs={programs.data||[]} claims={claims.data||[]} enrollments={enrollments.data||[]}
  settings={instructions.data||{}} userId={user.id}/></div>
  </main>;
+}

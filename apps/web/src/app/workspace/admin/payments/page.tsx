@@ -19,3 +19,4 @@ export default async function Payments(){
   <Link href="/workspace/admin/payments/settings" className="mt-6 inline-flex rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white">Official UPI settings</Link>
   <section className="hs-card mt-7"><PaymentQueue claims={queue}/></section>
  </main>;
+}
