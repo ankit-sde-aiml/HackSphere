@@ -16,6 +16,7 @@ export default async function Mentor(){
  <div className="mt-8 flex flex-wrap gap-3">
   <Link href="/workspace/mentor/classes" className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white">Manage my classes, notes and quizzes</Link>
   <Link href="/workspace/mentor/completion" className="rounded-xl border border-emerald-200 bg-white px-5 py-3 text-sm font-semibold text-emerald-700">Internship evaluations & recommendations</Link>
+  <Link href="/workspace/mentor/live" className="rounded-xl border border-indigo-200 bg-white px-5 py-3 text-sm font-semibold text-indigo-700">Live Class Calendar</Link>
   <Link href="/workspace/mentor/teams" className="rounded-xl border border-indigo-200 bg-white px-5 py-3 text-sm font-semibold text-indigo-700">Manage my internship teams</Link>
  </div>
  <div className="mt-9 grid gap-6 md:grid-cols-2">
