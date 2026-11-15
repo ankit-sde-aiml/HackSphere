@@ -5,9 +5,13 @@ This is the new TypeScript + Next.js App Router + Tailwind CSS v4 + shadcn/ui-co
 ## Current scope
 
 - Working source scaffolding: marketing, program listing/details, Google OAuth callback, protected Admin/Mentor/Student dashboard entry points.
-- The existing Supabase migrations `017`–`020` implement mentor-owned schedules, in-house team projects, global events and notifications.
-- The existing root HTML/JS Worker remains as the current live application while this app is migrated and tested.
-- Program editor, enrollment checkout, mentor uploads, quizzes, team project actions and notifications UI still need migration from root `assets/app.js`.
+- Supabase migrations `017`–`022` are **already applied to the existing HackSphere database**, covering shared mentors, scheduled lesson owners, RLS controls, in-house team groups, in-app event notifications and automated internship allocation (daily 06:00 IST).
+- The existing root HTML/JS Worker remains the live application; the Next.js app is an independent source migration until release acceptance.
+- Admin: course templates, independent batch builder, mentor allocation, scheduled lectures and weekly mini-projects, Google Meet links, company-agnostic global guest events, internship team generation, UPI QR settings, actual bank-credit payment approval, and certificate approval.
+- Mentor: common program schedule and progress, assigned lesson notes/PDFs/quizzes, assigned team major projects, student task approvals, final internship evaluation and completion recommendations.
+- Student: public program catalog, official UPI proof upload and enrollment verification, secure lessons, quizzes, individual mini-project submissions, team internship work, Google Meet joining, global events and certificate verification.
+- Source compilation (Next.js TS + vinext/Workers) has passed GitHub Actions for earlier commits. Always check the latest feature-branch run for newly added screens.
+- **Not yet complete:** Cloudflare preview/runtime deployment, browser E2E + production OAuth redirect allow-list; Cloudflare Stream/R2 enablement and video pipeline; fully automated email notifications, real Razorpay integration (merchant credentials needed), and full certificate layout/print QA.
 - No payment confirmation may be based solely on a UPI screenshot or UTR; Admin must verify real bank credit.
 
 ## Setup
@@ -33,8 +37,8 @@ Cloudflare documentation: https://developers.cloudflare.com/workers/framework-gu
 
 ## Rollout checklist
 
-- [ ] Local `npm run typecheck` passes
-- [ ] Local `npm run build` passes
+- [x] CI TypeScript/Next.js build passed on earlier commits; check the latest run
+- [x] CI Cloudflare vinext/Workers build passed on earlier commits; check the latest run
 - [ ] Google OAuth callback works with authorized redirect URL
 - [ ] Real student account cannot reach Admin/Mentor actions
 - [ ] Course and program pages render without leaking unpublished test data
