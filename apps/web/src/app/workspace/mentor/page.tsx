@@ -14,6 +14,7 @@ export default async function Mentor(){
  return <main className="hs-container py-14"><span className="hs-eyebrow">Mentor workspace</span><h1 className="mt-3 text-4xl font-black">My Assigned Work</h1>
  <p className="mt-4 text-slate-600">Everyone assigned to a program has its common overview. Only work owned by you appears here.</p>
  <div className="mt-8 flex flex-wrap gap-3">
+  <Link href="/workspace/mentor/programs" className="rounded-xl border border-indigo-200 bg-white px-5 py-3 text-sm font-semibold text-indigo-700">Common Program Overview</Link>
   <Link href="/workspace/mentor/classes" className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white">Manage my classes, notes and quizzes</Link>
   <Link href="/workspace/mentor/completion" className="rounded-xl border border-emerald-200 bg-white px-5 py-3 text-sm font-semibold text-emerald-700">Internship evaluations & recommendations</Link>
   <Link href="/workspace/mentor/live" className="rounded-xl border border-indigo-200 bg-white px-5 py-3 text-sm font-semibold text-indigo-700">Live Class Calendar</Link>
