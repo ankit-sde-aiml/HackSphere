@@ -1860,3 +1860,83 @@ button,a,input,select,textarea{-webkit-tap-highlight-color:transparent}
  #app-shell.hs-student .hs3-task-item .hs3-badge{grid-column:2;grid-row:2;justify-self:start;font-size:9px;padding:5px 8px}
  #app-shell.hs-student .hs3-task-item>svg:last-child{grid-column:3;grid-row:1/span 2;align-self:center;width:16px;height:16px}
 }
+
+
+/* v5.3.3 — More is a normal workspace page, never a dark modal. */
+#app-shell .hs-more-dialog{display:none!important}
+#app-shell .hs-more-page{width:100%;max-width:730px;margin:0 auto 20px}
+#app-shell .hs-more-page-head{display:flex;align-items:center;margin:0 0 20px}
+#app-shell .hs-more-page-head h1{font-size:30px;letter-spacing:-.05em;line-height:1.2;color:#241b3c;font-weight:850;margin:0}
+#app-shell .hs-more-items{display:grid;grid-template-columns:1fr;gap:9px}
+#app-shell .hs-more-item{display:flex;align-items:center;gap:14px;text-align:left;background:#fff;border:1px solid #e9e3f0;border-radius:14px;min-height:67px;padding:12px 17px;cursor:pointer;color:#2a2340;width:100%;box-shadow:0 2px 11px #22133506;font-family:inherit}
+#app-shell .hs-more-item:hover{border-color:#c8b5f3;background:#fbf9ff}
+#app-shell .hs-more-item-icon{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:12px;background:#f1ebff;color:#6c40d4}
+#app-shell .hs-more-item-text{font-size:14px;font-weight:760;flex:1;min-width:0;line-height:1.45}
+#app-shell .hs-more-item-arrow{display:grid;place-items:center;color:#9b91a8;flex:none}
+#app-shell .hs-more-page-signout{display:flex;align-items:center;gap:10px;margin:22px 0 0;min-height:48px;border:1px solid #f2dce3;border-radius:13px;background:#fff6f8;color:#a93854;padding:11px 17px;font-size:13px;font-weight:780;cursor:pointer}
+#app-shell .hs-more-page-signout:hover{background:#feecef}
+@media(max-width:700px){
+ #app-shell .hs-more-page{max-width:none}
+ #app-shell .hs-more-page-head{margin-bottom:15px}
+ #app-shell .hs-more-page-head h1{font-size:26px}
+ #app-shell .hs-more-items{gap:8px}
+ #app-shell .hs-more-item{min-height:60px;padding:10px 12px;gap:12px;border-radius:12px}
+ #app-shell .hs-more-item-icon{width:37px;height:37px;border-radius:11px}
+ #app-shell .hs-more-item-text{font-size:13px}
+ #app-shell .hs-more-page-signout{margin-top:16px;width:100%;justify-content:center;font-size:13px}
+}
+/* Phone browsers in "desktop site" portrait mode can expose a 980px layout
+   viewport even with a valid viewport meta tag. Keep core mobile navigation,
+   touch targets, and section layout readable on a portrait touch viewport. */
+@media(min-width:701px) and (max-width:1100px) and (orientation:portrait) and (pointer:coarse){
+ #app-shell .app-side,#app-shell .sidebar-shade,#app-shell .mobile-menu{display:none!important}
+ #app-shell .app-main{margin-left:0!important;width:100%!important}
+ #app-shell .app-top{height:81px!important;min-height:81px!important;padding:0 27px!important}
+ #app-shell .hs-workspace-logo{width:49px;height:49px;font-size:23px}
+ #app-shell .hs-workspace-wordmark b{font-size:23px}
+ #app-shell .hs-workspace-wordmark #section-label{display:none}
+ #app-shell #user-display{display:none!important}
+ #app-shell .profile-pill{padding:2px!important}
+ #app-shell .avatar{width:47px;height:47px;font-size:18px}
+ #app-shell .role-select{height:49px!important;min-height:49px!important;max-width:210px;font-size:18px}
+ #app-shell #demo-pill{display:none!important}
+ #app-shell .app-page,#app-shell.hs-student .app-page{width:100%!important;max-width:none!important;padding:33px 27px 150px!important;margin:0!important}
+ #app-shell .page-title h1,#app-shell .st-page-head h1{font-size:38px!important}
+ #app-shell .hs-primary-nav{
+   position:fixed!important;top:auto!important;bottom:0!important;left:0!important;right:0!important;
+   display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;min-height:0!important;
+   padding:12px 15px 13px!important;border-top:1px solid #e7e1ed;border-bottom:0;background:#fff!important;
+   box-shadow:0 -7px 25px #17112814;z-index:65!important
+ }
+ #app-shell .hs-primary-nav button{display:flex!important;flex-direction:column!important;gap:7px!important;min-height:76px!important;font-size:16px!important;padding:10px 4px!important;border-radius:14px!important}
+ #app-shell .hs-primary-nav button svg{width:28px;height:28px}
+ #app-shell .hs-primary-nav .hs-more-trigger{margin-left:0}
+ #app-shell .hs-more-page{max-width:none!important}
+ #app-shell .hs-more-page-head h1{font-size:40px!important}
+ #app-shell .hs-more-items{gap:13px}
+ #app-shell .hs-more-item{min-height:95px;border-radius:18px;padding:16px 24px;gap:21px}
+ #app-shell .hs-more-item-icon{width:57px;height:57px;border-radius:16px}
+ #app-shell .hs-more-item-icon svg{width:29px;height:29px}
+ #app-shell .hs-more-item-text{font-size:24px}
+ #app-shell .hs-more-item-arrow svg{width:28px;height:28px}
+ #app-shell .hs-more-page-signout{font-size:21px;padding:19px 26px;min-height:74px;border-radius:16px}
+ #app-shell .hs3-student-page .st-page-head h1{font-size:40px!important}
+ #app-shell .hs3-home-hero,#app-shell .hs3-intern-hero{padding:40px;border-radius:25px}
+ #app-shell .hs3-home-hero h2,#app-shell .hs3-intern-hero h2{font-size:39px}
+ #app-shell .hs3-home-hero p,#app-shell .hs3-intern-hero>p{font-size:19px}
+ #app-shell .hs3-task-item{min-height:89px;padding:20px;gap:17px}
+ #app-shell .hs3-task-content>strong{font-size:20px}
+ #app-shell .hs3-task-content>small{font-size:15px}
+ #app-shell .hs3-task-symbol{width:58px;height:58px}
+ #app-shell .hs3-badge{font-size:15px;padding:9px 13px}
+ #app-shell .hs3-task-item>svg:last-child{width:24px;height:24px}
+ #app-shell .hs3-filters button{font-size:18px;min-height:62px;padding:13px 20px}
+ #app-shell .hs3-tasks-intro strong{font-size:21px}
+ #app-shell .hs3-tasks-intro span{font-size:16px}
+ #app-shell .hs3-learn-grid{grid-template-columns:1fr!important}
+ #app-shell .hs3-intern-tabs button{font-size:17px;min-height:62px}
+ #app-shell .hs3-member-list{grid-template-columns:1fr!important}
+ #app-shell .two-col,#app-shell .equal-col,#app-shell .editor-layout,
+ #app-shell .form-grid{grid-template-columns:minmax(0,1fr)!important}
+ #app-shell .stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
