@@ -16,7 +16,7 @@ const field=(name,id,type="text",val="",required=false)=>'<label class="field"><
 const choose=(name,id,values,selected=null)=>'<label class="field"><span>'+esc(name)+'</span><select name="'+id+'" class="input">'+values.map(v=>'<option value="'+esc(v[0])+'" '+(selected===v[0]?"selected":"")+' >'+esc(v[1])+"</option>").join("")+"</select></label>";
 const notes=(name,id,initial="")=>'<label class="field"><span>'+esc(name)+'</span><textarea class="input" name="'+id+'">'+esc(initial)+'</textarea></label>';
 const click=(name,action,id="",kind="btn-light")=>'<button class="btn btn-small '+kind+'" data-action="'+action+'" data-id="'+esc(id)+'">'+esc(name)+"</button>";
-const keys=["courses","purchases","videos","lesson_resources","programs","enrollments","payment_claims","timeline_events","live_sessions","staff_roles","staff_invitations","program_staff","guide_allocations","submissions","evaluations","completion_recommendations","certificates","profiles","site_settings","program_guides","quizzes","quiz_questions","quiz_attempts"];
+const keys=["notifications","course_catalog","program_mentors","global_events","internship_teams","internship_team_members","internship_tasks","courses","purchases","videos","lesson_resources","programs","enrollments","payment_claims","timeline_events","live_sessions","staff_roles","staff_invitations","program_staff","guide_allocations","submissions","evaluations","completion_recommendations","certificates","profiles","site_settings","program_guides","quizzes","quiz_questions","quiz_attempts"];
 let videoStorageReady=false;let db=null,user=null,demo=false,role="student",page="overview",course=null,lesson=null,filter="All",search="",upi={},timelineOffset=0,paymentSection="pending",studentTab="overview",studentQuery="",studentEnrollmentChoice=null,studentCalendarChoice=null;
 let D={};const reset=()=>{D=Object.fromEntries(keys.map(k=>[k,[]]))};reset();
 const p=id=>D.programs.find(x=>x.id===id);
@@ -24,9 +24,12 @@ const who=id=>{let x=D.profiles.find(x=>x.id===id);return x?.full_name||x?.email
 const total=x=>Number(x.training_days)+Number(x.internship_days);
 const current=x=>Math.max(0,Math.min(total(x),Math.floor((new Date(programToday(x))-new Date(x.start_date))/86400000)+1));
 const enrolled=x=>demo||D.enrollments.some(y=>y.program_id===x.id&&y.student_id===user?.id&&["active","completed"].includes(y.status));
-const selectedPrograms=()=>demo||role==="admin"?D.programs:role==="trainer"?D.programs.filter(x=>D.program_staff.some(y=>y.program_id===x.id&&y.user_id===user.id)):role==="guide"?D.programs.filter(x=>D.program_guides.some(y=>y.program_id===x.id&&y.user_id===user.id)||D.guide_allocations.some(y=>y.program_id===x.id&&y.guide_user_id===user.id)):D.programs.filter(enrolled);
+const selectedPrograms=()=>demo||role==="admin"?D.programs:role==="mentor"?D.programs.filter(x=>(D.program_mentors||[]).some(m=>m.program_id===x.id&&m.mentor_id===user.id)):role==="trainer"?D.programs.filter(x=>D.program_staff.some(y=>y.program_id===x.id&&y.user_id===user.id)):role==="guide"?D.programs.filter(x=>D.program_guides.some(y=>y.program_id===x.id&&y.user_id===user.id)||D.guide_allocations.some(y=>y.program_id===x.id&&y.guide_user_id===user.id)):D.programs.filter(enrolled);
 const options=arr=>arr.map(x=>[x.id,x.title]);
 const menu={student:[["overview","◈","Overview"],["courses","▦","My courses"],["explore","◉","Explore programs"],["timeline","▤","Daily timeline"],["sessions","▷","Live classes"],["submissions","▥","Assignments"],["enrollment","◫","Enrollment"],["performance","◎","My performance"],["documents","✧","Certificates & letters"],["profile","♧","My profile"]],trainer:[["overview","◈","Overview"],["courses","▦","My programs"],["timeline","▤","Training lessons"],["sessions","▷","Live classes"],["reviews","▥","Review submissions"],["performance","◎","Student scores"],["profile","♧","My profile"]],guide:[["overview","◈","Overview"],["courses","▦","My programs"],["timeline","▤","Internship timeline"],["reviews","▥","Project reviews"],["performance","◎","Internship scores"],["complete","✧","Completion reviews"],["profile","♧","My profile"]],admin:[["overview","◈","Overview"],["programs","▦","Programs"],["students","♧","Students"],["timeline","▤","Timeline manager"],["sessions","▷","Live classes"],["reviews","▥","Submissions"],["payments","◫","Payment approvals"],["staff","♙","Staff & roles"],["guides","◇","Guide allocation"],["performance","◎","Scores"],["complete","✧","Certificates"],["settings","⚙","Settings"],["profile","♧","My profile"]]};
+menu.student.push(["global-events","✦","Industry Connect"],["my-internship","◇","My Internship"],["notifications","✉","Notifications"]);
+menu.admin.push(["global-events","✦","Global Sessions"],["mentor-assignments","♙","Program Mentors"],["schedule-v2","▤","Schedule Builder"],["teams-overview","◇","Internship Teams"]);
+menu.mentor=[["overview","◈","Overview"],["courses","▦","Program Overview"],["mentor-classes","▤","My Classes & Uploads"],["mentor-teams","◇","My Internship Teams"],["reviews","▥","Mini Project Reviews"],["sessions","▷","Live Classes"],["global-events","✦","Industry Connect"],["performance","◎","Student Progress"],["profile","♧","My Profile"]];
 function seed(){let a=day(today(),-27),b=day(today(),-69);D.programs=[{id:"demo-stack",title:"Full Stack Development",description:"Learn to build practical applications.",start_date:a,training_days:60,internship_days:30,fee_inr:2999,mode:"Hybrid",status:"ongoing"},{id:"demo-design",title:"UI/UX Design",description:"Product thinking and portfolio projects.",start_date:b,training_days:45,internship_days:30,fee_inr:1999,mode:"Hybrid",status:"ongoing"}];D.profiles=[{id:"demo-student",full_name:"Preview Learner",email:"student@example.com"},{id:"demo-trainer",full_name:"Sample Trainer",email:"trainer@example.com"},{id:"demo-guide",full_name:"Sample Guide",email:"guide@example.com"}];D.enrollments=[{id:"demo-enroll",program_id:"demo-stack",student_id:"demo-student",status:"active",offer_letter_code:"HS-OL-PREVIEW"},{id:"demo-enroll2",program_id:"demo-design",student_id:"demo-student",status:"active"}];D.program_staff=[{program_id:"demo-stack",user_id:"demo-trainer"}];D.staff_roles=[{user_id:"demo-trainer",role:"trainer"},{user_id:"demo-guide",role:"guide"}];D.guide_allocations=[{id:"demo-guide-link",program_id:"demo-design",student_id:"demo-student",guide_user_id:"demo-guide"}];for(let i=0;i<90;i+=3)D.timeline_events.push({id:"d"+i,program_id:"demo-stack",phase:i<60?"training":"internship",activity_type:i<60?"lecture":"project",scheduled_date:day(a,i),title:i<60?["HTML & CSS foundations","JavaScript essentials","React components","Developer workflow"][i/3%4]:"Internship project milestone "+(i-59),description:"Practice and submit your scheduled activity.",published_to_students:true});D.live_sessions=[{id:"demo-live",program_id:"demo-stack",title:"JavaScript Functions & Scope",session_date:today(),start_time:"19:00",status:"scheduled"}];D.payment_claims=[{id:"demo-pay",program_id:"demo-stack",student_id:"demo-student",amount_inr:2999,status:"approved",utr:"PREVIEW00001"}];D.evaluations=[{id:"demo-score",program_id:"demo-stack",student_id:"demo-student",phase:"training",activity_title:"HTML assignment",score:8,max_score:10,feedback:"Great progress!"}];upi={upi_id:"preview@upi",payee:"Preview only — do not pay"}}
 
 const routePath=()=>"/"+(demo?"preview":"workspace")+"/"+role+"/"+(course&&page==="courses"?"classroom/"+encodeURIComponent(course):course&&["program-detail","program-edit","timeline","course-info"].includes(page)?page+"/"+encodeURIComponent(course):page);
@@ -40,7 +43,7 @@ function navigateTo(newPage,programId=null,replace=false){
 function readRoute(){
  let segments=location.pathname.split("/").filter(Boolean);
  if(!["preview","workspace"].includes(segments[0])||segments.length<3)return false; if(segments[0]==="preview"&&!demo)return false; if(segments[0]==="workspace"&&demo)return false;
- let allowedRoles=demo?["student","trainer","guide","admin"]:["student",...new Set(D.staff_roles.filter(x=>x.user_id===user?.id).map(x=>x.role))];
+ let allowedRoles=demo?["student","mentor","admin"]:["student",...(D.staff_roles.some(x=>x.user_id===user?.id&&x.role==="admin")?["admin"]:[]),...(D.program_mentors.some(x=>x.mentor_id===user?.id)||D.staff_roles.some(x=>x.user_id===user?.id&&["mentor","trainer","guide"].includes(x.role))?["mentor"]:[])];
  if(allowedRoles.includes(segments[1]))role=segments[1];
  let requested=segments[2];
  if(requested==="classroom"){page="courses";course=segments[3]||null;}
@@ -132,13 +135,14 @@ async function hsPublicRoute(){
  return true;
 }
 
-function render(){if(!user)return;$("app-shell").classList.toggle("hs-student",role==="student");let roles=demo?["student","trainer","guide","admin"]:["student",...new Set(D.staff_roles.filter(x=>x.user_id===user.id).map(x=>x.role))];if(!roles.includes(role))role=roles.includes("admin")?"admin":roles.includes("trainer")?"trainer":roles.includes("guide")?"guide":"student";let allowedExtra=role==="admin"?["program-new","program-detail","program-edit","staff-invite","payment-history","payment-settings","profile"]:role==="student"?["profile","submissions","course-info"]:["profile"];if(!menu[role].some(x=>x[0]===page)&&!allowedExtra.includes(page))page="overview";$("role-switch").hidden=(role==="student"&&roles.length===1);$("role-switch").innerHTML=roles.map(x=>'<option '+(role===x?"selected":"")+' value="'+x+'">'+({student:"Student",trainer:"Trainer",guide:"Internship Guide",admin:"Administrator"})[x]+"</option>").join("");const navGroups={
- admin:[["Workspace",["overview","programs","students"]],["Learning operations",["timeline","sessions","reviews","performance"]],["Finance & certification",["payments","complete"]],["Team & settings",["staff","guides","settings","profile"]]],
- student:[["My learning",["overview","courses","explore","timeline","sessions","submissions"]],["Account & outcomes",["enrollment","performance","documents","profile"]]],
+function render(){if(!user)return;$("app-shell").classList.toggle("hs-student",role==="student");let roles=demo?["student","mentor","admin"]:["student",...(D.staff_roles.some(x=>x.user_id===user.id&&x.role==="admin")?["admin"]:[]),...(D.program_mentors.some(x=>x.mentor_id===user.id)||D.staff_roles.some(x=>x.user_id===user.id&&["mentor","trainer","guide"].includes(x.role))?["mentor"]:[])];if(!roles.includes(role))role=roles.includes("admin")?"admin":roles.includes("mentor")?"mentor":"student";let allowedExtra=role==="admin"?["program-new","program-detail","program-edit","staff-invite","payment-history","payment-settings","profile"]:role==="student"?["profile","submissions","course-info"]:["profile"];if(!menu[role].some(x=>x[0]===page)&&!allowedExtra.includes(page))page="overview";$("role-switch").hidden=(role==="student"&&roles.length===1);$("role-switch").innerHTML=roles.map(x=>'<option '+(role===x?"selected":"")+' value="'+x+'">'+({student:"Student",trainer:"Trainer",guide:"Internship Guide",mentor:"Mentor",admin:"Administrator"})[x]+"</option>").join("");const navGroups={
+ mentor:[["Program",["overview","courses","global-events","performance"]],["My Assigned Work",["mentor-classes","mentor-teams","reviews","sessions"]],["Account",["profile"]]],
+ admin:[["Workspace",["overview","programs","students"]],["Learning operations",["timeline","sessions","reviews","performance"]],["Finance & certification",["payments","complete"]],["Team & settings",["staff","guides","mentor-assignments","settings","profile"]],["Platform Events",["global-events"]],["Program Setup",["schedule-v2","teams-overview"]]],
+ student:[["My learning",["overview","courses","explore","timeline","sessions","submissions"]],["Account & outcomes",["enrollment","my-internship","global-events","notifications","performance","documents","profile"]]],
  trainer:[["Teaching",["overview","courses","timeline","sessions","reviews"]],["Outcomes & account",["performance","profile"]]],
  guide:[["Internship workspace",["overview","courses","timeline","reviews"]],["Evaluation & account",["performance","complete","profile"]]]
 };
-$("side-nav").innerHTML=navGroups[role].map(([group,ids])=>'<div class="nav-group"><div class="nav-group-label">'+esc(group)+'</div>'+ids.map(id=>{let item=menu[role].find(x=>x[0]===id);if(!item)return "";let [v,i,l]=item;let active=page===v||(page==="course-info"&&v==="explore")||(page==="program-detail"&&v==="programs")||(page==="program-edit"&&v==="programs")||(page==="program-new"&&v==="programs")||(page==="payment-history"&&v==="payments")||(page==="payment-settings"&&v==="payments")||(page==="staff-invite"&&v==="staff");return '<button class="'+(active?"active":"")+'" data-action="navigate" data-view="'+v+'" aria-current="'+(active?"page":"false")+'"><span class="nav-icon">'+i+'</span><span>'+esc(l)+'</span></button>'}).join("")+'</div>').join("");$("side-role").textContent=({student:"Student portal",trainer:"Trainer workspace",guide:"Internship guide",admin:"Administration"})[role];let label=menu[role].find(x=>x[0]===page)?.[2]||({"program-new":"Create Program","program-detail":"Program Workspace","program-edit":"Edit Program","staff-invite":"Invite Staff","payment-history":"Payment History","payment-settings":"Payment Settings",profile:"My Profile",submissions:"Submissions"})[page]||"Workspace";$("section-label").textContent=label;$("crumb").textContent=label.toUpperCase();let name=D.profiles.find(x=>x.id===user.id)?.full_name||user.user_metadata?.full_name||user.email?.split("@")[0]||"Learner";$("user-display").textContent=name;$("user-avatar").textContent=name.slice(0,2).toUpperCase();$("demo-pill").hidden=!demo;
+$("side-nav").innerHTML=navGroups[role].map(([group,ids])=>'<div class="nav-group"><div class="nav-group-label">'+esc(group)+'</div>'+ids.map(id=>{let item=menu[role].find(x=>x[0]===id);if(!item)return "";let [v,i,l]=item;let active=page===v||(page==="course-info"&&v==="explore")||(page==="program-detail"&&v==="programs")||(page==="program-edit"&&v==="programs")||(page==="program-new"&&v==="programs")||(page==="payment-history"&&v==="payments")||(page==="payment-settings"&&v==="payments")||(page==="staff-invite"&&v==="staff");return '<button class="'+(active?"active":"")+'" data-action="navigate" data-view="'+v+'" aria-current="'+(active?"page":"false")+'"><span class="nav-icon">'+i+'</span><span>'+esc(l)+'</span></button>'}).join("")+'</div>').join("");$("side-role").textContent=({student:"Student portal",trainer:"Trainer workspace",guide:"Internship guide",mentor:"Mentor workspace",admin:"Administration"})[role];let label=menu[role].find(x=>x[0]===page)?.[2]||({"program-new":"Create Program","program-detail":"Program Workspace","program-edit":"Edit Program","staff-invite":"Invite Staff","payment-history":"Payment History","payment-settings":"Payment Settings",profile:"My Profile",submissions:"Submissions"})[page]||"Workspace";$("section-label").textContent=label;$("crumb").textContent=label.toUpperCase();let name=D.profiles.find(x=>x.id===user.id)?.full_name||user.user_metadata?.full_name||user.email?.split("@")[0]||"Learner";$("user-display").textContent=name;$("user-avatar").textContent=name.slice(0,2).toUpperCase();$("demo-pill").hidden=!demo;
 let mobile=$("student-bottom-nav");
 if(!mobile){mobile=document.createElement("nav");mobile.id="student-bottom-nav";mobile.className="st-bottom-nav";mobile.setAttribute("aria-label","Student mobile navigation");document.querySelector("#app-shell .app-main").append(mobile)}
 mobile.hidden=role!=="student";
@@ -146,7 +150,7 @@ if(role==="student"){
  const choices=[["overview","home","Home"],["courses","book","Courses"],["explore","compass","Explore"],["timeline","calendar","Calendar"],["profile","user","Profile"]];
  mobile.innerHTML=choices.map(([key,ico,label])=>'<button class="'+((page===key)||(key==="explore"&&page==="course-info")?'active':'')+'" data-action="navigate" data-view="'+key+'" aria-label="'+label+'">'+stIcon(ico,21)+'<span>'+label+'</span></button>').join("");
 }
-const view={overview:overview,courses:courses,programs:programAdmin,"program-new":programNew,"program-detail":programDetail,"program-edit":programEdit,timeline:timeline,sessions:sessions,reviews:reviews,students:students,payments:payments,"payment-history":paymentHistory,"payment-settings":paymentSettings,staff:staff,"staff-invite":staffInvite,guides:guides,performance:performance,complete:complete,documents:documents,enrollment:enrollment,settings:settings,profile:profilePage,submissions:mySubmissions};
+const view={"notifications":studentNotificationsV2,"mentor-classes":mentorClassesV2,"mentor-teams":mentorTeamsV2,"global-events":globalEventsV2,"my-internship":studentInternshipV2,"mentor-assignments":adminMentorsV2,"schedule-v2":adminScheduleV2,"teams-overview":adminTeamsV2,overview:overview,courses:courses,programs:programAdmin,"program-new":programNew,"program-detail":programDetail,"program-edit":programEdit,timeline:timeline,sessions:sessions,reviews:reviews,students:students,payments:payments,"payment-history":paymentHistory,"payment-settings":paymentSettings,staff:staff,"staff-invite":staffInvite,guides:guides,performance:performance,complete:complete,documents:documents,enrollment:enrollment,settings:settings,profile:profilePage,submissions:mySubmissions};
 const studentViews={overview:studentOverview,courses:studentCourses,explore:studentExplore,"course-info":studentProgramInfo,timeline:studentCalendar,enrollment:studentEnrollmentPage,sessions:studentSessions,submissions:studentAssignments,performance:studentPerformance,documents:studentDocuments,profile:studentProfile};
 $("app-page").innerHTML=course&&page==="courses"?(role==="student"?studentClassroom():classroom()):
 (role==="student"&&studentViews[page]?studentViews[page]():((view[page]||overview)()));
@@ -155,6 +159,178 @@ if(role==="student"&&page==="enrollment"&&studentEnrollmentChoice){
  if(picker&&Array.from(picker.options).some(o=>o.value===studentEnrollmentChoice))picker.value=studentEnrollmentChoice;
 }
 }
+
+/* HackSphere v2 workspaces: course-wide visibility with owner-only teaching/internship actions. */
+const v2ProgramMentors=pid=>(D.program_mentors||[]).filter(x=>x.program_id===pid);
+const v2DateTime=x=>{try{return new Date(x).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short",timeZone:"Asia/Kolkata"})}catch{return String(x||"")}};
+function studentNotificationsV2(){
+ const all=(D.notifications||[]).filter(x=>x.recipient_id===user.id)
+   .sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+ const unread=all.filter(x=>!x.read_at).length;
+ const items=all.map(n=>row(n.read_at?"✓":"✦",n.title,
+  (n.body||"")+" · "+v2DateTime(n.created_at),
+  n.read_at?tag("Read"):click("Mark read","v2-read-notification",n.id,"btn-outline"))).join("");
+ return title("Notifications",unread+" unread — classes, internships and all-program guest sessions.")+
+ card("Your updates",items||empty("No notifications","Your platform updates will appear here."));
+}
+function globalEventsV2(){
+ const admin=role==="admin";
+ const events=(D.global_events||[]).filter(e=>admin||["published","completed"].includes(e.status))
+ .sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
+ const editor=admin?card("Schedule platform-wide guest session",
+ '<form data-kind="v2-global-event" class="form-grid">'+
+ field("Session title","title","text","",true)+field("Speaker name","speaker_name","text","",true)+
+ field("Speaker position","speaker_role")+field("Company","speaker_company")+
+ field("Local date and time","starts_at","datetime-local","",true)+
+ field("Duration in minutes","duration_minutes","number",60,true)+
+ field("Meeting join URL (HTTPS)","join_url","url")+notes("Agenda","description")+
+ choose("Visibility","status",[["draft","Draft"],["published","Publish for all enrolled students"]],"draft")+
+ '<button class="btn btn-primary" type="submit">Create global session</button></form>'):"";
+ const rows=events.map(e=>{
+ const headline='<div class="list-row"><span class="row-icon">✦</span><div class="row-body"><strong>'+
+ esc(e.title)+'</strong><small>'+esc(e.speaker_name)+" · "+esc(e.speaker_role||"Guest expert")+
+ (e.speaker_company?" · "+esc(e.speaker_company):"")+'</small>'+
+ '<small>'+esc(v2DateTime(e.starts_at))+' · '+e.duration_minutes+' mins · '+esc(e.status)+'</small>'+
+ '<small>'+esc(e.description||"")+'</small></div>'+
+ (!admin&&e.status==="published"?click("Join near start","v2-join-event",e.id,"btn-primary"):"")+'</div>';
+ if(!admin)return headline;
+ const localTime=e.starts_at?new Date(e.starts_at).toISOString().slice(0,16):"";
+ const form='<form class="form-grid" data-kind="v2-edit-event" data-event="'+esc(e.id)+'">'+
+ field("Session title","title","text",e.title,true)+
+ field("Speaker","speaker_name","text",e.speaker_name,true)+
+ field("Speaker position","speaker_role","text",e.speaker_role||"")+
+ field("Company","speaker_company","text",e.speaker_company||"")+
+ field("Start (UTC)","starts_at","datetime-local",localTime,true)+
+ field("Duration","duration_minutes","number",e.duration_minutes,true)+
+ choose("Status","status",[["draft","Draft"],["published","Published"],["cancelled","Cancelled"],["completed","Completed"]],e.status)+
+ notes("Description","description",e.description||"")+
+ field("Replace join link (optional)","join_url","url")+
+ '<button class="btn btn-outline" type="submit">Save changes</button></form>';
+ return card(e.title,headline+form);
+ }).join("");
+ return title("Industry Connect","Admin schedules guest experts whenever needed; every actively enrolled student, regardless of program, can attend.")+
+ editor+(rows||empty("No sessions scheduled","Admin may add a career guidance session at any time."));
+}
+function mentorClassesV2(){
+ const my=(D.timeline_events||[]).filter(e=>e.responsible_mentor_id===user.id).sort((a,b)=>a.scheduled_date.localeCompare(b.scheduled_date));
+ const rows=my.map(e=>{
+ const resources=(D.lesson_resources||[]).filter(r=>r.event_id===e.id),quiz=(D.quizzes||[]).find(q=>q.timeline_event_id===e.id);
+ const resourceForm='<form data-kind="lesson-resource" data-event="'+esc(e.id)+'" data-program="'+esc(e.program_id)+'" class="form-grid">'+choose("Resource type","kind",[["notes","Notes"],["link","Link"],["video","Video link"]],"notes")+field("Title","title","text","",true)+notes("Written notes","note_text")+field("External HTTPS URL (optional)","external_url","url")+'<label class="field"><span>Optional PDF/image file</span><input class="input" name="file" type="file" accept=".pdf,.png,.jpg,.jpeg"></label><button type="submit" class="btn btn-primary">Add resource</button></form>';
+ const videoForm=videoStorageReady?'<form data-kind="lesson-video-upload" data-event="'+esc(e.id)+'" class="form-grid">'+field("Recording title","title","text",e.title,true)+'<label class="field"><span>MP4 recording</span><input class="input" name="video_file" type="file" accept="video/mp4" required></label><button type="submit" class="btn btn-primary">Upload recording</button><small data-video-progress></small></form>':'<div class="alert warning">Recorded lectures: Coming Soon. You can continue adding notes, links and quizzes now.</div>';
+ const quizForm=quiz?'<div class="alert"><b>Quiz:</b> '+esc(quiz.title)+' · '+(quiz.published?"Published":"Draft")+'</div>'+(quiz.published?"":'<form class="form-grid" data-kind="quiz-question" data-quiz="'+esc(quiz.id)+'">'+field("Question","prompt","text","",true)+field("Option A","option_a","text","",true)+field("Option B","option_b","text","",true)+field("Option C","option_c","text","",true)+field("Option D","option_d","text","",true)+choose("Correct answer","correct_index",[["0","A"],["1","B"],["2","C"],["3","D"]],"0")+'<button class="btn btn-primary" type="submit">Add question</button></form>'+click("Publish quiz","quiz-publish",quiz.id,"btn-primary")):'<form class="form-grid" data-kind="quiz-create" data-event="'+esc(e.id)+'">'+field("Quiz title","title","text",e.title+" Quiz",true)+field("Time limit (minutes)","time_limit_minutes","number",20,true)+field("Max attempts","max_attempts","number",2,true)+'<button type="submit" class="btn btn-primary">Create quiz</button></form>';
+ return card(esc(e.title)+' · '+date(e.scheduled_date),'<p>'+esc(p(e.program_id)?.title||"Program")+' · '+esc(e.phase)+' · '+esc(e.activity_type)+'</p>'+resources.map(r=>row("▦",r.title,r.kind,click(r.published?"Unpublish":"Publish","resource-toggle",r.id))).join("")+resourceForm+'<h3>Class recording</h3>'+videoForm+'<h3>Topic quiz</h3>'+quizForm);
+ }).join("");
+ return title("My Classes & Uploads","Only your scheduled lessons appear here. Other mentors can view published content, not change it.")+(rows||empty("No classes assigned","Admin has not scheduled a teaching class for you."));
+}
+function mentorTeamsV2(){
+ const assigned=(D.internship_teams||[]).filter(t=>t.mentor_id===user.id);
+ const list=assigned.map(team=>{
+ const members=(D.internship_team_members||[]).filter(m=>m.team_id===team.id);
+ const tasks=(D.internship_tasks||[]).filter(q=>q.team_id===team.id);
+ const projectForm='<form class="form-grid" data-kind="v2-team-project" data-team="'+esc(team.id)+'">'+
+ field("Major project","project_title","text",team.project_title||"")+
+ notes("Project brief","project_brief",team.project_brief||"")+
+ field("GitHub repository","repository_url","url",team.repository_url||"")+
+ field("Deadline","due_date","date",team.due_date||"")+
+ '<button class="btn btn-primary" type="submit">Save team project</button></form>';
+ const taskRows=tasks.map(q=>row("▥",q.title,
+ q.status+' · '+(q.assigned_student_id?who(q.assigned_student_id):"Whole team"),
+ q.status!=="completed"?'<div class="form-actions">'+
+ click("Move to review","v2-mentor-task-review",q.id,"btn-outline")+
+ click("Approve complete","v2-mentor-task-complete",q.id,"btn-primary")+'</div>':tag("Completed"))).join("");
+ const taskForm='<form class="form-grid" data-kind="v2-team-task" data-team="'+esc(team.id)+'">'+
+ field("New task","title","text","",true)+notes("Instructions","description")+
+ choose("Assign task","assigned_student_id",[["","Entire team"],...members.map(m=>[m.student_id,who(m.student_id)])],"")+
+ '<button class="btn btn-primary" type="submit">Assign task</button></form>';
+ return card("Team "+team.team_number+' — '+esc(p(team.program_id)?.title||"Program"),
+ '<p>Five-person team: '+(members.map(m=>esc(who(m.student_id))).join(", ")||"No students allocated")+'</p>'+
+ '<h3>Major project</h3>'+projectForm+
+ '<h3>Task review</h3>'+(taskRows||empty("No tasks","Assign the first project task."))+taskForm);
+ }).join("");
+ return title("My Internship Teams","Manage only the teams allocated to you. Other mentors have read-only program-level information.")+
+ (list||empty("No teams assigned","Your internship teams appear after group allocation."));
+}
+function studentInternshipV2(){
+ const mine=(D.internship_team_members||[]).filter(m=>m.student_id===user.id);
+ const content=mine.map(m=>{
+ const team=(D.internship_teams||[]).find(t=>t.id===m.team_id);if(!team)return "";
+ const members=(D.internship_team_members||[]).filter(x=>x.team_id===team.id);
+ const tasks=(D.internship_tasks||[]).filter(t=>t.team_id===team.id);
+ const details='<p><b>Mentor:</b> '+esc(who(team.mentor_id))+'</p>'+
+ '<p><b>Team:</b> '+members.map(x=>esc(who(x.student_id))).join(", ")+'</p>'+
+ '<p><b>Major project:</b> '+esc(team.project_title||"Not assigned yet")+'</p>'+
+ '<p>'+esc(team.project_brief||"")+'</p>'+
+ (team.repository_url&&/^https:\/\//.test(team.repository_url)?'<p><a target="_blank" rel="noopener noreferrer" href="'+esc(team.repository_url)+'">Project GitHub repository</a></p>':"");
+ const tasksRows=tasks.map(t=>{
+ const allowed=t.assigned_student_id===null||t.assigned_student_id===user.id;
+ const controls=allowed&&t.status!=="completed"?
+ '<div class="form-actions">'+click("In progress","v2-student-task-progress",t.id,"btn-outline")+
+ click("Request review","v2-student-task-review",t.id,"btn-primary")+'</div>':tag(t.status);
+ return row("▥",t.title,"Status: "+t.status+(t.assigned_student_id?" · "+who(t.assigned_student_id):""),controls);
+ }).join("");
+ return card("Team "+team.team_number+" — "+esc(p(team.program_id)?.title||"Program"),
+ details+'<h3>Project tasks</h3>'+(tasksRows||empty("No project tasks yet","Your mentor will assign tasks here.")));
+ }).join("");
+ return title("My Internship","Track a real 5-student project internship, assigned responsibilities, mentor reviews and team milestones.")+
+ (content||empty("Your team is pending","Training ends before team allocation. Your internship workspace will appear here."));
+}
+function adminMentorsV2(){
+ const authorizedIds=[...new Set((D.staff_roles||[]).filter(r=>["mentor","trainer","guide","admin"].includes(r.role)).map(r=>r.user_id))];
+ const programs=D.programs||[],records=D.program_mentors||[];
+ const form=programs.length&&authorizedIds.length?
+ '<form class="form-grid" data-kind="v2-assign-mentor">'+
+ choose("Program / batch","program_id",programs.map(x=>[x.id,x.title+" · "+(x.batch_name||"Default")]),programs[0].id)+
+ choose("Invited mentor account","mentor_id",authorizedIds.map(id=>[id,who(id)]),authorizedIds[0])+
+ field("Maximum internship teams","max_internship_teams","number",5,true)+
+ '<label class="checkbox"><input type="checkbox" name="can_supervise_internship" checked> Can supervise internship teams</label>'+
+ '<button class="btn btn-primary" type="submit">Assign / update mentor</button></form>':
+ empty("Create a batch and invite mentors","A mentor must accept a verified Google invitation before being assigned.");
+ const list=records.map(m=>row("♙",who(m.mentor_id),
+ (p(m.program_id)?.title||"Program")+" · "+m.max_internship_teams+" team capacity · "+
+ (m.can_supervise_internship?"Internship mentor":"Teaching only"),
+ click("Remove","v2-remove-mentor",m.program_id+"|"+m.mentor_id,"btn-outline"))).join("");
+ const newCourse='<form data-kind="v2-course-catalog" class="form-grid">'+
+ field("Reusable course title","title","text","",true)+field("Course slug","slug","text","",true)+
+ notes("Course overview","description")+
+ '<button class="btn btn-primary" type="submit">Save course template</button></form>';
+ return title("Programs & Mentors","Membership gives common viewing access; only scheduled teaching sessions and assigned teams permit editing.")+
+ card("Assign or update program mentor",form)+card("Current mentor allocation",list||empty("No allocations","Assign a mentor above."))+
+ card("Reusable course catalog",newCourse)+
+ card("Existing course templates",(D.course_catalog||[]).map(c=>row("▦",c.title,c.slug)).join("")||empty("No course templates","Optional templates help with multiple batches of the same course."));
+}
+function adminScheduleV2(){
+ const programs=D.programs||[],first=programs[0],mentors=first?v2ProgramMentors(first.id):[];
+ const form=programs.length?'<form data-kind="v2-scheduled-class" class="form-grid">'+
+ choose("Program / batch","program_id",programs.map(x=>[x.id,x.title+" · "+(x.batch_name||"Batch")]),first.id)+
+ choose("Activity type","activity_type",[["lecture","Live lecture"],["project","Weekly mini project"],["assignment","Weekly assignment"],["quiz","Topic quiz"],["resource","Study resource"]],"lecture")+field("Topic / activity title","title","text","",true)+notes("Learning objectives or project requirements","description")+
+ field("Class date","scheduled_date","date","",true)+
+ field("Start time","start_time","time","18:00",true)+field("Duration (minutes)","duration_minutes","number",60,true)+
+ choose("Responsible teaching mentor","responsible_mentor_id",mentors.map(m=>[m.mentor_id,who(m.mentor_id)]),mentors[0]?.mentor_id)+
+ '<button type="submit" class="btn btn-primary">Schedule teaching class</button></form>':
+ empty("No batch yet","Create a draft program first.");
+ const records=(D.timeline_events||[]).filter(e=>e.responsible_mentor_id);
+ const existing=records.length?records.slice(0,120).map(e=>{
+ const members=v2ProgramMentors(e.program_id);
+ const live=(D.live_sessions||[]).find(l=>l.timeline_event_id===e.id);
+ const editor='<form class="form-grid" data-kind="v2-edit-class" data-event="'+esc(e.id)+'">'+
+ field("Topic title","title","text",e.title,true)+field("Class date","scheduled_date","date",e.scheduled_date,true)+
+ field("Start time","start_time","time",live?.start_time?.slice(0,5)||"18:00",true)+
+ field("Duration minutes","duration_minutes","number",live?.duration_minutes||60,true)+
+ choose("Responsible mentor","responsible_mentor_id",members.map(m=>[m.mentor_id,who(m.mentor_id)]),e.responsible_mentor_id)+
+ '<button type="submit" class="btn btn-outline">Save schedule changes</button></form>';
+ return card(e.title+' — '+date(e.scheduled_date),'<p>'+esc(p(e.program_id)?.title||"Program")+
+ ' · '+esc(who(e.responsible_mentor_id))+'</p>'+editor);
+ }).join(""):empty("No teaching classes","Schedule the first class above.");
+ return title("Admin Teaching Schedule","Admin decides every class owner; only that mentor manages its recording, notes and quiz.")+
+ card("Schedule class",form)+existing;
+}
+function adminTeamsV2(){
+ const programs=D.programs||[];
+ const actions=programs.map(pr=>'<div class="list-row"><div class="row-body"><strong>'+esc(pr.title)+'</strong><small>'+pr.training_days+' training days · 5 students per team · '+v2ProgramMentors(pr.id).length+' mentors</small></div>'+click("Generate five-person teams","v2-generate-teams",pr.id,"btn-primary")+'</div>').join("");
+ const teams=(D.internship_teams||[]).map(t=>row("◇","Team "+t.team_number+" · "+(p(t.program_id)?.title||"Program"),"Mentor "+who(t.mentor_id)+" · "+(D.internship_team_members||[]).filter(m=>m.team_id===t.id).length+" students")).join("");
+ return title("Internship Team Allocation","Generate after training; the database enforces mentor capacity and five-student teams.")+card("Programs",actions||empty("No programs","Create a batch first."))+card("Allocated teams",teams||empty("No teams yet","Teams appear after allocation."));
+}
+
 function overview(){
  const ps=selectedPrograms();
  const first=ps[0];
@@ -171,7 +347,7 @@ function overview(){
   stats=[["▦",activePrograms.length,"Active programs"],["◫",pending.length,"Pending payments"],["♙",new Set(D.staff_roles.map(x=>x.user_id)).size,"Team members"],["✧",D.completion_recommendations.filter(x=>x.recommendation==="recommended").length,"Completion requests"]];
   bannerTitle="Everything your academy needs.";bannerDesc="Create courses, manage payment approvals, invite teaching staff and oversee every internship in one place.";
   bannerAction='<button class="btn btn-white" data-action="program-new">+ Create program</button>';
- }else if(role==="trainer"){
+ }else if(role==="trainer"||role==="mentor"){
   heading="Your teaching workspace";subtitle="Manage upcoming lessons, classes and student performance.";
   stats=[["▦",ps.length,"Assigned programs"],["▷",D.live_sessions.length,"Live sessions"],["▥",relatedTasks.length,"Submissions in queue"],["◎",D.evaluations.length,"Evaluations"]];
   bannerTitle="Teach with clarity. Track with confidence.";bannerDesc="A dedicated workspace for curriculum, live sessions and training feedback.";
@@ -392,10 +568,16 @@ function studentCalendar(){
    '<span>'+stIcon(released?'check':'lock',17)+'</span></div>'+
    '<div class="st-day-content">'+(released?(items.length?items.map(e=>'<button data-action="student-open-lesson" data-id="'+esc(e.id)+'">'+stIcon(e.activity_type==='quiz'?'quiz':'book',16)+'<span>'+esc(e.title)+'</span>'+stIcon('arrow',15)+'</button>').join(''):'<small>No lesson scheduled for this date.</small>'):'<small>Unlocks on scheduled date</small>')+'</div></article>';
  }).join('');
- return '<div class="st-view">'+stPageHeading('Learning calendar','Every day follows your program schedule.')+
+ const globalUpcoming=(D.global_events||[]).filter(e=>e.status==="published"&&new Date(e.starts_at).getTime()>=Date.now()-3600000)
+ .sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at)).slice(0,5);
+ const globalSection=globalUpcoming.length?'<section class="st-white-panel st-section-gap"><h2>Industry Connect — All Programs</h2>'+
+ globalUpcoming.map(e=>'<div class="list-row"><div class="row-body"><strong>'+esc(e.title)+'</strong><small>'+esc(e.speaker_name)+' · '+esc(v2DateTime(e.starts_at))+'</small></div>'+
+ '<button class="btn btn-small btn-primary" data-action="v2-join-event" data-id="'+esc(e.id)+'">Join near start</button></div>').join('')+
+ '</section>':'';
+ return '<div class="st-view">'+stPageHeading('Learning calendar','Your class schedule plus platform-wide industry sessions.')+
  '<div class="st-calendar-head"><label>Program<select class="input" id="student-calendar-select">'+assigned.map(pr=>'<option value="'+esc(pr.id)+'"'+(pr.id===program.id?' selected':'')+'>'+esc(pr.title)+'</option>').join('')+'</select></label>'+
  '<div class="st-calendar-pager"><button data-action="student-calendar-prev"'+(timelineOffset===0?' disabled':'')+'>'+stIcon('back',18)+'</button><b>Days '+start+'–'+end+' of '+days+'</b><button data-action="student-calendar-next"'+(timelineOffset+1>=pages?' disabled':'')+'>'+stIcon('chevron',18)+'</button></div></div>'+
- '<div class="st-day-grid">'+calendar+'</div></div>';
+ '<div class="st-day-grid">'+calendar+'</div>'+globalSection+'</div>';
 }
 function studentEnrollmentPage(){
  const available=D.programs.filter(pr=>['published','ongoing'].includes(pr.status)&&!pr.is_test);
@@ -425,7 +607,7 @@ function studentEnrollmentPage(){
  '<div class="st-empty"><h3>No open enrollments</h3><p>New programs will appear here when admissions open.</p></div>';
  return '<div class="st-view">'+stPageHeading('Program enrollment','Enroll in another learning program.',stAction('Explore programs','student-explore',undefined,true))+
  '<div class="st-enrollment-grid"><section class="st-white-panel"><h2>Choose your program</h2>'+selectHtml+summary+
- '<div class="st-payment-guidance"><h3>Official payment details</h3>'+paymentInfo+'</div>'+paymentForm+'</section>'+
+ '<div class="st-payment-guidance"><h3>Official payment details</h3>'+paymentInfo+'</div>'+paymentMethodsNotice()+paymentForm+'</section>'+
  '<aside class="st-white-panel"><h2>My enrollments</h2>'+
  (my.length?my.map(e=>'<div class="st-enrollment-row">'+stIcon('book',21)+'<div><b>'+esc(p(e.program_id)?.title||'Program')+'</b><small>'+(e.is_test?'Test access':esc(e.status))+'</small></div></div>').join(''):'<div class="st-empty-inline">No active enrollments yet.</div>')+
  (claims.length?'<h2 style="margin-top:24px">Pending requests</h2>'+claims.map(c=>'<div class="st-enrollment-row">'+stIcon('clock',19)+'<div><b>'+esc(p(c.program_id)?.title||'Program')+'</b><small>Awaiting verification</small></div></div>').join(''):'')+
@@ -465,7 +647,7 @@ function studentClassroom(){
  const player=playerMedia?'<div class="st-player-empty" id="st-player-placeholder">'+
   '<button type="button" class="st-player-play" data-action="student-play" data-id="'+esc(playerMedia.value)+'" data-source="'+esc(playerMedia.kind)+'" aria-label="Play recording">'+stIcon('play',29)+'</button>'+
   '<strong>'+esc(playerMedia.title)+'</strong><span>Recording available</span></div>':
- '<div class="st-player-empty"><span class="st-player-symbol">'+stIcon('video',38)+'</span><strong>No recording available</strong><span>Video appears here when published by your Trainer or Guide.</span></div>';
+ '<div class="st-player-empty"><span class="st-player-symbol">'+stIcon('video',38)+'</span><strong>Recorded lectures — Coming Soon</strong><span>Live sessions, class notes, quizzes and weekly projects remain available.</span></div>';
 
  return '<div class="st-view st-classroom"><button class="st-back" data-action="navigate" data-view="courses">'+stIcon('back',17)+' My courses</button>'+
  '<header class="st-classroom-head"><div><h1>'+esc(program.title)+'</h1><p>'+program.training_days+' days training · '+program.internship_days+' days internship'+(program.is_test?' · Test access':'')+'</p></div>'+
@@ -680,7 +862,7 @@ function classroom(){
    '<label class="field"><span>Recording title</span><input class="input" type="text" name="title" value="'+esc(selected.title)+'" maxlength="180" required></label>'+
    '<label class="field"><span>MP4 recording (up to 512 MiB)</span><input class="input" name="video_file" type="file" accept="video/mp4,.mp4" required></label>'+
    '<button class="btn btn-primary" type="submit">Upload recording</button><p class="teaching-video-muted" role="status" aria-live="polite" data-video-progress></p></form>':
-   '<p class="teaching-video-muted">Video upload is unavailable until private R2 storage is enabled.</p>'),
+   '<p class="teaching-video-muted">Recorded lectures: Coming Soon. This section will be activated in the final phase.</p>'),
   (D.videos||[]).filter(v=>v.lesson_event_id===selected.id&&v.status==="ready").map(v=>
      '<div class="teaching-video-row"><strong>'+esc(v.title)+'</strong>'+
      (v.uploaded_by===user.id?'<button class="btn btn-small btn-outline" data-action="video-publish-toggle" data-id="'+esc(v.id)+'">'+(v.published?'Hide':'Publish')+'</button>':tag(v.published?'Published':'Hidden'))+
@@ -753,89 +935,53 @@ function programAdmin(){
  '<div class="help-hint">Create program with Trainer & Guide → Add or import dated lessons → Publish → Verify payment → Allocate student Guide at internship start.</div>'
 }
 function programNew(){
- if(role!=="admin")return empty("Access denied","Administrator role required.");
- const form=[
- '<form data-kind="program" class="editor-form">',
- '<div class="form-section-label"><span>01</span><div><b>Program identity</b><small>What students will see in the catalog</small></div></div>',
- field("Program title","title","text","",true),
- notes("Description and learning outcomes","description"),
- '<div class="form-section-label"><span>02</span><div><b>Timeline & batch setup</b><small>Content unlocks based on calendar date</small></div></div>',
- '<div class="form-grid">',
- field("Program start date","start_date","date","",true),
- choose("Class format","mode",[["Hybrid","Hybrid — Live + Recorded"],["Live","Live classes"],["Recorded","Recorded lessons"]]),
- choose("Program timezone","timezone",[["Asia/Kolkata","India • IST (Asia/Kolkata)"],["Etc/UTC","UTC"],["Asia/Dubai","UAE (Dubai)"],["Europe/London","UK (London)"],["America/New_York","US (New York)"]]),
- field("Training days","training_days","number","60",true),
- field("Internship days","internship_days","number","30",true),
- '</div>',
- '<div class="form-section-label"><span>03</span><div><b>Enrollment</b><small>Fee is verified manually via official UPI</small></div></div>',
- '<div class="form-grid">',
- field("Fee in INR","fee_inr","number","0",true),
- choose("Initial visibility","status",[["draft","Save as draft"],["published","Publish immediately"]]),
- '</div>',
- '<div class="form-section-label"><span>04</span><div><b>Teaching team</b><small>Select both staff at program creation</small></div></div>',
- '<div class="form-grid">',
- choose("Program Trainer","trainer_id",D.staff_roles.filter(x=>x.role==="trainer").map(x=>[x.user_id,who(x.user_id)])),
- choose("Designated Internship Guide","guide_id",D.staff_roles.filter(x=>x.role==="guide").map(x=>[x.user_id,who(x.user_id)])),
- '</div>',
- '<div class="alert">Trainer and Guide are designated now; student-specific Guide allocation happens only when the internship starts.</div>',
- '<div class="form-actions" style="margin-top:20px">',
- '<button class="btn btn-primary">Save program →</button>',
- '<button class="btn btn-outline" type="button" data-action="navigate" data-view="programs">Cancel</button>',
- '</div></form>'
- ].join("");
- const preview=[
- '<div class="editor-preview"><span class="eyebrow">SCHEDULE PREVIEW</span><h3>Your program journey</h3>',
- '<div class="preview-schedule"><div class="preview-phase"><span>Training phase</span><strong id="preview-training-days">60 days</strong></div>',
- '<div class="preview-bar"><span id="preview-training-bar"></span><i></i></div>',
- '<div class="preview-phase"><span>Project internship</span><strong id="preview-intern-days">30 days</strong></div>',
- '<p class="preview-start">Starts: <b id="preview-start">Choose a start date</b></p>',
- '<p class="preview-start">Internship begins: <b id="preview-intern-start">Calculated automatically</b></p></div>',
- '<div class="alert warning">This sets program duration, not prewritten content. Trainer/Guide add dated activities after saving.</div>',
- '</div>'
- ].join("");
- return title("Create new program","A focused setup flow for one independently managed training and internship batch.")+
- '<div class="editor-breadcrumb"><button data-action="navigate" data-view="programs">All programs</button><span>/</span><b>New program</b></div>'+
- '<div class="editor-layout"><div>'+card("New program details",form)+'</div><aside>'+preview+'</aside></div>';
+ if(role!=="admin")return empty("Admin only","Administrator privileges required.");
+ const catalog=[["","Standalone program"],...(D.course_catalog||[]).map(c=>[c.id,c.title])];
+ const form='<form data-kind="program-v2" class="editor-form">'+
+ '<div class="form-section-label"><span>01</span><div><b>Course & batch</b><small>One reusable course can serve many independent batches.</small></div></div>'+
+ choose("Existing course (optional)","course_catalog_id",catalog,"")+
+ field("Program title","title","text","",true)+field("Batch name","batch_name","text","Batch 01",true)+
+ notes("Description and learning outcomes","description")+
+ '<div class="form-section-label"><span>02</span><div><b>Timeline and fees</b><small>Set your own training-to-internship ratio.</small></div></div>'+
+ '<div class="form-grid">'+
+ field("Start date","start_date","date","",true)+
+ field("Training days","training_days","number",60,true)+
+ field("Internship days","internship_days","number",40,true)+
+ field("Fee in INR","fee_inr","number",0,true)+
+ field("Maximum enrollments","enrollment_capacity","number",50,true)+
+ choose("Class mode","mode",[["Hybrid","Live + Recording"],["Live","Live"],["Recorded","Recorded"]],"Hybrid")+
+ choose("Timezone","timezone",[["Asia/Kolkata","India (IST)"],["Etc/UTC","UTC"]],"Asia/Kolkata")+'</div>'+
+ '<div class="alert">Created as Draft. Admin can assign any number of program mentors and schedule the exact classes each will teach.</div>'+
+ '<div class="form-actions"><button class="btn btn-primary" type="submit">Create draft program</button>'+
+ '<button type="button" class="btn btn-outline" data-action="navigate" data-view="programs">Cancel</button></div></form>';
+ return title("Create Program & Batch","Set duration, capacity and fees first. Assign class owners separately.")+
+ '<div class="editor-layout"><div>'+card("Program Builder",form)+'</div><aside>'+
+ card("Next steps",'<div class="process-list"><p><b>01.</b> Create this draft</p><p><b>02.</b> Assign invited mentors</p><p><b>03.</b> Build the full teaching calendar</p><p><b>04.</b> Publish enrollment when ready</p><p><b>05.</b> Generate internship groups after training</p></div>')+'</aside></div>';
 }
 function programDetail(){
- let x=p(course);
- if(role!=="admin")return empty("Administrator access required","This program-management screen is reserved for Admin.");if(!x)return title("Program workspace","Manage one batch at a time.")+empty("Program not found","Go back to the program list.");
- let en=D.enrollments.filter(e=>e.program_id===x.id),ts=D.program_staff.filter(e=>e.program_id===x.id),ga=D.guide_allocations.filter(e=>e.program_id===x.id),ev=D.timeline_events.filter(e=>e.program_id===x.id);
- const openIn=day(x.start_date,x.training_days),ended=day(x.start_date,total(x)-1);
- const isTestBanner=x.is_test?'<div class="alert warning"><b>QA test cohort</b> — this batch is hidden from the public catalog. Student access is an authorized test seat; no actual UPI payment has been approved.</div>':"";
- const actions='<div class="form-actions">'+click("Edit details","program-edit",x.id,"btn-outline")+click("Manage timeline","program-timeline",x.id,"btn-primary")+'</div>';
- const cover=[
- '<div class="program-cover"><div class="program-cover-icon">⌘</div>',
- '<div><div class="eyebrow">HACKSPHERE PROGRAM WORKSPACE</div><h2>'+esc(x.title)+'</h2><p>'+esc(x.description||"Training and project-based internship program")+'</p>',
- '<div class="program-badges">'+tag(x.mode)+tag(x.status)+(current(x)>x.training_days?'<span class="pill green">Internship phase</span>':'<span class="pill">Training phase</span>')+'</div></div>',
- '</div>'
- ].join("");
- const statSet='<div class="stat-grid">'+[
- ['◷',total(x),'Total calendar days'],['♙',en.length,'Enrolled students'],['▤',ev.length,'Scheduled activities'],['◇',ga.length,'Guide allocations']
- ].map(([a,n,l])=>'<div class="stat"><span class="sicon">'+a+'</span><b>'+n+'</b><small>'+l+'</small></div>').join("")+'</div>';
- const manage=[
- '<div class="program-phase-track"><div><b>Training</b><span>'+x.training_days+' days · '+date(x.start_date)+'</span></div><div><b>Internship</b><span>'+x.internship_days+' days · '+date(openIn)+'</span></div></div>',
- '<div class="program-bar"><span style="width:'+Math.round(x.training_days/total(x)*100)+'%"></span></div>',
- '<div class="detail-facts"><div><span>Program fee</span><b>'+money(x.fee_inr)+'</b></div><div><span>End date</span><b>'+date(ended)+'</b></div><div><span>Program start</span><b>'+date(x.start_date)+'</b></div><div><span>Internship starts</span><b>'+date(openIn)+'</b></div></div>'
- ].join("");
- const students=en.length?en.map(e=>row('♙',who(e.student_id),e.status+(e.is_test?" · QA TEST ACCESS (no payment)":" · Offer letter: "+(e.offer_letter_code||"Pending")))).join(""):empty("No enrolled students","Only verified UPI payments activate enrollment.");
- const trainers=ts.length?ts.map(t=>row("♙",who(t.user_id),"Assigned training instructor")).join(""):empty("Trainer not assigned","Assign a trainer from the Staff directory.");
- const designated=D.program_guides.filter(g=>g.program_id===x.id).map(g=>row("◇",who(g.user_id),"Nominated at program creation")).join("")||empty("Guide designation missing","Assign a Guide in the program team.");
- const guides=ga.length?ga.map(a=>row("◇",who(a.student_id),who(a.guide_user_id)+" · Assigned Guide")).join(""):empty("No Guide yet","Admin allocates Guides only after "+date(openIn)+".");
- return title(x.title,"Manage timeline, enrollment, Trainers and Guides for this batch.",actions)+
- '<div class="editor-breadcrumb"><button data-action="navigate" data-view="programs">All programs</button><span>/</span><b>'+esc(x.title)+'</b></div>'+
- cover+isTestBanner+statSet+'<div class="two-col"><div>'+card("Program structure",manage)+card("Enrolled students",students)+'</div><div>'+
- card("Training team",trainers+click("Assign a Trainer","navigate","","btn-light").replace('data-action="navigate"','data-action="navigate" data-view="staff"'))+
- card("Designated Internship Guide",designated)+card("Student Guide allocations",guides)+
- card("Operations",'<div class="quick-links">'+click("Timeline","program-timeline",x.id)+click("Payment approvals","navigate","","btn-outline").replace('data-action="navigate"','data-action="navigate" data-view="payments"')+'</div>')+
- card("Import CSV learning schedule",
- '<form data-kind="csv-schedule" data-program="'+esc(x.id)+'">'+
- '<label class="field"><span>CSV file (day, phase, activity_type, title, description, live, start_time, duration_minutes)</span>'+
- '<input class="input" type="file" name="schedule_file" accept=".csv,text/csv" required></label>'+
- '<p style="font-size:12px;color:var(--muted)">One row per day or additional activity. Duplicate dated titles will be skipped. Live sessions are scheduled; Meet links need trainer OAuth.</p>'+
- '<div class="form-actions"><button class="btn btn-primary">Import schedule</button>'+
- '<a class="btn btn-outline" target="_blank" rel="noopener noreferrer" href="https://github.com/ankit-sde-aiml/HackSphere/blob/main/examples/python_90_day_schedule.csv">View sample CSV ↗</a></div></form>')+
- '</div></div>';
+ const x=p(course);
+ if(role!=="admin")return empty("Admin only","Sign in as Administrator to manage the program.");
+ if(!x)return empty("Program missing","Go back to the program directory.");
+ const en=D.enrollments.filter(e=>e.program_id===x.id);
+ const mentors=v2ProgramMentors(x.id),lessons=D.timeline_events.filter(e=>e.program_id===x.id&&e.phase==="training");
+ const teams=D.internship_teams.filter(t=>t.program_id===x.id);
+ const actions='<div class="form-actions">'+click("Edit details","program-edit",x.id,"btn-outline")+
+ '<button class="btn btn-small btn-outline" data-action="navigate" data-view="mentor-assignments">Assign mentors</button>'+
+ '<button class="btn btn-small btn-primary" data-action="navigate" data-view="schedule-v2">Schedule classes</button></div>';
+ const facts='<div class="detail-facts"><div><span>Batch</span><b>'+esc(x.batch_name||"Default")+'</b></div>'+
+ '<div><span>Fee</span><b>'+money(x.fee_inr)+'</b></div>'+
+ '<div><span>Start date</span><b>'+date(x.start_date)+'</b></div>'+
+ '<div><span>Training</span><b>'+x.training_days+' days</b></div>'+
+ '<div><span>Internship</span><b>'+x.internship_days+' days</b></div></div>';
+ const stats='<div class="stat-grid">'+[["Enrolled",en.length],["Mentors",mentors.length],["Training lessons",lessons.length],["Project teams",teams.length]].map(q=>'<div class="stat"><b>'+q[1]+'</b><small>'+esc(q[0])+'</small></div>').join("")+'</div>';
+ return title(x.title,"Structured learning, assigned mentors and in-house projects for this batch.",actions)+
+ (x.is_test?'<div class="alert warning">Internal QA test program — not counted as real paid enrollments.</div>':"")+stats+
+ '<div class="two-col"><div>'+card("Program settings",facts)+
+ card("Shared mentors",mentors.map(m=>row("♙",who(m.mentor_id),"Internship capacity: "+m.max_internship_teams+" teams")).join("")||empty("No mentors","Invite mentors, then assign them to this program."))+
+ card("Scheduled training",lessons.slice(0,30).map(e=>row("▤",e.title,date(e.scheduled_date)+" · "+(e.responsible_mentor_id?who(e.responsible_mentor_id):"Unassigned"))).join("")||empty("No classes scheduled","Admin assigns each teaching session."))+
+ '</div><div>'+card("Students",en.map(e=>row("♙",who(e.student_id),e.is_test?"QA test account":e.status)).join("")||empty("No enrolled students","Active enrollments appear here."))+
+ card("In-house internship teams",teams.map(t=>row("◇","Team "+t.team_number,who(t.mentor_id)+" · "+(D.internship_team_members||[]).filter(m=>m.team_id===t.id).length+" students")).join("")||empty("No teams","Groups form after the training period."))+
+ card("Tools",'<button class="btn btn-primary" data-action="navigate" data-view="teams-overview">Manage internship allocation</button>')+'</div></div>';
 }
 function programEdit(){
  let x=p(course);
@@ -908,7 +1054,23 @@ function timeline(){
     +card(program.title,nav+rows.join(""))
     +'</div><div>'+form+'</div></div>';
 }
-function sessions(){let ps=selectedPrograms(),listings=D.live_sessions.filter(s=>ps.some(x=>x.id===s.program_id));let pending=listings.filter(x=>x.status==="scheduled"&&x.meet_status!=="ready").length;let meetTools=role==="student"?"":'<div class="alert warning" style="margin-bottom:16px"><b>Google Meet authorization</b><br>'+pending+' class(es) await meeting-space creation. Grant Google Meet permission using your Trainer Google account, then HackSphere generates each pending class link in a batch. Google Meet API must be enabled in Google Cloud.</div><div class="form-actions" style="margin-bottom:16px"><button class="btn btn-primary" data-action="meet-consent">Connect Google Meet & generate links ↗</button></div>';return title("Live sessions","Classes follow each program calendar. Access to meeting links is enrollment-checked and time-limited.")+meetTools+'<div class="two-col"><div>'+card("Class calendar",listings.length?listings.map(s=>row("▷",s.title,date(s.session_date)+" • "+String(s.start_time).slice(0,5)+" IST",role==="student"?(s.meet_status==="ready"?click("Join Live Class","join",s.id,"btn-primary"):'<span class="pill orange">Meet authorization pending</span>'):tag(s.meet_status==="ready"?"Meet ready":"Meeting not connected"))).join(""):empty("No scheduled classes","Trainers will schedule live sessions."))+'</div><div>'+(role==="student"?card("Secure access","You can join only as an active enrolled student during the class time window. Meet controls final admission."):card("Schedule a class",'<div class="alert warning">Google Meet auto-creation is pending trainer OAuth configuration. This calendar saves a session only.</div><form data-kind="session">'+choose("Program","program_id",options(ps))+field("Lecture topic","title","text","",true)+field("Class date","session_date","date","",true)+field("Start time IST","start_time","time","19:00",true)+field("Duration minutes","duration_minutes","number","60",true)+'<button class="btn btn-primary">Schedule</button></form>'))+"</div></div>"}
+function sessions(){
+ const assigned=selectedPrograms();
+ const rows=(D.live_sessions||[]).filter(s=>assigned.some(x=>x.id===s.program_id));
+ const pending=rows.filter(e=>e.status==="scheduled"&&e.meet_status!=="ready"&&(role==="admin"||e.trainer_user_id===user.id));
+ const meetingInfo=role==="student"?
+ '<div class="alert">Only active enrolled students can obtain the class joining link near scheduled time.</div>':
+ pending.length?'<div class="alert warning">'+pending.length+' Google Meet link(s) pending. The designated teaching mentor must grant the Google Meet OAuth permission. Google Meet API enablement is separately required.</div>'+
+ '<button class="btn btn-primary" data-action="meet-consent">Connect Google Meet & create my class links</button>':
+ '<div class="alert">No pending Google Meet authorizations for your scheduled teaching classes.</div>';
+ const calendar=rows.map(s=>row("▷",s.title,
+ date(s.session_date)+" · "+String(s.start_time).slice(0,5)+" IST · "+(s.meet_status==="ready"?"Link ready":"Link pending"),
+ s.meet_status==="ready"?click("Join class","join",s.id,"btn-primary"):"")).join("");
+ return title("Live Classes","One calendar for your assigned program. Admin controls the schedule and class ownership.")+
+ card("Google Meet",meetingInfo)+
+ card("Class calendar",calendar||empty("No live classes","Admin will set the teaching calendar."))+
+ (role==="admin"?card("Admin scheduling",'<button data-action="navigate" data-view="schedule-v2" class="btn btn-primary">Open Teaching Schedule Builder</button>'):"");
+}
 function eligibleStudents(programId,roleFilter=role){
  let assigned=D.enrollments.filter(e=>e.program_id===programId&&e.status!=="suspended");
  if(roleFilter==="guide")assigned=assigned.filter(e=>D.guide_allocations.some(g=>g.program_id===programId&&g.student_id===e.student_id&&g.guide_user_id===user.id));
@@ -921,20 +1083,23 @@ function students(){
  +card("Enrolled students",entries.join("")||empty("No enrollments yet","Students appear here after payment approval."));
 }
 function reviews(){
- let events=D.timeline_events,items=D.submissions.filter(s=>{
-  let ev=events.find(x=>x.id===s.event_id);
-  if(!ev)return false;
-  return role==="admin"||
-   (role==="trainer"&&ev.phase==="training"&&D.program_staff.some(ps=>ps.program_id===ev.program_id&&ps.user_id===user.id))||
-   (role==="guide"&&ev.phase==="internship"&&D.guide_allocations.some(g=>g.program_id===ev.program_id&&g.guide_user_id===user.id&&g.student_id===s.student_id));
+ const items=D.submissions.filter(sub=>{
+ const ev=D.timeline_events.find(e=>e.id===sub.event_id);
+ return ev&&(role==="admin"||(role==="mentor"&&ev.responsible_mentor_id===user.id));
  });
- return title("Submission reviews","Review training assignments or internship project work for your assigned students.")
- +card("Pending and reviewed submissions",items.map(s=>{
-  let ev=events.find(x=>x.id===s.event_id);
-  let link=s.submission_url&&/^https:\/\//.test(s.submission_url)?'<a href="'+esc(s.submission_url)+'" target="_blank" rel="noopener noreferrer" class="btn btn-small btn-outline">Open work ↗</a>':"";
-  let actions='<div class="form-actions">'+link+(s.status!=="approved"?click("Approve","review-approve",s.id,"btn-primary")+click("Request changes","review-changes",s.id,"btn-outline"):"")+'</div>';
-  return row("▥",ev?.title||"Assignment",who(s.student_id)+" · "+(s.content||"Work submitted")+" · "+s.status,actions)
- }).join("")||empty("No submissions to review","Student submissions will appear when an assignment or project has been submitted."));
+ const list=items.map(sub=>{
+ const ev=D.timeline_events.find(e=>e.id===sub.event_id);
+ const link=sub.submission_url&&/^https:\/\//.test(sub.submission_url)?
+ '<a href="'+esc(sub.submission_url)+'" target="_blank" rel="noopener noreferrer" class="btn btn-small btn-outline">View submission</a>':"";
+ const action=sub.status==="approved"?tag("Approved"):
+ click("Approve","review-approve",sub.id,"btn-primary")+
+ click("Request changes","review-changes",sub.id,"btn-outline");
+ return row("▥",ev?.title||"Mini project",who(sub.student_id)+" · "+sub.status+
+ " · "+(sub.content||""),'<div class="form-actions">'+link+action+'</div>');
+ }).join("");
+ return title("Mini Project & Assignment Reviews",
+ "All students receive the same weekly project; only the responsible mentor can review its submissions.")+
+ card("Assigned submission queue",list||empty("No submissions yet","Only work from activities assigned to you will appear here."));
 }
 function performance(){
  let all=role==="student"?D.evaluations.filter(x=>x.student_id===user.id):D.evaluations;
@@ -961,8 +1126,20 @@ function performance(){
  +card("Evaluation history",all.map(x=>row("◎",x.activity_title,who(x.student_id)+" · "+x.phase+" · "+(x.feedback||""),tag(x.score+" / "+x.max_score))).join("")||empty("No evaluations yet","Results appear as students complete tasks."))
  +'</div><div>'+(form||card("Your scores","Evaluation details will appear when your work is reviewed."))+'</div></div>';
 }
+function paymentMethodsNotice(){
+ const active=!!upi.upi_id;
+ return '<div class="hs-payment-methods" aria-label="Payment method availability">'+
+ '<div class="hs-payment-method"><div class="hs-payment-method-top"><strong>UPI / QR payment</strong>'+
+ (active?'<span class="hs-payment-pill hs-payment-pill-active">Active</span>':'<span class="hs-payment-pill hs-payment-pill-setup">Admin setup pending</span>')+
+ '</div><p>'+(active?'Pay using the official UPI ID or QR. Enrollment activates only after actual bank-credit verification.':
+ 'The UPI payment method is supported. The official UPI ID and QR will show here after Admin configures them.')+'</p></div>'+
+ '<div class="hs-payment-method hs-payment-method-disabled"><div class="hs-payment-method-top"><strong>Razorpay online checkout</strong>'+
+ '<span class="hs-payment-pill hs-payment-pill-soon">Coming Soon</span></div>'+
+ '<p>Cards and automated online payments are not enabled yet. Use the official UPI method when available.</p></div>'+
+ '</div>';
+}
 function paymentInstructions(){return upi.upi_id?'<div class="alert success"><b>Official UPI</b><br>ID: '+esc(upi.upi_id)+"<br>Payee: "+esc(upi.payee||"HackSphere")+"<br>"+esc(upi.instructions||"")+"</div>"+(upi.qr_url&&upi.qr_url.startsWith("https://")?'<img alt="Official UPI QR code" src="'+esc(upi.qr_url)+'" style="width:175px;margin:12px 0;border-radius:12px">':""):'<div class="alert warning">Official UPI payment details are not configured. Please do not send money yet.</div>'}
-function enrollment(){let ps=D.programs.filter(x=>["published","ongoing"].includes(x.status)&&!x.is_test),mine=D.enrollments.filter(x=>x.student_id===user.id);return title("My enrollments","Enrollment activates after manual verification of actual bank credit.")+'<div class="two-col"><div>'+card("UPI enrollment",paymentInstructions()+(upi.upi_id?'<form data-kind="payment">'+choose("Program","program_id",options(ps))+field("Transaction UTR","utr","text","",true)+'<label class="field"><span>Payment screenshot (PNG / JPG / WebP, max 5 MB)</span><input class="input" type="file" name="proof_file" accept="image/png,image/jpeg,image/webp" required></label><div class="alert warning">Your UTR and screenshot are submitted for verification. Only a matching actual bank credit activates enrollment.</div><button class="btn btn-primary">Submit for bank verification</button></form>':""))+'</div><div>'+card("Enrolled programs",mine.length?mine.map(x=>row("▦",p(x.program_id)?.title||"Program",x.is_test?"QA TEST ACCESS — NO PAYMENT":x.offer_letter_code||"Offer letter pending",tag(x.is_test?"Test only":x.status))).join(""):empty("No enrollments","Purchase verification is required."))+"</div></div>"}
+function enrollment(){let ps=D.programs.filter(x=>["published","ongoing"].includes(x.status)&&!x.is_test),mine=D.enrollments.filter(x=>x.student_id===user.id);return title("My enrollments","Enrollment activates after manual verification of actual bank credit.")+'<div class="two-col"><div>'+card("UPI enrollment",paymentMethodsNotice()+paymentInstructions()+(upi.upi_id?'<form data-kind="payment">'+choose("Program","program_id",options(ps))+field("Transaction UTR","utr","text","",true)+'<label class="field"><span>Payment screenshot (PNG / JPG / WebP, max 5 MB)</span><input class="input" type="file" name="proof_file" accept="image/png,image/jpeg,image/webp" required></label><div class="alert warning">Your UTR and screenshot are submitted for verification. Only a matching actual bank credit activates enrollment.</div><button class="btn btn-primary">Submit for bank verification</button></form>':""))+'</div><div>'+card("Enrolled programs",mine.length?mine.map(x=>row("▦",p(x.program_id)?.title||"Program",x.is_test?"QA TEST ACCESS — NO PAYMENT":x.offer_letter_code||"Offer letter pending",tag(x.is_test?"Test only":x.status))).join(""):empty("No enrollments","Purchase verification is required."))+"</div></div>"}
 function upiForm(){return '<form data-kind="upi">'+field("Official UPI ID","upi_id","text",upi.upi_id||"",true)+field("Payee","payee","text",upi.payee||"",true)+field("QR image HTTPS URL","qr_url","url",upi.qr_url||"")+notes("Student instructions","instructions")+'<button class="btn btn-primary">Save payment settings</button></form>'}
 function payments(){
  let pending=D.payment_claims.filter(x=>x.status==="pending").slice().sort((a,b)=>String(a.created_at).localeCompare(String(b.created_at)));
@@ -981,7 +1158,7 @@ function payments(){
  '<div class="payment-reference">UTR: <b>'+esc(x.utr)+'</b></div></div>'+
  '<div class="payment-action-column">'+click("View proof","proof",x.id,"btn-outline")+click("Approve","approve-pay",x.id,"btn-primary")+click("Reject","reject-pay",x.id,"btn-danger")+'</div></article>';
  }).join(""):empty("No payments waiting","Every submitted UPI claim will appear here for your verification.");
- return title("UPI payment approvals","Control student enrollment using real bank-credit verification.",actions)+intro+
+ return title("UPI payment approvals","Control student enrollment using real bank-credit verification.",actions)+intro+paymentMethodsNotice()+
  '<div class="stat-grid">'+
  '<div class="stat"><span class="sicon">◫</span><b>'+pending.length+'</b><small>Awaiting approval</small></div>'+
  '<div class="stat"><span class="sicon">₹</span><b>'+money(outstanding)+'</b><small>Claims to verify</small></div>'+
@@ -1003,56 +1180,25 @@ function paymentSettings(){
  return title("Official UPI configuration","Configure the verified payee shown to students before any payment.")+
  '<div class="editor-breadcrumb"><button data-action="navigate" data-view="payments">Payment approvals</button><span>/</span><b>UPI settings</b></div>'+
  '<div class="editor-layout"><div>'+
- card("Bank/UPI payment details",upiForm())+
+ card("Bank/UPI payment details",upiForm()+paymentMethodsNotice())+
  '</div><aside>'+card("Student payment rules",'<div class="alert warning"><b>Always validate incoming credit.</b><br>Uploaded proof or UTR does not confirm a payment. Only Administrator can approve a claim.</div><p class="help-hint">The official UPI ID and QR appear to students only once you publish them here.</p>')+
  '</aside></div>';
 }
 function staff(){
- const staff=D.staff_roles,invites=D.staff_invitations;
- const people=new Map();
- for(const x of staff){if(!people.has(x.user_id))people.set(x.user_id,[]);people.get(x.user_id).push(x.role)}
- let employees=[...people].map(([uid,rr])=>'<article class="manage-program-card"><div class="mp-icon">♙</div><div class="mp-body">'+
- '<div class="mp-title">'+esc(who(uid))+'</div>'+
- '<div class="mp-meta">'+(D.profiles.find(x=>x.id===uid)?.email||"Staff account")+'</div>'+
- '<div class="mp-meta">'+rr.map(r=>'<span class="pill">'+esc(r)+'</span>').join(" ")+'</div>'+
- '</div><div class="mp-actions">'+tag("Active")+'</div></article>').join("");
- let trainers=D.staff_roles.filter(x=>x.role==="trainer").map(x=>[x.user_id,who(x.user_id)]);
- return title("Staff & teaching team","Invite Google accounts, assign Trainer roles, and prepare Guides for internship allocation.",
- '<button class="btn btn-primary" data-action="staff-invite">+ Invite staff</button>')+
- '<div class="stat-grid">'+
- '<div class="stat"><span class="sicon">♙</span><b>'+people.size+'</b><small>Staff members</small></div>'+
- '<div class="stat"><span class="sicon">▷</span><b>'+staff.filter(x=>x.role==="trainer").length+'</b><small>Trainers</small></div>'+
- '<div class="stat"><span class="sicon">◇</span><b>'+staff.filter(x=>x.role==="guide").length+'</b><small>Internship Guides</small></div>'+
- '<div class="stat"><span class="sicon">◷</span><b>'+invites.filter(x=>x.status==="pending").length+'</b><small>Pending invitations</small></div>'+
- '</div>'+
- '<div class="two-col"><div>'+
- card("Staff directory",employees||empty("No staff onboarded","Invite the first Trainer or Guide by Google email."))+
- card("Pending invitations",invites.length?invites.map(x=>row('♙',x.email,x.role+' · '+x.status,tag(x.status))).join(""):empty("No invitations","Invite team members from the dedicated invitation screen."))+
- '</div><div>'+
- card("Assign Trainer to program",D.programs.length&&trainers.length?[
-  '<form data-kind="trainer">',
-  choose("Program","program_id",options(D.programs)),
-  choose("Trainer","user_id",trainers),
-  '<button class="btn btn-primary">Assign Trainer</button></form>'
- ].join(""):empty("No Trainers available","Invite a Trainer and have them sign in with their Google account."))+
- '</div></div>';
+ const roles=new Map();
+ for(const r of D.staff_roles){if(!roles.has(r.user_id))roles.set(r.user_id,[]);roles.get(r.user_id).push(r.role)}
+ return title("Staff & Mentors","One mentor role with course-wide common access and ownership-specific editing.",
+ '<button data-action="staff-invite" class="btn btn-primary">+ Invite Mentor</button>')+
+ card("Verified staff",Array.from(roles).map(([id,rr])=>row("♙",who(id),rr.join(" / "))).join("")||empty("No mentors","Invite an authenticated mentor."))+
+ card("Invitations",D.staff_invitations.map(x=>row("✉",x.email,x.role+" · "+x.status)).join("")||empty("No invitations","Invite mentors via Google email."))+
+ card("Program membership",'<button class="btn btn-primary" data-action="navigate" data-view="mentor-assignments">Assign mentors to programs</button>');
 }
 function staffInvite(){
- return title("Invite staff","Send Trainer and/or Internship Guide access to a verified Google account.")+
- '<div class="editor-breadcrumb"><button data-action="navigate" data-view="staff">Staff directory</button><span>/</span><b>Invite a team member</b></div>'+
- '<div class="editor-layout"><div>'+card("Staff invitation",[
- '<form data-kind="invite">',
- field("Google account email","email","email","",true),
- '<p style="color:var(--muted);font-size:12px;margin:4px 0 16px">The person must sign in with this exact verified Google account.</p>',
- '<label class="checkbox"><input type="checkbox" name="trainer"> Trainer — Training classes, assignments, scores</label>',
- '<label class="checkbox"><input type="checkbox" name="guide"> Internship Guide — Project milestones, reviews, scores</label>',
- '<div class="alert">One person may have both roles. The dashboard role switcher appears after the invitation is accepted.</div>',
- '<div class="form-actions" style="margin-top:20px"><button class="btn btn-primary">Create invitation</button>',
- '<button type="button" class="btn btn-outline" data-action="navigate" data-view="staff">Cancel</button></div>',
- '</form>'
- ].join(""))+'</div><aside>'+
- card("Invite workflow",'<div class="process-list"><p><b>01.</b> Admin creates invitation record</p><p><b>02.</b> Staff opens HackSphere website URL</p><p><b>03.</b> Staff signs in using the invited Google account</p><p><b>04.</b> Permissions become available after verified matching</p></div><div class="alert warning">Email sending is not configured. Share the website link with the invited person.</div>')+
- '</aside></div>';
+ return title("Invite Mentor","An invited mentor can teach or supervise internship teams after Admin assigns their responsibilities.")+
+ card("Invite verified Google account",'<form data-kind="invite">'+
+ field("Mentor Google email","email","email","",true)+
+ '<button type="submit" class="btn btn-primary">Create invitation</button></form>')+
+ card("Access model",'<p>Invited mentors can later receive Program Membership, Class Ownership and Internship Team Ownership. Invitation emails are not automated yet.</p>');
 }
 function guides(){
  let eligible=D.programs.filter(pr=>day(pr.start_date,pr.training_days)<=programToday(pr));
@@ -1214,10 +1360,9 @@ async function syncPendingMeet(){
   const r=await db.auth.getSession();
   const session=r.data?.session;
   if(!session?.access_token||!session?.provider_token){notice("Google Meet permission was not returned. Reconnect from Live classes.","error");return}
-  const assigned=D.program_staff.filter(x=>x.user_id===user.id).map(x=>x.program_id);
-  const guided=D.program_guides.filter(x=>x.user_id===user.id).map(x=>x.program_id);
-  const permitted=new Set([...assigned,...guided]);
-  const pending=D.live_sessions.filter(x=>x.status==="scheduled"&&x.meet_status!=="ready"&&(permitted.has(x.program_id)||role==="admin")).slice(0,100);
+  const permitted=new Set(D.program_mentors.filter(x=>x.mentor_id===user.id).map(x=>x.program_id));
+  const pending=D.live_sessions.filter(x=>x.status==="scheduled"&&x.meet_status!=="ready"&&
+    (role==="admin"||(permitted.has(x.program_id)&&x.trainer_user_id===user.id))).slice(0,100);
   if(!pending.length){notice("No pending Meet sessions for your assigned programs.","success");return}
   let passed=0,failed=[];
   for(const cls of pending){
@@ -1305,7 +1450,40 @@ else if(a==="student-tab"){
 else if(a==="student-resource"){await studentOpenResource(id)}
 else if(a==="student-legacy-file"){const ev=D.timeline_events.find(x=>x.id===id&&x.program_id===course);if(!ev?.resource_url?.startsWith("storage://hacksphere-course-files/"))return;const win=window.open("","_blank");const signed=await studentSignedUrl(ev.resource_url.replace("storage://hacksphere-course-files/",""));if(!signed){if(win)win.close();return}if(win){win.opener=null;win.location.replace(signed)}else notice("Allow popups to open the attachment.","error")}
 else if(a==="student-legacy-link"){const ev=D.timeline_events.find(x=>x.id===id);if(ev?.resource_url&&/^https:\/\//.test(ev.resource_url))window.open(ev.resource_url,"_blank","noopener,noreferrer")}
-else if(a==="public-browse"){location.href="/programs"}else if(a==="hs-public-page"){hsPage=Number(id)||0;drawCatalog();$("hs-programs-page")?.scrollIntoView({behavior:"smooth",block:"start"})}else if(a==="login")loginDialog();else if(a==="close-login")hideDialog();else if(a==="google-login")signIn();else if(a==="demo")demoOpen();else if(a==="toggle-public-menu"){const menu=$("mobile-links");menu.hidden=!menu.hidden;b.setAttribute("aria-expanded",String(!menu.hidden));b.setAttribute("aria-label",menu.hidden?"Open menu":"Close menu")}else if(a==="open-drawer")$("app-shell").classList.add("drawer-open");else if(a==="close-drawer")$("app-shell").classList.remove("drawer-open");else if(a==="signout")signOut();else if(a==="home")publicPage();else if(a==="navigate"){navigateTo(b.dataset.view)}else if(a==="open-course"){studentTab="overview";navigateTo("courses",id)}else if(a==="close-course"){navigateTo("courses")}else if(a==="lesson"){lesson=id;render()}else if(a==="enroll-public"){if(!user){sessionStorage.setItem("hs_requested_program",id);loginDialog()}else{studentEnrollmentChoice=id;await reload();role="student";navigateTo("enrollment");open()}}else if(a==="timeline-prev"){timelineOffset=Math.max(0,timelineOffset-1);render()}else if(a==="timeline-next"){timelineOffset=(timelineOffset+1)%Math.ceil(total(p(course||selectedPrograms()[0]?.id))/14);render()}else if(a==="secure-resource"){let event=D.timeline_events.find(x=>x.id===id);if(!event?.resource_url)return;let path=event.resource_url.replace("storage://hacksphere-course-files/","");if(demo){notice("Preview only — no private recording file is stored.");return}let r=await db.storage.from("hacksphere-course-files").createSignedUrl(path,600);if(r.error){notice(r.error.message,"error");return}if(/\.(mp4|webm)$/i.test(path)){let player=$("course-player");player.innerHTML='<video controls autoplay playsinline src="'+esc(r.data.signedUrl)+'"></video>';}else window.open(r.data.signedUrl,"_blank","noopener,noreferrer")}else if(a==="program-new"){navigateTo("program-new")}
+else if(a==="public-browse"){location.href="/programs"}else if(a==="hs-public-page"){hsPage=Number(id)||0;drawCatalog();$("hs-programs-page")?.scrollIntoView({behavior:"smooth",block:"start"})}else if(a==="login")loginDialog();else if(a==="close-login")hideDialog();else if(a==="google-login")signIn();else if(a==="demo")demoOpen();else if(a==="toggle-public-menu"){const menu=$("mobile-links");menu.hidden=!menu.hidden;b.setAttribute("aria-expanded",String(!menu.hidden));b.setAttribute("aria-label",menu.hidden?"Open menu":"Close menu")}else if(a==="open-drawer")$("app-shell").classList.add("drawer-open");else if(a==="close-drawer")$("app-shell").classList.remove("drawer-open");else if(a==="signout")signOut();else if(a==="home")publicPage();else if(a==="navigate"){navigateTo(b.dataset.view)}else if(a==="open-course"){studentTab="overview";navigateTo("courses",id)}else if(a==="close-course"){navigateTo("courses")}else if(a==="lesson"){lesson=id;render()}else if(a==="enroll-public"){if(!user){sessionStorage.setItem("hs_requested_program",id);loginDialog()}else{studentEnrollmentChoice=id;await reload();role="student";navigateTo("enrollment");open()}}else if(a==="timeline-prev"){timelineOffset=Math.max(0,timelineOffset-1);render()}else if(a==="timeline-next"){timelineOffset=(timelineOffset+1)%Math.ceil(total(p(course||selectedPrograms()[0]?.id))/14);render()}else if(a==="secure-resource"){let event=D.timeline_events.find(x=>x.id===id);if(!event?.resource_url)return;let path=event.resource_url.replace("storage://hacksphere-course-files/","");if(demo){notice("Preview only — no private recording file is stored.");return}let r=await db.storage.from("hacksphere-course-files").createSignedUrl(path,600);if(r.error){notice(r.error.message,"error");return}if(/\.(mp4|webm)$/i.test(path)){let player=$("course-player");player.innerHTML='<video controls autoplay playsinline src="'+esc(r.data.signedUrl)+'"></video>';}else window.open(r.data.signedUrl,"_blank","noopener,noreferrer")}else if(a==="v2-read-notification"){
+ if(demo){let n=D.notifications.find(x=>x.id===id);if(n)n.read_at=new Date().toISOString();render();return}
+ const result=await db.from("notifications").update({read_at:new Date().toISOString()}).eq("id",id);
+ if(result.error){notice(result.error.message,"error");return}
+ await reload();render();notice("Notification marked read.","success");
+}else if(a==="v2-mentor-task-review"||a==="v2-mentor-task-complete"){
+ if(role!=="mentor"&&role!=="admin")return;
+ const status=a==="v2-mentor-task-complete"?"completed":"review";
+ await save("internship_tasks",{status},id);
+}else if(a==="v2-student-task-progress"||a==="v2-student-task-review"){
+ if(demo){notice("Preview only.");return}
+ const status=a==="v2-student-task-review"?"review":"in_progress";
+ const r=await db.rpc("update_my_internship_task",{_task_id:id,_status:status});
+ if(r.error){notice(r.error.message,"error");return}
+ await reload();render();notice("Task status updated.","success");
+}else if(a==="v2-join-event"){
+ if(demo){notice("Demo event; no live meeting link.");return}
+ const win=window.open("","_blank"),r=await db.rpc("get_global_event_join_url",{_event_id:id});
+ if(r.error||!r.data){if(win)win.close();notice("Join unavailable: "+(r.error?.message||"No link yet"),"error");return}
+ if(win){win.opener=null;win.location.replace(r.data)}else notice("Allow popups to join.","error");
+}else if(a==="v2-remove-mentor"){
+ if(role!=="admin"||demo){notice("Admin only.");return}
+ const [programId,mentorId]=id.split("|");
+ if(!confirm("Remove this mentor from the program? Classes and internship groups need reassignment first."))return;
+ const r=await db.from("program_mentors").delete().eq("program_id",programId).eq("mentor_id",mentorId);
+ if(r.error)notice("Cannot remove this mentor while responsible for active work: "+r.error.message,"error");
+ else {await reload();render();notice("Mentor unassigned.","success")}
+}else if(a==="v2-generate-teams"){
+ if(role!=="admin"||demo){notice("Admin production action only.","error");return}
+ if(!confirm("Generate groups of five for this program after training has ended?"))return;
+ const r=await db.rpc("generate_internship_teams",{_program_id:id});
+ if(r.error){notice(r.error.message,"error");return}
+ notice("Team allocation: "+JSON.stringify(r.data),"success");await reload();render();
+}else if(a==="program-new"){navigateTo("program-new")}
 else if(a==="program-detail"){navigateTo("program-detail",id)}else if(a==="program-edit"){navigateTo("program-edit",id)}
 else if(a==="program-timeline"){navigateTo("timeline",id)}
 else if(a==="staff-invite"){navigateTo("staff-invite")}
@@ -1328,7 +1506,12 @@ else if(a==="lesson-publication-toggle"){const ev=D.timeline_events.find(x=>x.id
  if(win){win.opener=null;win.location.href=r.data}else notice("Please allow popups to join the class.","error");
 }});
 document.addEventListener("change",e=>{
- if(e.target.id==="role-switch"){role=e.target.value;navigateTo("overview");return}
+ if(e.target.name==="program_id"&&e.target.closest('form[data-kind="v2-scheduled-class"]')){
+ const selector=e.target.closest("form").querySelector('[name="responsible_mentor_id"]');
+ if(selector){const mentors=v2ProgramMentors(e.target.value);selector.innerHTML=mentors.map(m=>'<option value="'+esc(m.mentor_id)+'">'+esc(who(m.mentor_id))+'</option>').join("")}
+ return;
+}
+if(e.target.id==="role-switch"){role=e.target.value;navigateTo("overview");return}
  if(e.target.id==="student-calendar-select"){studentCalendarChoice=e.target.value;timelineOffset=0;render();return}
  if(e.target.id==="student-enroll-program"){studentEnrollmentChoice=e.target.value;render();return}
  const f=e.target.closest("form[data-kind]");
@@ -1350,7 +1533,96 @@ const submitButton=form.querySelector('[type="submit"]')||form.querySelector('bu
 const savedButton=submitButton?.innerHTML;if(submitButton){submitButton.disabled=true;submitButton.textContent="Saving…"}
 let f=Object.fromEntries(new FormData(form).entries()),type=form.dataset.kind;
 try{
-if(type==="csv-schedule"){await importCsvSchedule(form)}
+if(type==="program-v2"){
+ if(role!=="admin")throw Error("Administrator role required");
+ const args={_title:f.title,_description:f.description||"",_start_date:f.start_date,
+ _training_days:Number(f.training_days),_internship_days:Number(f.internship_days),
+ _fee_inr:Number(f.fee_inr),_mode:f.mode,_timezone:f.timezone||"Asia/Kolkata",
+ _batch_name:f.batch_name||null,_enrollment_capacity:f.enrollment_capacity?Number(f.enrollment_capacity):null,
+ _course_catalog_id:f.course_catalog_id||null};
+ if(demo){const id="demo-batch-v2";D.programs.push({id,...f,training_days:args._training_days,internship_days:args._internship_days,fee_inr:args._fee_inr,status:"draft"});navigateTo("program-detail",id);return}
+ const r=await db.rpc("create_program_v2",args);
+ if(r.error)throw r.error;
+ await reload();navigateTo("program-detail",r.data);notice("Draft created. Assign mentors, then build schedule.","success");
+}
+else if(type==="v2-edit-event"){
+ if(role!=="admin")throw Error("Admin only");
+ const id=form.dataset.event;
+ const patch={title:f.title,speaker_name:f.speaker_name,speaker_role:f.speaker_role||null,
+ speaker_company:f.speaker_company||null,starts_at:new Date(f.starts_at+"Z").toISOString(),
+ duration_minutes:Number(f.duration_minutes),status:f.status,description:f.description||null};
+ if(demo){const ev=D.global_events.find(x=>x.id===id);Object.assign(ev,patch);render();return}
+ const r=await db.from("global_events").update(patch).eq("id",id);
+ if(r.error)throw r.error;
+ if(f.join_url?.trim()){
+  const link=await db.rpc("set_global_event_join_url",{_event_id:id,_url:f.join_url.trim()});
+  if(link.error)notice("Session details saved but link update failed: "+link.error.message,"error");
+ }
+ await reload();render();notice("Global session updated.","success");
+}
+else if(type==="v2-global-event"){
+ if(role!=="admin")throw Error("Admin access required");
+ const joinUrl=String(f.join_url||"").trim();delete f.join_url;
+ f.starts_at=new Date(f.starts_at).toISOString();f.duration_minutes=Number(f.duration_minutes);f.created_by=user.id;
+ if(demo){D.global_events.unshift({id:"demo-event",...f});render();return}
+ const r=await db.from("global_events").insert(f).select("id").single();if(r.error)throw r.error;
+ if(joinUrl){const j=await db.rpc("set_global_event_join_url",{_event_id:r.data.id,_url:joinUrl});if(j.error)notice("Event saved, but joining link was not saved: "+j.error.message,"error")}
+ await reload();render();notice("Global session created.","success");
+}
+else if(type==="v2-course-catalog"){
+ if(role!=="admin")throw Error("Admin access required");
+ const obj={title:f.title,slug:f.slug.trim().toLowerCase(),description:f.description||"",is_published:false};
+ if(demo){D.course_catalog.push({id:"demo-course",...obj});render();return}
+ const r=await db.from("course_catalog").insert(obj);if(r.error)throw r.error;
+ await reload();render();notice("Reusable course saved.","success");
+}
+else if(type==="v2-assign-mentor"){
+ if(role!=="admin")throw Error("Admin access required");
+ f.max_internship_teams=Number(f.max_internship_teams);f.can_supervise_internship=form.querySelector('[name="can_supervise_internship"]')?.checked===true;
+ if(demo){D.program_mentors.push(f);render();return}
+ const r=await db.from("program_mentors").upsert(f,{onConflict:"program_id,mentor_id"});if(r.error)throw r.error;
+ await reload();render();notice("Mentor assigned to program.","success");
+}
+else if(type==="v2-edit-class"){
+ if(role!=="admin")throw Error("Admin access required");
+ const eventId=form.dataset.event;
+ const ev=D.timeline_events.find(e=>e.id===eventId);if(!ev)throw Error("Class not found");
+ const update={title:f.title,scheduled_date:f.scheduled_date,responsible_mentor_id:f.responsible_mentor_id};
+ if(demo){Object.assign(ev,update);render();return}
+ const r=await db.rpc("update_scheduled_lesson_v2",{
+ _event_id:eventId,_title:f.title,_scheduled_date:f.scheduled_date,
+ _responsible_mentor_id:f.responsible_mentor_id,
+ _start_time:f.start_time||null,_duration_minutes:Number(f.duration_minutes)
+ });
+ if(r.error)throw r.error;
+ await reload();render();notice("Schedule and live-class details updated together.","success");
+}
+else if(type==="v2-scheduled-class"){
+ if(role!=="admin")throw Error("Admin access required");
+ const obj={program_id:f.program_id,title:f.title,description:f.description||"",
+ scheduled_date:f.scheduled_date,responsible_mentor_id:f.responsible_mentor_id,
+ activity_type:f.activity_type,created_by:user.id,published_to_students:true};
+ if(demo){D.timeline_events.push({id:"demo-session",...obj});render();return}
+ const r=await db.rpc("create_scheduled_lesson_v2",{
+ _program_id:f.program_id,_title:f.title,_description:f.description||"",
+ _scheduled_date:f.scheduled_date,_activity_type:f.activity_type,
+ _responsible_mentor_id:f.responsible_mentor_id,
+ _start_time:f.activity_type==="lecture"?f.start_time:null,
+ _duration_minutes:Number(f.duration_minutes),_published:true
+ });
+ if(r.error)throw r.error;
+ await reload();render();notice("Program activity saved atomically.","success");
+}
+else if(type==="v2-team-project"){
+ const obj={project_title:f.project_title||null,project_brief:f.project_brief||null,
+ repository_url:f.repository_url||null,due_date:f.due_date||null};
+ await save("internship_teams",obj,form.dataset.team);
+}
+else if(type==="v2-team-task"){
+ f.team_id=form.dataset.team;f.created_by=user.id;f.assigned_student_id=f.assigned_student_id||null;
+ await save("internship_tasks",f);
+}
+else if(type==="csv-schedule"){await importCsvSchedule(form)}
 else if(type==="program"){
  f.training_days=+f.training_days;f.internship_days=+f.internship_days;f.fee_inr=+f.fee_inr;
  if(!f.trainer_id||!f.guide_id){notice("Choose an assigned Trainer and Internship Guide first.","error");return}
@@ -1504,7 +1776,7 @@ else if(type==="merchant"){await save("site_settings",{key:"legal_business",valu
 else if(type==="score"){f.score=+f.score;f.max_score=+f.max_score;f.evaluator_id=user.id;await save("evaluations",f)}
 else if(type==="payment"){const file=form.querySelector('input[name="proof_file"]')?.files?.[0];if(!file||!["image/png","image/jpeg","image/webp"].includes(file.type)||file.size>5242880){notice("Upload a valid screenshot under 5 MB.","error");return}delete f.proof_file;f.student_id=user.id;f.amount_inr=p(f.program_id).fee_inr;if(demo){f.proof_path="demo-student/preview.png";await save("payment_claims",f)}else{const ext=file.type==="image/png"?"png":file.type==="image/webp"?"webp":"jpg";const path=user.id+"/"+crypto.randomUUID()+"."+ext;let uploaded=await db.storage.from("hacksphere-payment-proofs").upload(path,file,{contentType:file.type,upsert:false});if(uploaded.error){notice(uploaded.error.message,"error");return}f.proof_path=path;await save("payment_claims",f)}}
 else if(type==="upi"){upi=f;await save("site_settings",{key:"payments_upi",value:f,updated_by:user.id})}
-else if(type==="invite"){let email=f.email.toLowerCase();if(f.trainer)await save("staff_invitations",{email,role:"trainer",created_by:user.id});if(f.guide)await save("staff_invitations",{email,role:"guide",created_by:user.id})}
+else if(type==="invite"){const email=String(f.email||"").trim().toLowerCase();if(!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email))throw Error("Valid verified Google email required");await save("staff_invitations",{email,role:"mentor",created_by:user.id})}
 else if(type==="trainer"){f.role="trainer";f.assigned_by=user.id;await save("program_staff",f)}
 else if(type==="guide"){f.allocated_by=user.id;await save("guide_allocations",f)}
 else if(type==="recommend"){f.guide_user_id=user.id;await save("completion_recommendations",f)}
@@ -1546,7 +1818,7 @@ async function showLegalPage(){
  return true;
 }
 
-async function init(){try{if(location.pathname.startsWith("/preview/")){demo=true;reset();seed();user={id:"demo-student",email:"student@example.com",user_metadata:{full_name:"Preview Learner"}};readRoute();open();return}let r=await fetch("/api/config",{cache:"no-store"}),config=await r.json();if(config.supabaseUrl&&config.supabasePublishableKey&&window.supabase){db=window.supabase.createClient(config.supabaseUrl,config.supabasePublishableKey);if(await showLegalPage())return;if(await hsPublicRoute())return;let x=await db.auth.getUser();if(x.data.user){user=x.data.user;await reload();if(location.pathname==="/"){const assigned=D.staff_roles.filter(r=>r.user_id===user.id).map(r=>r.role);role=assigned.includes("admin")?"admin":assigned.includes("trainer")?"trainer":assigned.includes("guide")?"guide":"student"}open();
+async function init(){try{if(location.pathname.startsWith("/preview/")){demo=true;reset();seed();user={id:"demo-student",email:"student@example.com",user_metadata:{full_name:"Preview Learner"}};readRoute();open();return}let r=await fetch("/api/config",{cache:"no-store"}),config=await r.json();if(config.supabaseUrl&&config.supabasePublishableKey&&window.supabase){db=window.supabase.createClient(config.supabaseUrl,config.supabasePublishableKey);if(await showLegalPage())return;if(await hsPublicRoute())return;let x=await db.auth.getUser();if(x.data.user){user=x.data.user;await reload();if(location.pathname==="/"){const assigned=D.staff_roles.filter(r=>r.user_id===user.id).map(r=>r.role);role=assigned.includes("admin")?"admin":(D.program_mentors.some(x=>x.mentor_id===user.id)||assigned.includes("mentor")||assigned.includes("trainer")||assigned.includes("guide"))?"mentor":"student"}open();
  if(sessionStorage.getItem("hacksphere_meet_sync")==="1"){
  sessionStorage.removeItem("hacksphere_meet_sync");
  setTimeout(()=>syncPendingMeet(),1000);

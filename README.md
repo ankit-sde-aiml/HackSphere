@@ -1,32 +1,27 @@
-# HackSphere
+# HackSphere — one existing project
 
-Training + project-based internship platform. This repo was reset for the new HackSphere platform. Previous repository contents are deliberately not carried over.
+The **single live Hacksphere application** runs in Cloudflare Worker `hacksphere`, reusing the existing Supabase project `wvipkluopmptwuvihecz` and its already-configured Google OAuth login.
 
-## Current deployment
-Cloudflare Workers serves the public landing page and prepares a Supabase-connected application.
-The dashboard uses **real Supabase OAuth and RLS** once a dedicated HackSphere project is configured. Until then it does not accept real enrollment or payment information.
+## Live application
+- Cloudflare Worker: `hacksphere`
+- Public URL: https://hacksphere.sipl-test-dev.workers.dev/
+- Source of truth: repository `main`, built with `node build.mjs` from `worker.js`, `index.html`, `assets/app.js` and `assets/style.css`.
+- Mentors, training schedules, mini-projects, in-house internship teams, global sessions, notifications and security use the same Supabase project. DB migrations 017–023 are applied.
+- UPI / QR enrollment with manual real bank-credit approval is the active payment implementation. Admin must enter the official UPI ID and optional HTTPS QR URL in UPI settings; until then students must not send payments.
+- Razorpay is labeled **Coming Soon**. No automatic online payment checkout is active.
+- Recorded lectures remain **Coming Soon**; activating R2/Stream or changing the storage pipeline is deferred.
+- Supabase's existing real Google OAuth login is retained as-is; no second Auth or DB project has been created.
 
-## Project structure
-- index.html — responsive public website, role-aware dashboard UI, and Google Sign-In client
-- worker.js — Cloudflare Worker application entrypoint and public API configuration
-- build.mjs — bundles index.html into Worker for deployment
-- db/schema.sql — planned dedicated Supabase schema and row security
+## Build and verify
+```bash
+node build.mjs
+node --check assets/app.js
+node --check dist/worker.js
+```
 
-## Production configuration required
-1. Create a dedicated **HackSphere** Supabase project, without touching any unrelated projects.
-2. Run and review the SQL schema in that project, configure Google OAuth provider and authorized redirect URLs.
-3. Set Cloudflare Worker secrets/configuration: SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY (publishable, not service role). NEVER expose privileged keys in frontend or GitHub.
-4. Bootstrap the first admin with a verified Google identity after first sign-in.
-5. Configure UPI ID and QR and verify actual bank credit before activating enrollments.
-6. Configure Google Meet REST API OAuth for trainers and a secure server endpoint for joining classes. The frontend only previews this pending integration.
-7. Configure private recording file storage, PDF document generator, and verified sending domain for email.
-
-## Business rules
-- Schedule always unlocks **by date**, regardless of assessment scores.
-- Training and internship may run sequentially (e.g. 60 + 30 days), with independent per-program dates.
-- Admin assigns Internship Guide **at internship start**.
-- Same user can hold Trainer and Internship Guide roles and switch contexts.
-- Trainer and Guide grade independently; ONLY Admin approves the final certificate.
-- Payment is UPI QR + manual real-bank confirmation, not automatic UTR/screenshot trust.
-- Google Sign-In only, invitations for staff.
-- Do not claim enrollment, payments, Meet integration or certificates are functional without backend tests.
+## Operational guardrails
+- Google OAuth sign-in returns to the same Worker origin.
+- Protect RLS, video private endpoints and per-class/team mentor ownership.
+- Verify actual bank credit before approving UPI claims.
+- The old Next.js v2 experiment under the feature branch is not used for deployment; do not deploy it or create a second Worker.
+- Current Worker production deployment settings and plaintext Supabase bindings must be preserved on upload.

@@ -1,0 +1,30 @@
+name: HackSphere single Worker source checks
+on:
+  push:
+    branches: [main]
+    paths:
+      - "worker.js"
+      - "index.html"
+      - "assets/**"
+      - "build.mjs"
+      - ".github/workflows/hacksphere-worker-check.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-and-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Build existing HackSphere Worker
+        run: node build.mjs
+      - name: Verify JavaScript syntax
+        run: |
+          node --check assets/app.js
+          node --check dist/worker.js
+      - name: Check core production guards
+        run: |
+          node -e "const fs=require('fs');const s=fs.readFileSync('dist/worker.js','utf8');for(const p of ['signInWithOAuth','get_payment_instructions','Razorpay online checkout','Coming Soon','create_program_v2','mentorClassesV2'])if(!s.includes(p))throw Error('Missing: '+p)"

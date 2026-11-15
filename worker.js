@@ -263,13 +263,13 @@ export default {
      if(!meeting||meeting.status!=="scheduled")return reply("Class schedule not available",404);
      if(meeting.meet_status==="ready")return reply("Google Meet space already registered",409);
      const pid=encodeURIComponent(meeting.program_id),uid=encodeURIComponent(profile.id);
-     const [trainers,guides,admins]=await Promise.all([
-       getJson(search("program_staff","&program_id=eq."+pid+"&user_id=eq."+uid+"&role=eq.trainer&limit=1"),authHeaders),
-       getJson(search("program_guides","&program_id=eq."+pid+"&user_id=eq."+uid+"&limit=1"),authHeaders),
+     const [members,admins]=await Promise.all([
+       getJson(search("program_mentors","&program_id=eq."+pid+"&mentor_id=eq."+uid+"&limit=1"),authHeaders),
        getJson(search("staff_roles","&user_id=eq."+uid+"&role=eq.admin&limit=1"),authHeaders)
      ]);
-     if(!((trainers?.length||0)||(guides?.length||0)||(admins?.length||0)))
-       return reply("Only assigned teaching staff can create a class meeting",403);
+     const isAdmin=(admins?.length||0)>0;
+     if(!isAdmin&&(!(members?.length)||meeting.trainer_user_id!==profile.id))
+       return reply("Only the Admin or this class's scheduled mentor can create its Google Meet link",403);
      // The Google bearer token must belong to the SAME verified Google identity as Supabase Auth.
      const googleIdentity=await getJson("https://openidconnect.googleapis.com/v1/userinfo",{Authorization:"Bearer "+googleToken});
      if(!googleIdentity?.email_verified||String(googleIdentity.email).toLowerCase()!==String(profile.email).toLowerCase())
