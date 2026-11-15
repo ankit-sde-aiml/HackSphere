@@ -9,3 +9,11 @@ a{text-decoration:none}
 .hs-card{border:1px solid #e2e8f0;background:#fff;border-radius:22px;padding:24px;box-shadow:0 10px 40px rgba(15,23,42,.035)}
 .hs-eyebrow{font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:#4f46e5}
 
+
+@media print {
+ @page { size: A4 landscape; margin: 0; }
+ html,body {background:white!important;color:#0f172a!important}
+ header,footer,.print\\:hidden {display:none!important}
+ .hs-container{max-width:none!important;padding:0!important}
+ .hs-print-certificate{width:297mm!important;height:210mm!important;max-width:none!important;min-height:0!important;box-shadow:none!important;border-radius:0!important;break-inside:avoid!important;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+}

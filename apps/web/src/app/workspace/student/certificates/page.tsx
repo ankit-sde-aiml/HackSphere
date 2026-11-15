@@ -18,7 +18,8 @@ export default async function MyCertificates(){
    <div className="mt-5 space-y-3">{certificates.data?.length?certificates.data.map(c=><article key={c.id} className="rounded-xl bg-slate-50 p-4">
     <h3 className="font-bold">{title(c.program_id)}</h3><p className="mt-2 text-sm text-slate-600">{c.status} · Issued {new Date(c.issued_at).toLocaleDateString("en-IN")}</p>
     <p className="mt-2 font-mono text-sm">{c.code}</p>
-    <Link href={"/verify?code="+encodeURIComponent(c.code)} className="mt-3 inline-flex text-sm font-semibold text-indigo-700">Verify certificate</Link>
+    <div className="mt-3 flex gap-5"><Link href={"/verify?code="+encodeURIComponent(c.code)} className="inline-flex text-sm font-semibold text-indigo-700">Verify certificate</Link>
+    {c.status==="approved"&&<Link href={"/certificate/"+encodeURIComponent(c.code)} className="inline-flex text-sm font-semibold text-indigo-700">Print certificate</Link>}</div>
    </article>):<p className="text-sm text-slate-500">Verified internship certificates appear after successful project completion and Admin approval.</p>}</div>
   </section>
   <section className="hs-card mt-6"><h2 className="text-xl font-bold">Enrollment offer letters</h2>
