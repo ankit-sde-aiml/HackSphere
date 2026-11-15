@@ -7,7 +7,8 @@ const links=[
  {href:"/workspace/admin/schedule",name:"Schedule learning",icon:CalendarDays},
  {href:"/workspace/admin/teams",name:"Internship teams",icon:UsersRound},
  {href:"/workspace/admin/events",name:"Global guest sessions",icon:Mic2},
- {href:"/workspace/admin/payments",name:"Payment approvals",icon:GraduationCap}
+ {href:"/workspace/admin/payments",name:"Payment approvals",icon:GraduationCap},
+ {href:"/workspace/admin/certificates",name:"Certificate approval",icon:GraduationCap}
 ];
 export function AdminLinks(){
  return <nav aria-label="Administration actions" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
