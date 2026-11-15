@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CalendarDays, GraduationCap, Mic2, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { AdminLinks } from "@/components/admin/admin-links";
 export const dynamic="force-dynamic";
 export default async function Admin(){
  const db=await createClient();const {data:{user}}=await db.auth.getUser();if(!user)redirect("/login");
@@ -19,6 +20,7 @@ export default async function Admin(){
   <div className="hs-card"><Users className="text-indigo-600"/><p className="mt-4 text-3xl font-black">{mentors.data?.length||0}</p><p className="text-sm text-slate-500">Mentor assignments</p></div>
   <div className="hs-card"><Mic2 className="text-indigo-600"/><p className="mt-4 text-3xl font-black">{events.data?.length||0}</p><p className="text-sm text-slate-500">Guest session records</p></div>
  </div>
+ <div className="mt-8"><AdminLinks/></div>
  <section className="hs-card mt-8"><h2 className="flex items-center gap-2 text-xl font-bold"><CalendarDays className="text-indigo-600"/> Programs and batches</h2>
  <div className="mt-5 divide-y divide-slate-100">{programs.data?.length?programs.data.map(p=><div key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-4"><div><b>{p.title}</b><p className="text-xs text-slate-500">{p.batch_name||"Batch"} · {p.training_days}+{p.internship_days} days</p></div><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold">{p.status}</span></div>):<p className="py-4 text-sm text-slate-500">No programs created yet.</p>}</div></section>
  <p className="mt-6 text-sm text-slate-500">The v2 atomic scheduling, mentor allocation and global events RPCs are available in the existing Supabase project. Admin editing forms are being migrated from the legacy workspace.</p>
