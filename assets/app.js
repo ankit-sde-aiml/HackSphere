@@ -27,10 +27,51 @@ const enrolled=x=>demo||D.enrollments.some(y=>y.program_id===x.id&&y.student_id=
 const selectedPrograms=()=>demo||role==="admin"?D.programs:role==="mentor"?D.programs.filter(x=>(D.program_mentors||[]).some(m=>m.program_id===x.id&&m.mentor_id===user.id)):role==="trainer"?D.programs.filter(x=>D.program_staff.some(y=>y.program_id===x.id&&y.user_id===user.id)):role==="guide"?D.programs.filter(x=>D.program_guides.some(y=>y.program_id===x.id&&y.user_id===user.id)||D.guide_allocations.some(y=>y.program_id===x.id&&y.guide_user_id===user.id)):D.programs.filter(enrolled);
 const options=arr=>arr.map(x=>[x.id,x.title]);
 const menu={student:[["overview","◈","Overview"],["courses","▦","My courses"],["explore","◉","Explore programs"],["timeline","▤","Daily timeline"],["sessions","▷","Live classes"],["submissions","▥","Assignments"],["enrollment","◫","Enrollment"],["performance","◎","My performance"],["documents","✧","Certificates & letters"],["profile","♧","My profile"]],trainer:[["overview","◈","Overview"],["courses","▦","My programs"],["timeline","▤","Training lessons"],["sessions","▷","Live classes"],["reviews","▥","Review submissions"],["performance","◎","Student scores"],["profile","♧","My profile"]],guide:[["overview","◈","Overview"],["courses","▦","My programs"],["timeline","▤","Internship timeline"],["reviews","▥","Project reviews"],["performance","◎","Internship scores"],["complete","✧","Completion reviews"],["profile","♧","My profile"]],admin:[["overview","◈","Overview"],["programs","▦","Programs"],["students","♧","Students"],["timeline","▤","Timeline manager"],["sessions","▷","Live classes"],["reviews","▥","Submissions"],["payments","◫","Payment approvals"],["staff","♙","Staff & roles"],["guides","◇","Guide allocation"],["performance","◎","Scores"],["complete","✧","Certificates"],["settings","⚙","Settings"],["profile","♧","My profile"]]};
+menu.student=menu.student.filter(x=>x[0]!=="submissions");
 menu.student.push(["tasks","▥","My Tasks"],["global-events","✦","Industry Connect"],["my-internship","◇","My Internship"],["notifications","✉","Notifications"]);
 menu.admin.push(["global-events","✦","Global Sessions"],["mentor-assignments","♙","Program Mentors"],["schedule-v2","▤","Schedule Builder"],["teams-overview","◇","Internship Teams"]);
 menu.mentor=[["overview","◈","Overview"],["courses","▦","Program Overview"],["mentor-classes","▤","My Classes & Uploads"],["mentor-teams","◇","My Internship Teams"],["reviews","▥","Mini Project Reviews"],["sessions","▷","Live Classes"],["global-events","✦","Industry Connect"],["performance","◎","Student Progress"],["profile","♧","My Profile"]];
-function seed(){let a=day(today(),-27),b=day(today(),-69);D.programs=[{id:"demo-stack",title:"Full Stack Development",description:"Learn to build practical applications.",start_date:a,training_days:60,internship_days:30,fee_inr:2999,mode:"Hybrid",status:"ongoing"},{id:"demo-design",title:"UI/UX Design",description:"Product thinking and portfolio projects.",start_date:b,training_days:45,internship_days:30,fee_inr:1999,mode:"Hybrid",status:"ongoing"}];D.profiles=[{id:"demo-student",full_name:"Preview Learner",email:"student@example.com"},{id:"demo-trainer",full_name:"Sample Trainer",email:"trainer@example.com"},{id:"demo-guide",full_name:"Sample Guide",email:"guide@example.com"}];D.enrollments=[{id:"demo-enroll",program_id:"demo-stack",student_id:"demo-student",status:"active",offer_letter_code:"HS-OL-PREVIEW"},{id:"demo-enroll2",program_id:"demo-design",student_id:"demo-student",status:"active"}];D.program_staff=[{program_id:"demo-stack",user_id:"demo-trainer"}];D.staff_roles=[{user_id:"demo-trainer",role:"trainer"},{user_id:"demo-guide",role:"guide"}];D.guide_allocations=[{id:"demo-guide-link",program_id:"demo-design",student_id:"demo-student",guide_user_id:"demo-guide"}];for(let i=0;i<90;i+=3)D.timeline_events.push({id:"d"+i,program_id:"demo-stack",phase:i<60?"training":"internship",activity_type:i<60?"lecture":"project",scheduled_date:day(a,i),title:i<60?["HTML & CSS foundations","JavaScript essentials","React components","Developer workflow"][i/3%4]:"Internship project milestone "+(i-59),description:"Practice and submit your scheduled activity.",published_to_students:true});D.live_sessions=[{id:"demo-live",program_id:"demo-stack",title:"JavaScript Functions & Scope",session_date:today(),start_time:"19:00",status:"scheduled"}];D.payment_claims=[{id:"demo-pay",program_id:"demo-stack",student_id:"demo-student",amount_inr:2999,status:"approved",utr:"PREVIEW00001"}];D.evaluations=[{id:"demo-score",program_id:"demo-stack",student_id:"demo-student",phase:"training",activity_title:"HTML assignment",score:8,max_score:10,feedback:"Great progress!"}];upi={upi_id:"preview@upi",payee:"Preview only — do not pay"}}
+function seed(){let a=day(today(),-69),b=day(today(),-27);D.programs=[{id:"demo-stack",title:"Full Stack Development",description:"Learn to build practical applications.",start_date:a,training_days:60,internship_days:40,fee_inr:2999,mode:"Hybrid",status:"ongoing"},{id:"demo-design",title:"UI/UX Design",description:"Product thinking and portfolio projects.",start_date:b,training_days:45,internship_days:30,fee_inr:1999,mode:"Hybrid",status:"ongoing"}];D.profiles=[{id:"demo-student",full_name:"Preview Learner",email:"student@example.com"},{id:"demo-trainer",full_name:"Sample Trainer",email:"trainer@example.com"},{id:"demo-guide",full_name:"Sample Guide",email:"guide@example.com"}];D.enrollments=[{id:"demo-enroll",program_id:"demo-stack",student_id:"demo-student",status:"active",offer_letter_code:"HS-OL-PREVIEW"},{id:"demo-enroll2",program_id:"demo-design",student_id:"demo-student",status:"active"}];D.program_staff=[{program_id:"demo-stack",user_id:"demo-trainer"}];D.staff_roles=[{user_id:"demo-trainer",role:"trainer"},{user_id:"demo-guide",role:"guide"}];D.guide_allocations=[{id:"demo-guide-link",program_id:"demo-design",student_id:"demo-student",guide_user_id:"demo-guide"}];for(let i=0;i<90;i+=3)D.timeline_events.push({id:"d"+i,program_id:"demo-stack",phase:i<60?"training":"internship",activity_type:i<60?"lecture":"project",scheduled_date:day(a,i),title:i<60?["HTML & CSS foundations","JavaScript essentials","React components","Developer workflow"][i/3%4]:"Internship project milestone "+(i-59),description:"Practice and submit your scheduled activity.",published_to_students:true});D.live_sessions=[{id:"demo-live",program_id:"demo-stack",title:"JavaScript Functions & Scope",session_date:today(),start_time:"19:00",status:"scheduled"}];D.payment_claims=[{id:"demo-pay",program_id:"demo-stack",student_id:"demo-student",amount_inr:2999,status:"approved",utr:"PREVIEW00001"}];D.evaluations=[{id:"demo-score",program_id:"demo-stack",student_id:"demo-student",phase:"training",activity_title:"HTML assignment",score:8,max_score:10,feedback:"Great progress!"}];
+D.profiles.push(
+ {id:"demo-b",full_name:"Aditi Sharma",email:"aditi@example.com"},
+ {id:"demo-c",full_name:"Rohan Mehta",email:"rohan@example.com"},
+ {id:"demo-d",full_name:"Priya Patel",email:"priya@example.com"},
+ {id:"demo-e",full_name:"Karan Verma",email:"karan@example.com"});
+D.internship_teams=[{id:"demo-team-4",program_id:"demo-stack",team_number:4,mentor_id:"demo-guide",
+ project_title:"E-Commerce Web Application",
+ project_brief:"Build an online store with customer login, product catalog, shopping cart and order management. Collaborate through GitHub and deliver a working demo.",
+ status:"active",due_date:day(a,99)}];
+D.internship_team_members=["demo-student","demo-b","demo-c","demo-d","demo-e"].map(student_id=>({
+ team_id:"demo-team-4",program_id:"demo-stack",student_id}));
+D.internship_tasks=[
+ {id:"demo-task-1",team_id:"demo-team-4",assigned_student_id:"demo-student",title:"Build authentication API",
+  description:"Implement login and registration endpoints with validation and secure password handling.",
+  status:"in_progress",due_at:day(today(),2)+"T18:00:00Z",created_by:"demo-guide"},
+ {id:"demo-task-2",team_id:"demo-team-4",assigned_student_id:"demo-student",title:"JWT authentication",
+  description:"Connect protected routes with the authentication system.",
+  status:"changes_requested",due_at:day(today(),4)+"T18:00:00Z",work_url:"https://github.com/",
+  mentor_feedback:"Add token expiry handling and return clear validation errors.",
+  student_note:"Initial implementation submitted for review.",created_by:"demo-guide"},
+ {id:"demo-task-3",team_id:"demo-team-4",assigned_student_id:"demo-student",title:"Database schema",
+  description:"Define tables and relations for customers, orders and products.",
+  status:"completed",work_url:"https://github.com/",mentor_feedback:"Schema approved. Good work.",
+  reviewed_by:"demo-guide",reviewed_at:day(today(),-2)+"T12:00:00Z",created_by:"demo-guide"},
+ {id:"demo-task-4",team_id:"demo-team-4",assigned_student_id:"demo-b",title:"Product browsing UI",
+  status:"review",work_url:"https://github.com/",created_by:"demo-guide"},
+ {id:"demo-task-5",team_id:"demo-team-4",assigned_student_id:"demo-c",title:"Orders database",
+  status:"in_progress",created_by:"demo-guide"},
+ {id:"demo-task-6",team_id:"demo-team-4",assigned_student_id:"demo-d",title:"Cart integration",
+  status:"todo",created_by:"demo-guide"}
+];
+D.internship_task_reviews=[
+ {id:"demo-review-1",task_id:"demo-task-3",reviewer_id:"demo-guide",result:"approved",feedback:"Schema approved. Good work.",created_at:day(today(),-2)+"T12:00:00Z"},
+ {id:"demo-review-2",task_id:"demo-task-2",reviewer_id:"demo-guide",result:"changes_requested",feedback:"Add token expiry handling and clear validation errors.",created_at:day(today(),-1)+"T12:00:00Z"}
+];
+D.timeline_events.push({id:"demo-weekly-practice",program_id:"demo-stack",phase:"training",
+ activity_type:"project",title:"JavaScript Mini Project",scheduled_date:day(a,55),published_to_students:true});
+D.submissions=[{id:"demo-weekly-sub",event_id:"demo-weekly-practice",student_id:"demo-student",status:"approved",submitted_at:day(a,59)+"T10:00:00Z"}];
+
+upi={upi_id:"preview@upi",payee:"Preview only — do not pay"}}
 
 const routePath=()=>"/"+(demo?"preview":"workspace")+"/"+role+"/"+(course&&page==="courses"?"classroom/"+encodeURIComponent(course):course&&["program-detail","program-edit","timeline","course-info"].includes(page)?page+"/"+encodeURIComponent(course):page);
 function navigateTo(newPage,programId=null,replace=false){
@@ -243,34 +284,42 @@ function mentorClassesV2(){
  return title("My Classes & Uploads","Only your scheduled lessons appear here. Other mentors can view published content, not change it.")+(rows||empty("No classes assigned","Admin has not scheduled a teaching class for you."));
 }
 function mentorTeamsV2(){
- const assigned=(D.internship_teams||[]).filter(t=>t.mentor_id===user.id);
- const list=assigned.map(team=>{
+ const teams=(D.internship_teams||[]).filter(t=>t.mentor_id===user.id||role==="admin");
+ const list=teams.map(team=>{
  const members=(D.internship_team_members||[]).filter(m=>m.team_id===team.id);
- const tasks=(D.internship_tasks||[]).filter(q=>q.team_id===team.id);
- const projectForm='<form class="form-grid" data-kind="v2-team-project" data-team="'+esc(team.id)+'">'+
- field("Major project","project_title","text",team.project_title||"")+
+ const tasks=hs3TaskList(team.id);
+ const editor='<form class="form-grid hs3-mentor-project-form" data-kind="v2-team-project" data-team="'+esc(team.id)+'">'+
+ field("Major project title","project_title","text",team.project_title||"")+
  notes("Project brief","project_brief",team.project_brief||"")+
  field("GitHub repository","repository_url","url",team.repository_url||"")+
- field("Deadline","due_date","date",team.due_date||"")+
- '<button class="btn btn-primary" type="submit">Save team project</button></form>';
- const taskRows=tasks.map(q=>row("▥",q.title,
- q.status+' · '+(q.assigned_student_id?who(q.assigned_student_id):"Whole team"),
- q.status!=="completed"?'<div class="form-actions">'+
- click("Move to review","v2-mentor-task-review",q.id,"btn-outline")+
- click("Approve complete","v2-mentor-task-complete",q.id,"btn-primary")+'</div>':tag("Completed"))).join("");
- const taskForm='<form class="form-grid" data-kind="v2-team-task" data-team="'+esc(team.id)+'">'+
- field("New task","title","text","",true)+notes("Instructions","description")+
- choose("Assign task","assigned_student_id",[["","Entire team"],...members.map(m=>[m.student_id,who(m.student_id)])],"")+
- '<button class="btn btn-primary" type="submit">Assign task</button></form>';
- return card("Team "+team.team_number+' — '+esc(p(team.program_id)?.title||"Program"),
- '<p>Five-person team: '+(members.map(m=>esc(who(m.student_id))).join(", ")||"No students allocated")+'</p>'+
- '<h3>Major project</h3>'+projectForm+
- '<h3>Task review</h3>'+(taskRows||empty("No tasks","Assign the first project task."))+taskForm);
+ field("Final deadline","due_date","date",team.due_date||"")+
+ '<button type="submit" class="btn btn-primary">Save project</button></form>';
+ const reviews=tasks.map(t=>{
+ const submitted=t.status==="review"&&hs3SafeUrl(t.work_url);
+ const work=t.work_url?hs3EvidenceLink(t.work_url,"Open work evidence"):"";
+ const feedback=submitted?'<form data-kind="hs3-review-internship-work" data-task="'+esc(t.id)+'" class="hs3-mentor-review-form">'+
+ '<label>Feedback<textarea class="input" rows="2" name="feedback" maxlength="2000" placeholder="What was done well? What needs improvement?"></textarea></label>'+
+ '<div class="form-actions"><button type="submit" name="decision" value="changes_requested" class="btn btn-outline">Request changes</button>'+
+ '<button type="submit" name="decision" value="approved" class="btn btn-primary">Approve work</button></div></form>':"";
+ return '<article class="hs3-mentor-task"><div class="hs3-mentor-task-head"><strong>'+esc(t.title)+'</strong>'+hs3TaskBadge(t.status)+'</div>'+
+ '<small>'+esc(t.assigned_student_id?who(t.assigned_student_id):"Whole team")+(t.due_at?" · Due "+date(t.due_at):"")+'</small>'+
+ (t.student_note?'<p>'+esc(t.student_note)+'</p>':"")+
+ (work?'<div class="hs3-mentor-link">'+work+'</div>':"")+
+ (t.mentor_feedback?'<p class="hs3-mentor-prev-feedback">Last feedback: '+esc(t.mentor_feedback)+'</p>':"")+
+ feedback+'</article>';
  }).join("");
- return title("My Internship Teams","Manage only the teams allocated to you. Other mentors have read-only program-level information.")+
- (list||empty("No teams assigned","Your internship teams appear after group allocation."));
+ const assign='<form class="form-grid" data-kind="v2-team-task" data-team="'+esc(team.id)+'">'+
+ field("New task","title","text","",true)+notes("Instructions","description")+
+ choose("Assign to","assigned_student_id",[["","Whole team"],...members.map(m=>[m.student_id,who(m.student_id)])],"")+
+ '<button class="btn btn-primary" type="submit">Assign task</button></form>';
+ return card("Team "+team.team_number+" · "+(p(team.program_id)?.title||"Program"),
+ '<div class="hs3-mentor-summary">'+members.length+' members · '+tasks.length+' tasks · '+tasks.filter(t=>t.status==="review").length+' awaiting review</div>'+
+ '<h3>Major project</h3>'+editor+'<h3>Task reviews</h3>'+
+ (reviews||'<p class="hs3-mentor-summary">No tasks assigned yet.</p>')+
+ '<h3>Create task</h3>'+assign);
+ }).join("");
+ return title("My internship teams","")+(list||empty("No teams assigned","Internship teams appear after Admin allocation."));
 }
-
 /* Student v3 learning + internship: all progress comes from verified records. */
 const hs3SafeUrl=value=>/^https:\/\/[^\s]+$/i.test(String(value||""))&&String(value).length<=2000;
 const hs3TaskLabel=status=>({
@@ -574,20 +623,37 @@ const stProgramCard=(program,compact=false)=>{
   '<button class="st-text-link" data-action="open-course" data-id="'+esc(program.id)+'">Continue '+stIcon('arrow',17)+'</button></div></div></article>';
 };
 function studentOverview(){
- const assigned=selectedPrograms();
- const displayName=(D.profiles.find(p=>p.id===user.id)?.full_name||user.user_metadata?.full_name||"Learner").trim().split(/\s+/)[0];
- const upcoming=D.live_sessions.filter(l=>assigned.some(pr=>pr.id===l.program_id)&&l.session_date>=today()).sort((a,b)=>String(a.session_date+a.start_time).localeCompare(String(b.session_date+b.start_time)))[0];
- const actualToday=D.timeline_events.filter(e=>assigned.some(pr=>pr.id===e.program_id&&e.scheduled_date===programToday(pr))).slice(0,4);
- const top=assigned.length?'<div class="st-courses-stack">'+stProgramCard(assigned[0],true)+'</div>':
-  '<div class="st-white-panel st-compact-empty"><p>No program enrolled yet.</p>'+stAction("Explore programs","student-explore")+'</div>';
- const lessons=actualToday.length?actualToday.map(ev=>'<button class="st-activity" data-action="student-open-lesson" data-id="'+esc(ev.id)+'"><span class="st-activity-icon">'+stIcon(["assignment","project","milestone"].includes(ev.activity_type)?"task":"book",20)+'</span><span><b>'+esc(ev.title)+'</b><small>'+esc(p(ev.program_id)?.title||"Program")+'</small></span>'+stIcon("chevron",16)+'</button>').join(""):
- '<div class="st-empty-inline">Nothing scheduled for today.</div>';
- const upcomingCard=upcoming?'<button class="hs-next-class" data-action="navigate" data-view="sessions"><span class="hs-action-icon">'+stIcon("video",20)+'</span><span><b>'+esc(upcoming.title)+'</b><small>'+date(upcoming.session_date)+' · '+esc(String(upcoming.start_time||"").slice(0,5))+'</small></span>'+stIcon("chevron",18)+'</button>':"";
- return '<div class="st-view hs-student-home">'+stPageHeading("Hi, "+displayName,"")+
- '<section class="st-block"><div class="st-block-heading"><h2>Continue learning</h2><button class="st-text-link" data-action="navigate" data-view="courses">All courses '+stIcon("arrow",16)+'</button></div>'+top+'</section>'+
- '<section class="st-block"><div class="st-block-heading"><h2>Today</h2><button class="st-text-link" data-action="navigate" data-view="timeline">Schedule '+stIcon("arrow",16)+'</button></div><div class="st-white-panel">'+lessons+'</div></section>'+
- (upcomingCard?'<section class="st-block"><div class="st-block-heading"><h2>Next class</h2></div>'+upcomingCard+'</section>':"")+
- '</div>';
+ const programs=selectedPrograms().filter(enrolled);
+ const name=(D.profiles.find(x=>x.id===user.id)?.full_name||user.user_metadata?.full_name||"Learner").trim().split(/\s+/)[0];
+ const teams=hs3MyTeams();
+ const activeTeam=teams.find(t=>{const pr=p(t.program_id);return pr&&current(pr)>pr.training_days;})||teams[0];
+ const program=activeTeam?p(activeTeam.program_id):programs[0];
+ const inInternship=!!program&&current(program)>program.training_days;
+ const all=hs3AllTasks(),pending=all.filter(t=>["todo","in_progress","changes_requested"].includes(t.status));
+ const actionTask=inInternship?pending.find(t=>t.type==="internship")||pending[0]:pending.find(t=>t.type!=="internship")||pending[0];
+ const attempts=(D.quiz_attempts||[]).filter(a=>a.student_id===user.id).length;
+ const workDone=all.filter(t=>t.status==="completed").length;
+ const pendingCount=pending.length;
+ const dayCount=program?current(program):0,duration=program?total(program):0,clockPercent=duration?Math.min(100,Math.round(dayCount/duration*100)):0;
+ const hero=program?'<section class="hs3-home-hero"><div class="hs3-home-overline"><span>'+stIcon(inInternship?"briefcase":"book",17)+' '+(inInternship?"INTERNSHIP PHASE":"YOUR LEARNING JOURNEY")+'</span><span>DAY '+dayCount+' / '+duration+'</span></div>'+
+ '<h2>'+esc(program.title)+'</h2><p>'+(inInternship?"Build your project with your team.":"Keep learning, practicing and building.")+'</p>'+
+ '<div class="hs3-home-progress"><div><span>Program timeline</span><strong>'+clockPercent+'%</strong></div><div class="hs3-progress-track"><span style="width:'+clockPercent+'%"></span></div></div>'+
+ '<button type="button" class="hs3-home-primary" data-action="navigate" data-view="'+(inInternship?"my-internship":"courses")+'">'+(inInternship?"Continue project work":"Continue learning")+' '+stIcon("arrow",17)+'</button></section>':
+ '<section class="hs3-home-hero hs3-home-empty"><div class="hs3-home-overline"><span>WELCOME TO HACKSPHERE</span></div><h2>Start your learning journey</h2><p>Choose a program to begin.</p>'+
+ '<button class="hs3-home-primary" data-action="student-explore">Explore programs '+stIcon("arrow",16)+'</button></section>';
+ const action=actionTask?'<button type="button" class="hs3-next-task" data-action="'+(actionTask.type==="internship"?"hs3-open-internship-task":"hs3-open-learning-task")+
+ '" data-id="'+esc(actionTask.id)+'" data-type="'+esc(actionTask.type)+'"><span class="hs3-task-symbol">'+stIcon(actionTask.type==="internship"?"briefcase":actionTask.type==="quiz"?"quiz":"task",22)+'</span>'+
+ '<span class="hs3-next-task-text"><small>YOUR NEXT ACTION</small><strong>'+esc(actionTask.title)+'</strong><span>'+esc(actionTask.label)+' · '+esc(actionTask.detail)+'</span></span>'+
+ '<span class="hs3-next-chevron">'+stIcon("arrow",19)+'</span></button>':
+ inInternship&&!activeTeam?'<div class="hs3-next-task hs3-next-pending"><span class="hs3-task-symbol">'+stIcon("user",22)+'</span><span class="hs3-next-task-text"><small>INTERNSHIP</small><strong>Team allocation pending</strong><span>Admin will allocate your project team after training.</span></span></div>':"";
+ const upcoming=(D.live_sessions||[]).filter(l=>programs.some(pr=>pr.id===l.program_id)&&l.session_date>=today()).sort((a,b)=>String(a.session_date+a.start_time).localeCompare(String(b.session_date+b.start_time)))[0];
+ const upcomingCard=upcoming?'<button class="hs3-home-class" data-action="navigate" data-view="sessions"><span class="hs3-task-symbol">'+stIcon("video",21)+'</span><span><strong>'+esc(upcoming.title)+'</strong><small>'+date(upcoming.session_date)+' · '+esc(String(upcoming.start_time||"").slice(0,5))+'</small></span>'+stIcon("chevron",18)+'</button>':"";
+ return '<div class="st-view hs3-student-page hs3-home">'+stPageHeading("Hi, "+name+" 👋","")+
+ hero+(action?'<div class="hs3-section-head"><h3>Up next</h3><button data-action="navigate" data-view="tasks">All tasks '+stIcon("arrow",15)+'</button></div>'+action:"")+
+ '<div class="hs3-home-metrics"><div><strong>'+pendingCount+'</strong><span>Pending tasks</span></div><div><strong>'+workDone+'</strong><span>Approved / done</span></div><div><strong>'+attempts+'</strong><span>Quiz attempts</span></div></div>'+
+ (upcomingCard?'<div class="hs3-section-head"><h3>Upcoming class</h3><button data-action="navigate" data-view="timeline">Calendar '+stIcon("arrow",15)+'</button></div>'+upcomingCard:"")+
+ '<div class="hs3-home-shortcuts"><button data-action="navigate" data-view="courses">'+stIcon("book",18)+' My learning '+stIcon("chevron",15)+'</button>'+
+ '<button data-action="navigate" data-view="my-internship">'+stIcon("briefcase",18)+' Internship '+stIcon("chevron",15)+'</button></div></div>';
 }
 function studentCourses(){
  const programs=selectedPrograms();
