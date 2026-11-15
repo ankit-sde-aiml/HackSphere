@@ -1816,3 +1816,9 @@ button,a,input,select,textarea{-webkit-tap-highlight-color:transparent}
  #app-shell .hs3-task-item{gap:7px}
  #app-shell .hs3-home-metrics span{font-size:9px}
 }
+
+/* Student v5.3.1: preserve readable headings on dark hero cards.
+   Existing student .st-view h2 selector has higher specificity. */
+#app-shell.hs-student .st-view .hs3-intern-hero h2,
+#app-shell.hs-student .st-view .hs3-home-hero h2{color:#fff!important;text-shadow:0 1px 2px #00000022}
+#app-shell.hs-student .st-view .hs3-intern-hero h2{font-weight:850!important}
