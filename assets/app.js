@@ -11,7 +11,7 @@ const tag=s=>'<span class="pill">'+esc(s)+"</span>";
 const empty=(t,d)=>'<div class="empty"><div class="empty-icon">✧</div><h3>'+esc(t)+'</h3><p>'+esc(d)+"</p></div>";
 const card=(h,b)=>'<section class="panel"><div class="panel-head"><h3>'+esc(h)+'</h3></div>'+b+"</section>";
 const row=(icon,t,d,r="")=>'<div class="list-row"><span class="row-icon">'+icon+'</span><div class="row-body"><strong>'+esc(t)+'</strong><small>'+esc(d)+'</small></div>'+r+"</div>";
-const title=(h,d,actions="")=>'<div class="page-title"><div><h1>'+esc(h)+'</h1><p>'+esc(d)+'</p></div>'+(actions?'<div class="form-actions">'+actions+'</div>':"")+'</div>';
+const title=(h,d,actions="")=>'<div class="page-title"><h1>'+esc(h)+'</h1>'+(actions?'<div class="form-actions">'+actions+'</div>':"")+'</div>';
 const field=(name,id,type="text",val="",required=false)=>'<label class="field"><span>'+esc(name)+'</span><input class="input" name="'+id+'" type="'+type+'" value="'+esc(val)+'" '+(required?"required":"")+"></label>";
 const choose=(name,id,values,selected=null)=>'<label class="field"><span>'+esc(name)+'</span><select name="'+id+'" class="input">'+values.map(v=>'<option value="'+esc(v[0])+'" '+(selected===v[0]?"selected":"")+' >'+esc(v[1])+"</option>").join("")+"</select></label>";
 const notes=(name,id,initial="")=>'<label class="field"><span>'+esc(name)+'</span><textarea class="input" name="'+id+'">'+esc(initial)+'</textarea></label>';
@@ -34,7 +34,7 @@ function seed(){let a=day(today(),-27),b=day(today(),-69);D.programs=[{id:"demo-
 
 const routePath=()=>"/"+(demo?"preview":"workspace")+"/"+role+"/"+(course&&page==="courses"?"classroom/"+encodeURIComponent(course):course&&["program-detail","program-edit","timeline","course-info"].includes(page)?page+"/"+encodeURIComponent(course):page);
 function navigateTo(newPage,programId=null,replace=false){
- page=newPage;course=programId;lesson=null;timelineOffset=0;
+ hsCloseMore();page=newPage;course=programId;lesson=null;timelineOffset=0;
  const path=routePath();
  if(location.pathname!==path)history[replace?"replaceState":"pushState"]({},'',path);
  $("app-shell").classList.remove("drawer-open");
@@ -51,8 +51,34 @@ function readRoute(){
  else {page=requested;course=null}
  return true;
 }
-window.addEventListener("popstate",()=>{if(!user){publicPage();return}readRoute();render()});
+window.addEventListener("popstate",()=>{hsCloseMore();if(!user){publicPage();return}readRoute();render()});
 
+const hsNavConfig={
+ student:[["overview","home","Home"],["courses","book","Courses"],["timeline","calendar","Schedule"],["my-internship","briefcase","Internship"]],
+ mentor:[["overview","home","Home"],["mentor-classes","calendar","Classes"],["reviews","task","Reviews"],["mentor-teams","briefcase","Teams"]],
+ admin:[["overview","home","Home"],["programs","book","Programs"],["schedule-v2","calendar","Schedule"],["payments","task","Payments"]]
+};
+const hsNavRoot=key=>({
+ "program-new":"programs","program-detail":"programs","program-edit":"programs",
+ "payment-history":"payments","payment-settings":"payments",
+ "course-info":"courses","staff-invite":"staff"
+})[key]||key;
+function hsCloseMore(){const d=document.getElementById("hs-more-dialog");if(d?.open)d.close()}
+function hsBuildNavigation(){
+ const root=hsNavRoot(page),primary=hsNavConfig[role]||hsNavConfig.student;
+ let el=document.getElementById("hs-primary-nav");
+ if(!el){el=document.createElement("nav");el.id="hs-primary-nav";el.className="hs-primary-nav";el.setAttribute("aria-label","Workspace navigation");document.querySelector("#app-shell .app-main").insertBefore(el,$("app-page"))}
+ el.innerHTML=primary.map(([key,ico,label])=>'<button type="button" class="'+(root===key?"active":"")+'" data-action="navigate" data-view="'+key+'" aria-label="'+esc(label)+'" aria-current="'+(root===key?"page":"false")+'">'+stIcon(ico,20)+'<span>'+esc(label)+'</span></button>').join("")+
+ '<button type="button" class="hs-more-trigger '+(primary.some(x=>x[0]===root)?"":"active")+'" data-action="open-more" aria-label="More sections">'+
+ '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg><span>More</span></button>';
+ let dialog=document.getElementById("hs-more-dialog");
+ if(!dialog){dialog=document.createElement("dialog");dialog.id="hs-more-dialog";dialog.className="hs-more-dialog";dialog.setAttribute("aria-label","All workspace sections");document.querySelector("#app-shell").append(dialog)}
+ const labels=menu[role].filter(item=>!primary.some(x=>x[0]===item[0]));
+ dialog.innerHTML='<div class="hs-more-head"><h2>All sections</h2><button type="button" data-action="close-more" aria-label="Close menu">'+
+ '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 5l14 14M19 5 5 19"/></svg></button></div>'+
+ '<div class="hs-more-grid">'+labels.map(([key,ico,label])=>'<button type="button" class="'+(root===key?"active":"")+'" data-action="navigate" data-view="'+key+'"><span class="hs-more-symbol">'+esc(ico)+'</span><span>'+esc(label)+'</span>'+stIcon("chevron",16)+'</button>').join("")+'</div>'+
+ '<div class="hs-more-footer"><button data-action="signout" class="hs-signout-button">Sign out</button></div>';
+}
 let previousFocus=null;
 function loginDialog(){previousFocus=document.activeElement;$("login-modal").hidden=false;document.body.style.overflow="hidden";document.querySelector('#login-modal [data-action="google-login"]')?.focus()}
 function hideDialog(){let wasOpen=!$("login-modal").hidden;$("login-modal").hidden=true;document.body.style.overflow="";if(wasOpen&&previousFocus&&document.contains(previousFocus))previousFocus.focus();previousFocus=null}
@@ -60,7 +86,7 @@ function publicPage(){ $("marketing").hidden=false;$("app-shell").hidden=true;$(
 function demoOpen(){demo=true;reset();seed();user={id:"demo-student",email:"student@example.com",user_metadata:{full_name:"Preview Learner"}};role="student";page="overview";course=null;hideDialog();navigateTo("overview",null);open();notice("Preview mode: all example data is isolated from live records.","success")}
 function open(){hideDialog();$("marketing").hidden=true;$("app-shell").hidden=false;$("skip-link").setAttribute("href","#app-page");window.scrollTo(0,0);if(!readRoute())navigateTo("overview",null,true);else render()}
 async function signIn(){if(!db){$("login-notice").hidden=false;$("login-notice").textContent="Google sign-in is temporarily unavailable. Please try again later.";return}let r=await db.auth.signInWithOAuth({provider:"google",options:{redirectTo:location.origin+"/",queryParams:{prompt:"select_account"}}});if(r.error)notice(r.error.message,"error")}
-async function signOut(){if(db&&!demo)await db.auth.signOut();user=null;demo=false;reset();publicPage();catalog()}
+async function signOut(){hsCloseMore();if(db&&!demo)await db.auth.signOut();user=null;demo=false;reset();publicPage();catalog()}
 async function reload(){if(!db||!user||demo)return;try{const status=await fetch('/api/videos/status',{cache:'no-store'});videoStorageReady=!!(await status.json()).r2Connected}catch(e){videoStorageReady=false}await Promise.all(keys.map(async k=>{try{let r=await db.from(k).select("*").limit(900);D[k]=r.error?[]:r.data||[]}catch(e){D[k]=[]}}));try{await db.rpc("accept_my_staff_invitation");let r=await db.from("staff_roles").select("*");if(!r.error)D.staff_roles=r.data||[]}catch(e){}try{let r=await db.rpc("get_payment_instructions");if(!r.error)upi=r.data||{}}catch(e){}}
 async function save(t,obj,id){if(demo){if(id)D[t]=D[t].map(x=>x.id===id?{...x,...obj}:x);else D[t].unshift({id:"preview-"+Math.random().toString(36).slice(2),...obj});notice("Preview mode only — nothing saved to the live database.","success");render();return true}if(!db||!user){notice("Sign in first.","error");return false}try{let r=id?await db.from(t).update(obj).eq("id",id):t==="site_settings"?await db.from(t).upsert(obj,{onConflict:"key"}):await db.from(t).insert(obj);if(r.error)throw r.error;notice("Saved successfully.","success");await reload();render();return true}catch(e){notice("Save failed: "+e.message,"error");return false}}
 
@@ -143,13 +169,7 @@ function render(){if(!user)return;$("app-shell").classList.toggle("hs-student",r
  guide:[["Internship workspace",["overview","courses","timeline","reviews"]],["Evaluation & account",["performance","complete","profile"]]]
 };
 $("side-nav").innerHTML=navGroups[role].map(([group,ids])=>'<div class="nav-group"><div class="nav-group-label">'+esc(group)+'</div>'+ids.map(id=>{let item=menu[role].find(x=>x[0]===id);if(!item)return "";let [v,i,l]=item;let active=page===v||(page==="course-info"&&v==="explore")||(page==="program-detail"&&v==="programs")||(page==="program-edit"&&v==="programs")||(page==="program-new"&&v==="programs")||(page==="payment-history"&&v==="payments")||(page==="payment-settings"&&v==="payments")||(page==="staff-invite"&&v==="staff");return '<button class="'+(active?"active":"")+'" data-action="navigate" data-view="'+v+'" aria-current="'+(active?"page":"false")+'"><span class="nav-icon">'+i+'</span><span>'+esc(l)+'</span></button>'}).join("")+'</div>').join("");$("side-role").textContent=({student:"Student portal",trainer:"Trainer workspace",guide:"Internship guide",mentor:"Mentor workspace",admin:"Administration"})[role];let label=menu[role].find(x=>x[0]===page)?.[2]||({"program-new":"Create Program","program-detail":"Program Workspace","program-edit":"Edit Program","staff-invite":"Invite Staff","payment-history":"Payment History","payment-settings":"Payment Settings",profile:"My Profile",submissions:"Submissions"})[page]||"Workspace";$("section-label").textContent=label;$("crumb").textContent=label.toUpperCase();let name=D.profiles.find(x=>x.id===user.id)?.full_name||user.user_metadata?.full_name||user.email?.split("@")[0]||"Learner";$("user-display").textContent=name;$("user-avatar").textContent=name.slice(0,2).toUpperCase();$("demo-pill").hidden=!demo;
-let mobile=$("student-bottom-nav");
-if(!mobile){mobile=document.createElement("nav");mobile.id="student-bottom-nav";mobile.className="st-bottom-nav";mobile.setAttribute("aria-label","Student mobile navigation");document.querySelector("#app-shell .app-main").append(mobile)}
-mobile.hidden=role!=="student";
-if(role==="student"){
- const choices=[["overview","home","Home"],["courses","book","Courses"],["explore","compass","Explore"],["timeline","calendar","Calendar"],["profile","user","Profile"]];
- mobile.innerHTML=choices.map(([key,ico,label])=>'<button class="'+((page===key)||(key==="explore"&&page==="course-info")?'active':'')+'" data-action="navigate" data-view="'+key+'" aria-label="'+label+'">'+stIcon(ico,21)+'<span>'+label+'</span></button>').join("");
-}
+hsBuildNavigation();
 const view={"notifications":studentNotificationsV2,"mentor-classes":mentorClassesV2,"mentor-teams":mentorTeamsV2,"global-events":globalEventsV2,"my-internship":studentInternshipV2,"mentor-assignments":adminMentorsV2,"schedule-v2":adminScheduleV2,"teams-overview":adminTeamsV2,overview:overview,courses:courses,programs:programAdmin,"program-new":programNew,"program-detail":programDetail,"program-edit":programEdit,timeline:timeline,sessions:sessions,reviews:reviews,students:students,payments:payments,"payment-history":paymentHistory,"payment-settings":paymentSettings,staff:staff,"staff-invite":staffInvite,guides:guides,performance:performance,complete:complete,documents:documents,enrollment:enrollment,settings:settings,profile:profilePage,submissions:mySubmissions};
 const studentViews={overview:studentOverview,courses:studentCourses,explore:studentExplore,"course-info":studentProgramInfo,timeline:studentCalendar,enrollment:studentEnrollmentPage,sessions:studentSessions,submissions:studentAssignments,performance:studentPerformance,documents:studentDocuments,profile:studentProfile};
 $("app-page").innerHTML=course&&page==="courses"?(role==="student"?studentClassroom():classroom()):
@@ -333,73 +353,27 @@ function adminTeamsV2(){
 
 function overview(){
  const ps=selectedPrograms();
- const first=ps[0];
- const upcoming=D.live_sessions.filter(x=>x.session_date>=today()).sort((a,b)=>xDate(a).localeCompare(xDate(b)))[0];
- const pending=D.payment_claims.filter(x=>x.status==="pending");
- const selfReviews=D.evaluations.filter(x=>x.student_id===user.id);
- const assigned=D.guide_allocations.filter(x=>x.guide_user_id===user.id);
- const relatedTasks=D.submissions.filter(x=>x.status==="submitted");
- const guideStudentCount=new Set(assigned.map(x=>x.student_id)).size;
- const activePrograms=D.programs.filter(x=>["published","ongoing"].includes(x.status));
- let stats=[],heading="",subtitle="",bannerTitle="",bannerDesc="",bannerAction="";
+ const action=(key,label,ico)=>'<button class="hs-action-item" data-action="navigate" data-view="'+key+'"><span class="hs-action-icon">'+stIcon(ico,20)+'</span><span>'+esc(label)+'</span>'+stIcon('chevron',16)+'</button>';
+ let stats=[],actions=[],featured="";
  if(role==="admin"){
-  heading="HackSphere control center";subtitle="Your entire learning platform, organized and under control.";
-  stats=[["▦",activePrograms.length,"Active programs"],["◫",pending.length,"Pending payments"],["♙",new Set(D.staff_roles.map(x=>x.user_id)).size,"Team members"],["✧",D.completion_recommendations.filter(x=>x.recommendation==="recommended").length,"Completion requests"]];
-  bannerTitle="Everything your academy needs.";bannerDesc="Create courses, manage payment approvals, invite teaching staff and oversee every internship in one place.";
-  bannerAction='<button class="btn btn-white" data-action="program-new">+ Create program</button>';
- }else if(role==="trainer"||role==="mentor"){
-  heading="Your teaching workspace";subtitle="Manage upcoming lessons, classes and student performance.";
-  stats=[["▦",ps.length,"Assigned programs"],["▷",D.live_sessions.length,"Live sessions"],["▥",relatedTasks.length,"Submissions in queue"],["◎",D.evaluations.length,"Evaluations"]];
-  bannerTitle="Teach with clarity. Track with confidence.";bannerDesc="A dedicated workspace for curriculum, live sessions and training feedback.";
-  bannerAction='<button class="btn btn-white" data-action="navigate" data-view="timeline">Manage lessons ↗</button>';
- }else if(role==="guide"){
-  heading="Internship guide workspace";subtitle="Keep your project teams moving forward.";
-  stats=[["◇",guideStudentCount,"Assigned interns"],["▦",ps.length,"Programs"],["▥",relatedTasks.length,"Submitted work"],["✧",D.completion_recommendations.length,"Recommendations"]];
-  bannerTitle="Make every project milestone count.";bannerDesc="Review real-world internship projects and give students actionable feedback.";
-  bannerAction='<button class="btn btn-white" data-action="navigate" data-view="reviews">Review work ↗</button>';
+   const pending=D.payment_claims.filter(x=>x.status==="pending").length;
+   stats=[["Programs",D.programs.filter(x=>["published","ongoing"].includes(x.status)).length],["Payments to review",pending],["Mentors",new Set(D.program_mentors.map(x=>x.mentor_id)).size]];
+   actions=[["programs","Programs","book"],["schedule-v2","Class schedule","calendar"],["payments","Payments","task"],["mentor-assignments","Mentors","user"],["teams-overview","Internship teams","briefcase"],["global-events","Guest sessions","video"]];
+   featured='<div class="hs-overview-cta"><div><b>Manage your programs</b><span>Classes, mentors and students</span></div><button class="btn btn-primary" data-action="program-new">New program +</button></div>';
  }else{
-  heading="Your learning hub";subtitle="A clear view of what's happening across your programs.";
-  stats=[["▦",ps.length,"Enrolled courses"],["▤",D.timeline_events.filter(x=>x.scheduled_date<=today()).length,"Released activities"],["◎",selfReviews.length,"Evaluations"],["▷",D.live_sessions.filter(x=>x.session_date>=today()).length,"Scheduled classes"]];
-  bannerTitle="Keep your momentum going.";bannerDesc="Your classes and project milestones unlock according to the program schedule. Pick up where you left off.";
-  bannerAction='<button class="btn btn-white" data-action="navigate" data-view="courses">Continue learning ↗</button>';
+   const myClasses=D.timeline_events.filter(x=>x.responsible_mentor_id===user.id);
+   const myTeams=D.internship_teams.filter(x=>x.mentor_id===user.id);
+   const ownedEvents=new Set(myClasses.map(x=>x.id));
+   const pending=D.submissions.filter(x=>ownedEvents.has(x.event_id)&&["submitted","changes_requested"].includes(x.status)).length;
+   stats=[["My classes",myClasses.length],["Reviews",pending],["Internship teams",myTeams.length]];
+   actions=[["mentor-classes","My classes","calendar"],["reviews","Review submissions","task"],["mentor-teams","My teams","briefcase"],["sessions","Live classes","video"],["courses","Programs","book"],["global-events","Guest sessions","compass"]];
+   const next=myClasses.filter(x=>x.scheduled_date>=today()).sort((a,b)=>a.scheduled_date.localeCompare(b.scheduled_date))[0];
+   if(next)featured='<div class="hs-overview-cta"><div><b>'+esc(next.title)+'</b><span>Next class · '+date(next.scheduled_date)+'</span></div><button class="btn btn-primary" data-action="navigate" data-view="mentor-classes">Open</button></div>';
  }
- const banner='<div class="workspace-banner dashboard-banner"><div class="banner-icon">✦</div><div>'+
- '<span class="eyebrow">WELCOME TO YOUR WORKSPACE</span><h2>'+esc(bannerTitle)+'</h2><p>'+esc(bannerDesc)+'</p></div>'+bannerAction+'</div>';
- const tiles='<div class="stat-grid">'+stats.map(([ico,num,name])=>'<div class="stat"><span class="sicon">'+ico+'</span><b>'+num+'</b><small>'+esc(name)+'</small></div>').join("")+'</div>';
- const programsList=ps.length?ps.map(pr=>{
-  const currentDay=current(pr),days=total(pr),progress=Math.round(currentDay/days*100);
-  return '<div class="learning-program-row">'+
-    '<div class="learning-icon">▦</div>'+
-    '<div class="learning-program-body"><b>'+esc(pr.title)+'</b><small>Day '+currentDay+' / '+days+' · '+(currentDay<=pr.training_days?"Training":"Internship")+' phase</small>'+
-    '<div class="progress" style="margin:8px 0 4px;max-width:350px"><i style="width:'+progress+'%"></i></div>'+
-    '<div class="progress-caption">'+progress+'% of scheduled days reached</div></div>'+
-    click(role==="admin"?"Manage":"Open","open-course",pr.id,"btn-primary")+'</div>';
- }).join(""):empty("No programs yet","Programs will appear after they're created and assigned to you.");
- let right="";
- if(role==="admin"){
-  right=[
-  '<div class="shortcut-list">',
-  '<button data-action="navigate" data-view="payments"><span class="shortcut-icon">₹</span><b>Review payments</b><small>'+pending.length+' pending</small><i>↗</i></button>',
-  '<button data-action="staff-invite"><span class="shortcut-icon">♙</span><b>Invite Trainer or Guide</b><small>Access management</small><i>↗</i></button>',
-  '<button data-action="navigate" data-view="guides"><span class="shortcut-icon">◇</span><b>Allocate internship Guides</b><small>At internship start</small><i>↗</i></button>',
-  '<button data-action="navigate" data-view="complete"><span class="shortcut-icon">✧</span><b>Certificate approvals</b><small>Guide recommendation first</small><i>↗</i></button>',
-  '</div>'
-  ].join("");
- }else{
-  right=[
-  '<div class="shortcut-list">',
-  '<button data-action="navigate" data-view="timeline"><span class="shortcut-icon">▤</span><b>Daily timeline</b><small>Date-wise content</small><i>↗</i></button>',
-  '<button data-action="navigate" data-view="'+(role==="student"?"sessions":role==="guide"?"reviews":"sessions")+'"><span class="shortcut-icon">▷</span><b>'+(role==="guide"?"Review projects":"Live classes")+'</b><small>Upcoming and scheduled</small><i>↗</i></button>',
-  '<button data-action="navigate" data-view="performance"><span class="shortcut-icon">◎</span><b>Evaluation history</b><small>Scores and feedback</small><i>↗</i></button>',
-  '</div>'
-  ].join("");
- }
- return title(heading,subtitle)+banner+tiles+
- '<div class="two-col"><div>'+card(role==="student"?"Continue your learning":role==="admin"?"All managed programs":"Your active batches",programsList)+
- (upcoming&&role!=="admin"?card("Upcoming session",row("▷",upcoming.title,date(upcoming.session_date)+" · "+String(upcoming.start_time||"").slice(0,5)+" IST",click("Sessions","navigate","","btn-outline").replace('data-action="navigate"','data-action="navigate" data-view="sessions"'))):"")+
- '</div><div>'+card("Quick actions",right)+
- card("How HackSphere works",'<div class="alert"><b>Calendar-based releases.</b><br>Training and internship activities unlock on their scheduled dates, not based on earlier scores. Administrator approves final certificates.</div>')+
- '</div></div>';
+ return title(role==="admin"?"Dashboard":"Mentor dashboard","")+
+ (featured||"")+
+ '<div class="hs-metric-grid">'+stats.map(([label,num])=>'<div class="hs-metric"><strong>'+num+'</strong><span>'+esc(label)+'</span></div>').join("")+'</div>'+
+ '<section class="hs-section"><h2>Quick access</h2><div class="hs-action-grid">'+actions.map(a=>action(...a)).join("")+'</div></section>';
 }
 function xDate(s){return String(s.session_date||"")+"T"+String(s.start_time||"")}
 function courses(){let ps=selectedPrograms();return title("My learning programs","Select a program to open its classroom and daily curriculum.")+(ps.length?'<div class="grid">'+ps.map(x=>'<article class="course-card"><div class="course-art">▦</div><div class="course-body"><h3>'+esc(x.title)+'</h3><p>'+esc(x.description)+'</p><div class="course-meta">Day '+current(x)+" / "+total(x)+"</div><div class=\"course-footer\">"+(x.is_test?'<span class="pill orange">QA TEST</span>':tag(x.mode))+click("Open classroom","open-course",x.id,"btn-primary")+"</div></div></article>").join("")+"</div>":empty("No courses yet","Enroll in a published program or wait for your assignment."))}
@@ -435,7 +409,7 @@ const stIcon=(name,size=20)=>{
 const stAction=(label,action,id="",secondary=false)=>'<button class="st-btn'+(secondary?' st-btn-outline':'')+'" type="button" data-action="'+esc(action)+'"'+(id?' data-id="'+esc(id)+'"':'')+'>'+esc(label)+stIcon('arrow',17)+'</button>';
 const stActualEvents=program=>D.timeline_events.filter(e=>e.program_id===program.id&&e.published_to_students===true&&e.scheduled_date<=programToday(program)).sort((a,b)=>String(a.scheduled_date).localeCompare(String(b.scheduled_date))||String(a.created_at||'').localeCompare(String(b.created_at||'')));
 const stPublishedResources=eventId=>(D.lesson_resources||[]).filter(r=>r.event_id===eventId&&r.published);
-const stPageHeading=(name,desc,action="")=>'<header class="st-page-head"><div><h1>'+esc(name)+'</h1>'+(desc?'<p>'+esc(desc)+'</p>':'')+'</div>'+action+'</header>';
+const stPageHeading=(name,desc,action="")=>'<header class="st-page-head"><h1>'+esc(name)+'</h1>'+action+'</header>';
 const stProgramProgress=program=>{
  const percentage=Math.round(current(program)/Math.max(1,total(program))*100);
  return '<div class="st-progress"><span style="width:'+percentage+'%"></span></div>';
@@ -451,21 +425,19 @@ const stProgramCard=(program,compact=false)=>{
 };
 function studentOverview(){
  const assigned=selectedPrograms();
- const first=assigned[0];
- const displayName=(D.profiles.find(p=>p.id===user.id)?.full_name||user.user_metadata?.full_name||'Learner').trim().split(/\s+/)[0];
- const actualToday=D.timeline_events.filter(e=>assigned.some(pr=>pr.id===e.program_id&&e.scheduled_date===programToday(pr))).slice(0,5);
+ const displayName=(D.profiles.find(p=>p.id===user.id)?.full_name||user.user_metadata?.full_name||"Learner").trim().split(/\s+/)[0];
  const upcoming=D.live_sessions.filter(l=>assigned.some(pr=>pr.id===l.program_id)&&l.session_date>=today()).sort((a,b)=>String(a.session_date+a.start_time).localeCompare(String(b.session_date+b.start_time)))[0];
- const courseContent=assigned.length?'<div class="st-courses-stack">'+assigned.slice(0,2).map(pr=>stProgramCard(pr,true)).join('')+'</div>':[
- '<div class="st-empty"><div class="st-empty-icon">'+stIcon('book',27)+'</div><h3>Start learning something new</h3>',
- '<p>Browse the available programs and choose the right next step.</p>',stAction('Explore programs','student-explore'),'</div>'
- ].join('');
- const lessons=actualToday.length?actualToday.map(ev=>'<button class="st-activity" data-action="student-open-lesson" data-id="'+esc(ev.id)+'"><span class="st-activity-icon">'+stIcon(ev.activity_type==='quiz'?'quiz':["assignment","project","milestone"].includes(ev.activity_type)?'task':'play',20)+'</span><span><b>'+esc(ev.title)+'</b><small>'+esc(p(ev.program_id)?.title||'Program')+' · '+esc(ev.activity_type)+'</small></span>'+stIcon('chevron',17)+'</button>').join(''):'<div class="st-empty-inline">No lessons scheduled for today.</div>';
- const live=upcoming?'<div class="st-upcoming"><span class="st-upcoming-icon">'+stIcon('video',20)+'</span><div><b>'+esc(upcoming.title)+'</b><small>'+date(upcoming.session_date)+' · '+esc(String(upcoming.start_time||'').slice(0,5))+'</small></div><button class="st-text-link" data-action="navigate" data-view="sessions">View schedule '+stIcon('arrow',16)+'</button></div>':'<div class="st-empty-inline">No upcoming live classes.</div>';
- return '<div class="st-view">'+stPageHeading('Hello, '+displayName,'Ready to learn something new today?')+
- '<div class="st-overview-grid"><div class="st-overview-main"><div class="st-block"><div class="st-block-heading"><h2>Continue learning</h2><button class="st-text-link" data-action="navigate" data-view="courses">View all '+stIcon('arrow',15)+'</button></div>'+courseContent+'</div>'+
- '<div class="st-block"><div class="st-block-heading"><h2>Today’s learning</h2></div><div class="st-white-panel">'+lessons+'</div></div></div>'+
- '<aside class="st-overview-side"><div class="st-explore-spot"><div class="st-explore-art">'+stIcon('compass',35)+'</div><h2>Build your next skill</h2><p>Discover expert-led training and practical projects.</p>'+stAction('Explore programs','student-explore')+'</div>'+
- '<div class="st-block"><div class="st-block-heading"><h2>Upcoming class</h2></div><div class="st-white-panel">'+live+'</div></div></aside></div></div>';
+ const actualToday=D.timeline_events.filter(e=>assigned.some(pr=>pr.id===e.program_id&&e.scheduled_date===programToday(pr))).slice(0,4);
+ const top=assigned.length?'<div class="st-courses-stack">'+stProgramCard(assigned[0],true)+'</div>':
+  '<div class="st-white-panel st-compact-empty"><p>No program enrolled yet.</p>'+stAction("Explore programs","student-explore")+'</div>';
+ const lessons=actualToday.length?actualToday.map(ev=>'<button class="st-activity" data-action="student-open-lesson" data-id="'+esc(ev.id)+'"><span class="st-activity-icon">'+stIcon(["assignment","project","milestone"].includes(ev.activity_type)?"task":"book",20)+'</span><span><b>'+esc(ev.title)+'</b><small>'+esc(p(ev.program_id)?.title||"Program")+'</small></span>'+stIcon("chevron",16)+'</button>').join(""):
+ '<div class="st-empty-inline">Nothing scheduled for today.</div>';
+ const upcomingCard=upcoming?'<button class="hs-next-class" data-action="navigate" data-view="sessions"><span class="hs-action-icon">'+stIcon("video",20)+'</span><span><b>'+esc(upcoming.title)+'</b><small>'+date(upcoming.session_date)+' · '+esc(String(upcoming.start_time||"").slice(0,5))+'</small></span>'+stIcon("chevron",18)+'</button>':"";
+ return '<div class="st-view hs-student-home">'+stPageHeading("Hi, "+displayName,"")+
+ '<section class="st-block"><div class="st-block-heading"><h2>Continue learning</h2><button class="st-text-link" data-action="navigate" data-view="courses">All courses '+stIcon("arrow",16)+'</button></div>'+top+'</section>'+
+ '<section class="st-block"><div class="st-block-heading"><h2>Today</h2><button class="st-text-link" data-action="navigate" data-view="timeline">Schedule '+stIcon("arrow",16)+'</button></div><div class="st-white-panel">'+lessons+'</div></section>'+
+ (upcomingCard?'<section class="st-block"><div class="st-block-heading"><h2>Next class</h2></div>'+upcomingCard+'</section>':"")+
+ '</div>';
 }
 function studentCourses(){
  const programs=selectedPrograms();
@@ -1435,7 +1407,9 @@ async function importCsvSchedule(form){
  notice(result.data.inserted+" activities imported; "+result.data.duplicates_skipped+" duplicates skipped; "+result.data.live_classes_scheduled+" Meet authorizations pending.","success");
 }
 
-document.addEventListener("click",async e=>{let b=e.target.closest("[data-action]");if(!b)return;e.preventDefault();let a=b.dataset.action,id=b.dataset.id;if(a==="student-explore"){studentQuery="";navigateTo("explore")}
+document.addEventListener("click",async e=>{let b=e.target.closest("[data-action]");if(!b)return;e.preventDefault();let a=b.dataset.action,id=b.dataset.id;if(a==="open-more"){const dialog=$("hs-more-dialog");if(dialog&&!dialog.open){dialog.showModal();dialog.querySelector('[data-action="close-more"]')?.focus()}return}
+else if(a==="close-more"){hsCloseMore();return}
+else if(a==="student-explore"){studentQuery="";navigateTo("explore")}
 else if(a==="student-course-info"){navigateTo("course-info",id)}
 else if(a==="student-calendar-prev"){timelineOffset=Math.max(0,timelineOffset-1);render()}
 else if(a==="student-calendar-next"){timelineOffset++;render()}
